@@ -1,0 +1,307 @@
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+CREATE TABLE IF NOT EXISTS app_user (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户ID',
+    username VARCHAR(50) NOT NULL COMMENT '用户名',
+    nickname VARCHAR(50) NOT NULL COMMENT '昵称',
+    password_hash VARCHAR(255) NOT NULL COMMENT '密码哈希',
+    phone VARCHAR(20) DEFAULT NULL COMMENT '手机号',
+    email VARCHAR(100) DEFAULT NULL COMMENT '邮箱',
+    avatar_url VARCHAR(255) DEFAULT NULL COMMENT '头像地址',
+    gender TINYINT NOT NULL DEFAULT 0 COMMENT '性别：0未知 1男 2女',
+    bio VARCHAR(255) DEFAULT NULL COMMENT '个人简介',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0禁用 1正常',
+    last_login_at DATETIME DEFAULT NULL COMMENT '最后登录时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_app_user_username (username),
+    UNIQUE KEY uk_app_user_phone (phone),
+    UNIQUE KEY uk_app_user_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
+
+CREATE TABLE IF NOT EXISTS app_user_vip (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'VIP记录ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    vip_type VARCHAR(30) NOT NULL COMMENT 'VIP类型：month/quarter/year/lifetime',
+    vip_status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0已失效 1生效中 2已退款',
+    source_type VARCHAR(30) NOT NULL DEFAULT 'manual' COMMENT '来源：manual/order/activity',
+    amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '支付金额',
+    start_time DATETIME NOT NULL COMMENT '开始时间',
+    end_time DATETIME NOT NULL COMMENT '结束时间',
+    is_auto_renew TINYINT NOT NULL DEFAULT 0 COMMENT '是否自动续费：0否 1是',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_app_user_vip_user_id (user_id),
+    KEY idx_app_user_vip_status_end_time (vip_status, end_time),
+    CONSTRAINT fk_app_user_vip_user_id FOREIGN KEY (user_id) REFERENCES app_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户VIP表';
+
+CREATE TABLE IF NOT EXISTS kyzz_category (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '分类ID',
+    parent_id BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '父分类ID，0表示顶级',
+    category_code VARCHAR(50) NOT NULL COMMENT '分类编码',
+    category_name VARCHAR(100) NOT NULL COMMENT '分类名称',
+    category_level TINYINT NOT NULL DEFAULT 1 COMMENT '层级',
+    sort_no INT NOT NULL DEFAULT 0 COMMENT '排序值',
+    is_enabled TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用：0否 1是',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_category_code (category_code),
+    KEY idx_kyzz_category_parent_id (parent_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='考研政治分类表';
+
+CREATE TABLE IF NOT EXISTS kyzz_question_bank (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '题库ID',
+    bank_code VARCHAR(50) NOT NULL COMMENT '题库编码',
+    bank_name VARCHAR(100) NOT NULL COMMENT '题库名称',
+    subtitle VARCHAR(255) DEFAULT NULL COMMENT '题库副标题',
+    cover_url VARCHAR(255) DEFAULT NULL COMMENT '封面图',
+    description TEXT COMMENT '题库介绍',
+    category_id BIGINT UNSIGNED DEFAULT NULL COMMENT '主分类ID',
+    difficulty_level TINYINT NOT NULL DEFAULT 2 COMMENT '难度：1简单 2中等 3困难 4冲刺',
+    question_count INT NOT NULL DEFAULT 0 COMMENT '题目数',
+    total_score DECIMAL(4,2) NOT NULL DEFAULT 0.00 COMMENT '综合评分',
+    rating_count INT NOT NULL DEFAULT 0 COMMENT '评分人数',
+    collect_count INT NOT NULL DEFAULT 0 COMMENT '收藏人数',
+    study_user_count INT NOT NULL DEFAULT 0 COMMENT '学习人数',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0下架 1上架',
+    sort_no INT NOT NULL DEFAULT 0 COMMENT '排序值',
+    created_by BIGINT UNSIGNED DEFAULT NULL COMMENT '创建人',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_question_bank_code (bank_code),
+    KEY idx_kyzz_question_bank_category_id (category_id),
+    KEY idx_kyzz_question_bank_status_sort_no (status, sort_no),
+    CONSTRAINT fk_kyzz_question_bank_category_id FOREIGN KEY (category_id) REFERENCES kyzz_category (id),
+    CONSTRAINT fk_kyzz_question_bank_created_by FOREIGN KEY (created_by) REFERENCES app_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题库表';
+
+CREATE TABLE IF NOT EXISTS kyzz_question (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '题目ID',
+    question_bank_id BIGINT UNSIGNED NOT NULL COMMENT '所属题库ID',
+    category_id BIGINT UNSIGNED DEFAULT NULL COMMENT '分类ID',
+    question_type VARCHAR(20) NOT NULL COMMENT '题型：single/multiple/short',
+    stem TEXT NOT NULL COMMENT '题干',
+    analysis TEXT COMMENT '解析',
+    answer_text TEXT COMMENT '标准答案，主观题可直接存文本',
+    difficulty_level TINYINT NOT NULL DEFAULT 2 COMMENT '难度：1简单 2中等 3困难',
+    score DECIMAL(6,2) NOT NULL DEFAULT 1.00 COMMENT '分值',
+    source_name VARCHAR(100) DEFAULT NULL COMMENT '题目来源',
+    year_no SMALLINT DEFAULT NULL COMMENT '年份',
+    sort_no INT NOT NULL DEFAULT 0 COMMENT '排序值',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0禁用 1启用',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_kyzz_question_bank_id (question_bank_id),
+    KEY idx_kyzz_question_category_id (category_id),
+    KEY idx_kyzz_question_type_status (question_type, status),
+    CONSTRAINT fk_kyzz_question_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id),
+    CONSTRAINT fk_kyzz_question_category_id FOREIGN KEY (category_id) REFERENCES kyzz_category (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目表';
+
+CREATE TABLE IF NOT EXISTS kyzz_question_option (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '选项ID',
+    question_id BIGINT UNSIGNED NOT NULL COMMENT '题目ID',
+    option_key VARCHAR(10) NOT NULL COMMENT '选项标识：A/B/C/D',
+    option_content TEXT NOT NULL COMMENT '选项内容',
+    is_correct TINYINT NOT NULL DEFAULT 0 COMMENT '是否正确：0否 1是',
+    sort_no INT NOT NULL DEFAULT 0 COMMENT '排序值',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_question_option_question_id_option_key (question_id, option_key),
+    KEY idx_kyzz_question_option_question_id (question_id),
+    CONSTRAINT fk_kyzz_question_option_question_id FOREIGN KEY (question_id) REFERENCES kyzz_question (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目选项表';
+
+CREATE TABLE IF NOT EXISTS kyzz_tag (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '标签ID',
+    tag_name VARCHAR(50) NOT NULL COMMENT '标签名称',
+    tag_type VARCHAR(30) NOT NULL DEFAULT 'question' COMMENT '标签类型：question/bank',
+    color VARCHAR(20) DEFAULT NULL COMMENT '标签颜色',
+    use_count INT NOT NULL DEFAULT 0 COMMENT '使用次数',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_tag_name_type (tag_name, tag_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='标签表';
+
+CREATE TABLE IF NOT EXISTS kyzz_question_tag_rel (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '关联ID',
+    question_id BIGINT UNSIGNED NOT NULL COMMENT '题目ID',
+    tag_id BIGINT UNSIGNED NOT NULL COMMENT '标签ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_question_tag_rel_question_id_tag_id (question_id, tag_id),
+    KEY idx_kyzz_question_tag_rel_tag_id (tag_id),
+    CONSTRAINT fk_kyzz_question_tag_rel_question_id FOREIGN KEY (question_id) REFERENCES kyzz_question (id),
+    CONSTRAINT fk_kyzz_question_tag_rel_tag_id FOREIGN KEY (tag_id) REFERENCES kyzz_tag (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目标签关联表';
+
+CREATE TABLE IF NOT EXISTS kyzz_question_bank_rating (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '评分ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    question_bank_id BIGINT UNSIGNED NOT NULL COMMENT '题库ID',
+    score TINYINT NOT NULL COMMENT '评分：1-5',
+    content VARCHAR(255) DEFAULT NULL COMMENT '评分简评',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_question_bank_rating_user_bank (user_id, question_bank_id),
+    KEY idx_kyzz_question_bank_rating_bank_id (question_bank_id),
+    CONSTRAINT fk_kyzz_question_bank_rating_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
+    CONSTRAINT fk_kyzz_question_bank_rating_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题库评分表';
+
+CREATE TABLE IF NOT EXISTS kyzz_user_question_bank (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户题库记录ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    question_bank_id BIGINT UNSIGNED NOT NULL COMMENT '题库ID',
+    join_source VARCHAR(30) NOT NULL DEFAULT 'manual' COMMENT '加入来源：manual/recommend/vip',
+    current_progress DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '当前进度百分比',
+    studied_count INT NOT NULL DEFAULT 0 COMMENT '已学习题数',
+    correct_count INT NOT NULL DEFAULT 0 COMMENT '正确题数',
+    wrong_count INT NOT NULL DEFAULT 0 COMMENT '错误题数',
+    last_practice_at DATETIME DEFAULT NULL COMMENT '最后练习时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_user_question_bank_user_bank (user_id, question_bank_id),
+    KEY idx_kyzz_user_question_bank_bank_id (question_bank_id),
+    CONSTRAINT fk_kyzz_user_question_bank_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
+    CONSTRAINT fk_kyzz_user_question_bank_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户题库表';
+
+CREATE TABLE IF NOT EXISTS kyzz_user_answer (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户答题记录ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    question_id BIGINT UNSIGNED NOT NULL COMMENT '题目ID',
+    question_bank_id BIGINT UNSIGNED NOT NULL COMMENT '题库ID',
+    answer_content TEXT COMMENT '用户答案，选择题可存JSON数组或逗号分隔值',
+    is_correct TINYINT NOT NULL DEFAULT 0 COMMENT '是否正确：0否 1是',
+    answer_status TINYINT NOT NULL DEFAULT 1 COMMENT '答题状态：1已作答 2已跳过',
+    used_seconds INT NOT NULL DEFAULT 0 COMMENT '耗时秒数',
+    submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_kyzz_user_answer_user_bank (user_id, question_bank_id),
+    KEY idx_kyzz_user_answer_user_question (user_id, question_id),
+    KEY idx_kyzz_user_answer_submitted_at (submitted_at),
+    CONSTRAINT fk_kyzz_user_answer_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
+    CONSTRAINT fk_kyzz_user_answer_question_id FOREIGN KEY (question_id) REFERENCES kyzz_question (id),
+    CONSTRAINT fk_kyzz_user_answer_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户答题记录表';
+
+CREATE TABLE IF NOT EXISTS kyzz_user_favorite (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '收藏ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    target_type VARCHAR(20) NOT NULL COMMENT '收藏类型：question/bank/note',
+    target_id BIGINT UNSIGNED NOT NULL COMMENT '目标ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_user_favorite_user_target (user_id, target_type, target_id),
+    KEY idx_kyzz_user_favorite_target (target_type, target_id),
+    CONSTRAINT fk_kyzz_user_favorite_user_id FOREIGN KEY (user_id) REFERENCES app_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='收藏表';
+
+CREATE TABLE IF NOT EXISTS kyzz_user_wrong_question (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '错题ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    question_id BIGINT UNSIGNED NOT NULL COMMENT '题目ID',
+    question_bank_id BIGINT UNSIGNED NOT NULL COMMENT '题库ID',
+    first_wrong_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '首次错题时间',
+    last_wrong_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近错题时间',
+    wrong_count INT NOT NULL DEFAULT 1 COMMENT '累计错题次数',
+    is_mastered TINYINT NOT NULL DEFAULT 0 COMMENT '是否掌握：0否 1是',
+    mastered_at DATETIME DEFAULT NULL COMMENT '掌握时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_user_wrong_question_user_question (user_id, question_id),
+    KEY idx_kyzz_user_wrong_question_bank_id (question_bank_id),
+    KEY idx_kyzz_user_wrong_question_mastered (is_mastered),
+    CONSTRAINT fk_kyzz_user_wrong_question_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
+    CONSTRAINT fk_kyzz_user_wrong_question_question_id FOREIGN KEY (question_id) REFERENCES kyzz_question (id),
+    CONSTRAINT fk_kyzz_user_wrong_question_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户错题表';
+
+CREATE TABLE IF NOT EXISTS kyzz_user_note (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '笔记ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    question_id BIGINT UNSIGNED DEFAULT NULL COMMENT '题目ID',
+    question_bank_id BIGINT UNSIGNED DEFAULT NULL COMMENT '题库ID',
+    note_title VARCHAR(100) DEFAULT NULL COMMENT '笔记标题',
+    note_content TEXT NOT NULL COMMENT '笔记内容',
+    is_public TINYINT NOT NULL DEFAULT 0 COMMENT '是否公开：0否 1是',
+    like_count INT NOT NULL DEFAULT 0 COMMENT '点赞数',
+    favorite_count INT NOT NULL DEFAULT 0 COMMENT '收藏数',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_kyzz_user_note_user_id (user_id),
+    KEY idx_kyzz_user_note_question_id (question_id),
+    KEY idx_kyzz_user_note_bank_id (question_bank_id),
+    CONSTRAINT fk_kyzz_user_note_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
+    CONSTRAINT fk_kyzz_user_note_question_id FOREIGN KEY (question_id) REFERENCES kyzz_question (id),
+    CONSTRAINT fk_kyzz_user_note_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户笔记表';
+
+CREATE TABLE IF NOT EXISTS kyzz_comment (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '评论ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '评论用户ID',
+    target_type VARCHAR(20) NOT NULL COMMENT '评论目标：question/bank/note',
+    target_id BIGINT UNSIGNED NOT NULL COMMENT '目标ID',
+    parent_id BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '父评论ID，0表示一级评论',
+    reply_to_user_id BIGINT UNSIGNED DEFAULT NULL COMMENT '回复目标用户ID',
+    content TEXT NOT NULL COMMENT '评论内容',
+    like_count INT NOT NULL DEFAULT 0 COMMENT '点赞数',
+    reply_count INT NOT NULL DEFAULT 0 COMMENT '回复数',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0删除 1正常',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_kyzz_comment_target (target_type, target_id),
+    KEY idx_kyzz_comment_parent_id (parent_id),
+    KEY idx_kyzz_comment_user_id (user_id),
+    CONSTRAINT fk_kyzz_comment_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
+    CONSTRAINT fk_kyzz_comment_reply_to_user_id FOREIGN KEY (reply_to_user_id) REFERENCES app_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='评论表，支持回复';
+
+CREATE TABLE IF NOT EXISTS kyzz_comment_like (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '评论点赞ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    comment_id BIGINT UNSIGNED NOT NULL COMMENT '评论ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_comment_like_user_comment (user_id, comment_id),
+    KEY idx_kyzz_comment_like_comment_id (comment_id),
+    CONSTRAINT fk_kyzz_comment_like_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
+    CONSTRAINT fk_kyzz_comment_like_comment_id FOREIGN KEY (comment_id) REFERENCES kyzz_comment (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='评论点赞表';
+
+CREATE TABLE IF NOT EXISTS kyzz_leaderboard (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '排行榜记录ID',
+    leaderboard_type VARCHAR(20) NOT NULL COMMENT '榜单类型：daily/weekly/monthly/total',
+    stat_date DATE NOT NULL COMMENT '统计日期',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    study_count INT NOT NULL DEFAULT 0 COMMENT '学习题数',
+    correct_count INT NOT NULL DEFAULT 0 COMMENT '正确题数',
+    accuracy_rate DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '正确率百分比',
+    score_value DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '综合积分',
+    rank_no INT NOT NULL COMMENT '排名',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_leaderboard_type_date_user (leaderboard_type, stat_date, user_id),
+    KEY idx_kyzz_leaderboard_type_date_rank (leaderboard_type, stat_date, rank_no),
+    CONSTRAINT fk_kyzz_leaderboard_user_id FOREIGN KEY (user_id) REFERENCES app_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='排行榜快照表';
+
+SET FOREIGN_KEY_CHECKS = 1;
