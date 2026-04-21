@@ -1,0 +1,15 @@
+# uni-app build outputs
+uniapp/unpackage/
+uniapp/dist/
+
+# Dependencies
+uniapp/node_modules/
+
+# HBuilderX and local IDE settings
+uniapp/.hbuilderx/
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

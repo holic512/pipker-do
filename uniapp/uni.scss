@@ -1,0 +1,120 @@
+// Pipker global theme tokens for uni-ui / uni-scss
+// Reference: DESIGN.md "The Scholarly Monolith"
+
+// Typography
+$body-font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+$heading-font-family: "Manrope", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+
+$uni-headings: (
+	'h1': (
+		size: 40px,
+		weight: 700,
+		line-height: 52px
+	),
+	'h2': (
+		size: 32px,
+		weight: 700,
+		line-height: 42px
+	),
+	'h3': (
+		size: 24px,
+		weight: 700,
+		line-height: 34px
+	),
+	'h4': (
+		size: 20px,
+		weight: 600,
+		line-height: 30px
+	),
+	'h5': (
+		size: 16px,
+		weight: 600,
+		line-height: 24px
+	),
+	'h6': (
+		size: 14px,
+		weight: 600,
+		line-height: 22px
+	),
+	'subtitle': (
+		size: 12px,
+		weight: 500,
+		line-height: 20px
+	),
+	'body': (
+		font-size: 14px,
+		font-weight: 400,
+		line-height: 24px
+	),
+	'caption': (
+		size: 12px,
+		weight: 400,
+		line-height: 18px
+	)
+);
+
+// Radius and spacing
+$uni-space-root: 2;
+$uni-radius-root: 6px;
+$uni-spacing-sm: 8px;
+$uni-spacing-base: 16px;
+$uni-spacing-lg: 24px;
+
+// Core palette
+$uni-primary: #545e76;
+$uni-primary-disable: #8f97aa;
+$uni-primary-light: #d7e2ff;
+
+$uni-success: #5f7e67;
+$uni-success-disable: #98b39f;
+$uni-success-light: #dde9de;
+
+$uni-warning: #a98352;
+$uni-warning-disable: #cfb089;
+$uni-warning-light: #f2e7da;
+
+$uni-error: #b46a67;
+$uni-error-disable: #d7a3a1;
+$uni-error-light: #f4e2e1;
+
+$uni-info: #7c878f;
+$uni-info-disable: #adb5bb;
+$uni-info-light: #e5eaed;
+
+// Neutral palette
+$uni-main-color: #2b3437;
+$uni-base-color: #5f6970;
+$uni-secondary-color: #869095;
+$uni-extra-color: #abb3b7;
+
+// Low-contrast lines only for accessibility fallback
+$uni-border-1: #eef2f3;
+$uni-border-2: #e3e9ec;
+$uni-border-3: #d6dde0;
+$uni-border-4: rgba(171, 179, 183, 0.45);
+
+$uni-black: #000000;
+$uni-white: #ffffff;
+$uni-transparent: rgba(0, 0, 0, 0);
+
+// Surface hierarchy
+$uni-bg-color: #f8f9fa;
+$pipker-surface: #f8f9fa;
+$pipker-surface-low: #f1f4f6;
+$pipker-surface-container: #eaeff1;
+$pipker-surface-high: #e3e9ec;
+$pipker-surface-card: #ffffff;
+$pipker-primary-container: #d7e2ff;
+$pipker-surface-variant: #dbe4e7;
+$pipker-outline-ghost: rgba(171, 179, 183, 0.15);
+$pipker-glass-surface: rgba(248, 249, 250, 0.8);
+
+// Elevation
+$uni-shadow-sm: 0 8px 24px -8px rgba(43, 52, 55, 0.06);
+$uni-shadow-base: 0 12px 32px -4px rgba(43, 52, 55, 0.08);
+$uni-shadow-lg: 0 18px 40px -10px rgba(43, 52, 55, 0.12);
+$uni-mask: rgba(43, 52, 55, 0.35);
+
+$pipker-shadow-ambient: 0 12px 32px -4px rgba(43, 52, 55, 0.08);
+$pipker-shadow-float: 0 18px 40px -10px rgba(43, 52, 55, 0.12);
+$pipker-gradient-primary: linear-gradient(135deg, #545e76 0%, #d7e2ff 100%);
