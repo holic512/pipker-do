@@ -5,6 +5,10 @@ uniapp/dist/
 # Dependencies
 uniapp/node_modules/
 
+# Java / Maven build outputs
+backend/target/
+*.class
+
 # HBuilderX and local IDE settings
 uniapp/.hbuilderx/
 .idea/
