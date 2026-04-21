@@ -25,3 +25,13 @@ mybatis-plus:
 logging:
   level:
     org.example.backend.mapper: debug
+
+storage:
+  local:
+    base-path: /Volumes/HARDDRIVE1/project/private/pipker-do/file
+    public-base-url: http://localhost:8080/static/files
+    temp-dir: .tmp
+    hash-algorithm: SHA-256
+    shard-depth: 2
+    shard-width: 2
+    keep-extension: true
