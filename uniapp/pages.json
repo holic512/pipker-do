@@ -40,5 +40,43 @@
 		"app-plus": {
 			"background": "#efeff4"
 		}
+	},
+	"tabBar": {
+		"color": "#bcc5d4",
+		"selectedColor": "#2f3648",
+		"backgroundColor": "#ffffff",
+		"borderStyle": "white",
+		"list": [
+			{
+				"pagePath": "pages/study/index",
+				"text": "学习",
+				"iconPath": "static/uni.png",
+				"selectedIconPath": "static/uni.png"
+			},
+			{
+				"pagePath": "pages/question-bank/index",
+				"text": "题库",
+				"iconPath": "static/uni.png",
+				"selectedIconPath": "static/uni.png"
+			},
+			{
+				"pagePath": "pages/practice/index",
+				"text": "练习",
+				"iconPath": "static/uni.png",
+				"selectedIconPath": "static/uni.png"
+			},
+			{
+				"pagePath": "pages/exam/index",
+				"text": "考试",
+				"iconPath": "static/uni.png",
+				"selectedIconPath": "static/uni.png"
+			},
+			{
+				"pagePath": "pages/mine/index",
+				"text": "我的",
+				"iconPath": "static/uni.png",
+				"selectedIconPath": "static/uni.png"
+			}
+		]
 	}
 }

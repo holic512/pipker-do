@@ -87,8 +87,8 @@ export default {
 			
 			uni.switchTab({
 				url: item.pagePath,
-				fail: () => {
-					uni.redirectTo({ url: item.pagePath });
+				fail: (error) => {
+					console.warn('[custom-tabbar] switchTab failed, check pages.json tabBar config.', error);
 				}
 			});
 		}
