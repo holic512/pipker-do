@@ -4,10 +4,14 @@ uniapp/dist/
 
 # Dependencies
 uniapp/node_modules/
+admin-web/node_modules/
 
 # Java / Maven build outputs
 backend/target/
 *.class
+
+# Admin web build outputs
+admin-web/dist/
 
 # HBuilderX and local IDE settings
 uniapp/.hbuilderx/

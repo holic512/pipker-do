@@ -12,4 +12,9 @@ public class StpKit {
      */
     public static final StpLogic USER = new StpLogic("user");
 
+    /**
+     * Admin 会话对象，管理后台管理员账号登录、权限认证
+     */
+    public static final StpLogic ADMIN = new StpLogic("admin");
+
 }

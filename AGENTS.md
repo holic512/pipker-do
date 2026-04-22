@@ -53,9 +53,18 @@
 
 ## 3. 前端目录规则
 
-前端根目录：`uniapp`
+前端根目录：`uniapp`、`admin-web`
 
 ### 3.1 目录定位
+
+- `admin-web`
+  - 独立 PC 后台前端项目。
+  - 使用 `Vue 3 + Vite + TypeScript + Element Plus + Axios`。
+  - 目录分层固定为：
+  - `src/app`：启动、router、layout、guards
+  - `src/shared`：通用请求、类型、组件、hooks、工具
+  - `src/modules/system`：登录、工作台、管理员、项目切换
+  - `src/modules/<domain>`：如 `kyzz`、`kysx` 等项目业务模块
 
 - `shared`
   - 放跨业务复用基础设施。
@@ -88,6 +97,8 @@
 - 业务接口不要继续堆到 `shared/api`；只有跨业务复用的接口才允许进入 `shared/api`。
 - 某个业务自己的 API、组件、工具，优先在对应业务目录中补齐。
 - “我的”、VIP、资料页默认视为跨业务共用能力，除非用户明确要求某业务做专属版本。
+- `admin-web` 中系统壳、登录、项目切换等放 `modules/system`，不要和具体业务模块混写。
+- `admin-web` 的业务页面必须进入 `src/modules/<domain>`，不得平铺到根级页面目录。
 
 ### 3.3 前端文件快速定位
 
@@ -100,14 +111,19 @@
 - 业务页面：`uniapp/pages/<domain>`
 - 通用组件：`uniapp/components`
 - 业务组件：`uniapp/components/<domain>`
+- 后台 app 壳：`admin-web/src/app`
+- 后台共享能力：`admin-web/src/shared`
+- 后台系统能力：`admin-web/src/modules/system`
+- 后台业务模块：`admin-web/src/modules/<domain>`
 
 ## 4. 前端统一风格规则
 
-前端开发必须参考当前统一风格，不允许每个页面单独起一套视觉语言。
+前端开发必须参考当前统一风格，不允许每个页面单独起一套视觉语言。`uniapp` 和 `admin-web` 都要延续同一品牌基线，只允许根据端形态做表达差异。
 
 ### 4.1 风格基线
 
 - 全局主题 token 以 `uniapp/uni.scss` 为准。
+- `admin-web` 主题变量需要参考 `uniapp/uni.scss` 的主色、中性色、圆角和阴影尺度重新映射。
 - 颜色、阴影、圆角、字体优先复用已有 token。
 - 页面视觉保持当前项目的“浅色、克制、学院感”方向。
 - 默认使用白底或浅灰层级背景，不擅自切成深色风格。
@@ -129,6 +145,7 @@
 - 新页面应先对齐已有页面的间距、留白、卡片层级、文案密度。
 - 表单页、资料页、用户中心页默认沿用当前“卡片 + 柔和边界 + 浅层背景”的表现。
 - 如果要做业务差异化，只允许在统一基线之上做局部变化，不允许完全脱离当前项目视觉。
+- `admin-web` 默认复用统一后台 layout、`PageContainer`、统一表格页与筛选页骨架，不要单页单套后台模板。
 
 ## 5. 接口与鉴权规则
 

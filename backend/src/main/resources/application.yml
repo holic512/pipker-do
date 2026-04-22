@@ -41,7 +41,7 @@ spring:
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
-  type-aliases-package: org.example.backend.common.entiy,org.example.backend.kyzz.entiy
+  type-aliases-package: org.example.backend.shared.account.entity,org.example.backend.shared.admin.entity,org.example.backend.biz.kyzz.entity
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
