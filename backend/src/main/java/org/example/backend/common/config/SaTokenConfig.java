@@ -6,7 +6,7 @@ import cn.dev33.satoken.router.SaRouter;
 import cn.dev33.satoken.stp.StpInterface;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.api.ApiResponseFactory;
-import org.example.backend.util.satoken.StpKit;
+import org.example.backend.shared.security.StpKit;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

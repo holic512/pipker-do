@@ -1,36 +1,36 @@
 {
 	"pages": [{
-			"path": "pages/study/index",
+			"path": "pages/kyzz/study/index",
 			"style": {
 				"navigationBarTitleText": "学习"
 			}
 		},
 		{
-			"path": "pages/question-bank/index",
+			"path": "pages/kyzz/question-bank/index",
 			"style": {
 				"navigationBarTitleText": "题库"
 			}
 		},
 		{
-			"path": "pages/practice/index",
+			"path": "pages/kyzz/practice/index",
 			"style": {
 				"navigationBarTitleText": "练习"
 			}
 		},
 		{
-			"path": "pages/exam/index",
+			"path": "pages/kyzz/exam/index",
 			"style": {
 				"navigationBarTitleText": "考试"
 			}
 		},
 		{
-			"path": "pages/mine/index",
+			"path": "pages/common/mine/index",
 			"style": {
 				"navigationBarTitleText": "我的"
 			}
 		},
 		{
-			"path": "pages/profile/edit",
+			"path": "pages/common/profile/edit",
 			"style": {
 				"navigationBarTitleText": "编辑资料",
 				"navigationStyle": "default"
@@ -55,31 +55,31 @@
 		"borderStyle": "white",
 		"list": [
 			{
-				"pagePath": "pages/study/index",
+				"pagePath": "pages/kyzz/study/index",
 				"text": "学习",
 				"iconPath": "static/uni.png",
 				"selectedIconPath": "static/uni.png"
 			},
 			{
-				"pagePath": "pages/question-bank/index",
+				"pagePath": "pages/kyzz/question-bank/index",
 				"text": "题库",
 				"iconPath": "static/uni.png",
 				"selectedIconPath": "static/uni.png"
 			},
 			{
-				"pagePath": "pages/practice/index",
+				"pagePath": "pages/kyzz/practice/index",
 				"text": "练习",
 				"iconPath": "static/uni.png",
 				"selectedIconPath": "static/uni.png"
 			},
 			{
-				"pagePath": "pages/exam/index",
+				"pagePath": "pages/kyzz/exam/index",
 				"text": "考试",
 				"iconPath": "static/uni.png",
 				"selectedIconPath": "static/uni.png"
 			},
 			{
-				"pagePath": "pages/mine/index",
+				"pagePath": "pages/common/mine/index",
 				"text": "我的",
 				"iconPath": "static/uni.png",
 				"selectedIconPath": "static/uni.png"

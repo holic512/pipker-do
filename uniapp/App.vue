@@ -1,5 +1,5 @@
 <script>
-	import { bootstrapAuth } from '@/store/session'
+	import { bootstrapAuth } from '@/shared/session/session'
 
 	export default {
 		onLaunch: function() {
