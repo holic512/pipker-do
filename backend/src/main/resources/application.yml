@@ -33,6 +33,10 @@ spring:
         max-idle: 10
         # 连接池中的最小空闲连接
         min-idle: 0
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
 
 
 mybatis-plus:
@@ -59,3 +63,18 @@ storage:
     shard-depth: 2
     shard-width: 2
     keep-extension: true
+    allowed-biz-types:
+      - avatar
+
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  is-read-head: true
+  is-read-cookie: false
+  is-read-body: false
+  is-share: false
+
+wechat:
+  miniapp:
+    app-id: ${WECHAT_MINIAPP_APP_ID:wx8f51a19f388f49ef}
+    app-secret: ${WECHAT_MINIAPP_APP_SECRET:76b1c77f1a22c7fcc3be9ded6f8468de}

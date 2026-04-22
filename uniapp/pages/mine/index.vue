@@ -5,15 +5,23 @@
 		content-class="mine-page__content"
 	>
 		<view class="mine-page__profile">
-			<view class="mine-page__avatar">
-				<view class="mine-page__avatar-glow"></view>
-				<view class="mine-page__avatar-head"></view>
-				<view class="mine-page__avatar-body"></view>
+			<view class="mine-page__avatar" @tap="goProfile">
+				<image
+					v-if="user.avatarUrl"
+					class="mine-page__avatar-image"
+					:src="user.avatarUrl"
+					mode="aspectFill"
+				/>
+				<view v-else>
+					<view class="mine-page__avatar-glow"></view>
+					<view class="mine-page__avatar-head"></view>
+					<view class="mine-page__avatar-body"></view>
+				</view>
 			</view>
 
 			<view class="mine-page__profile-main">
 				<text class="mine-page__name">{{ user.name }}</text>
-				<view class="mine-page__profile-link" @tap="handleAction('profile')">
+				<view class="mine-page__profile-link" @tap="goProfile">
 					<text class="mine-page__profile-link-text">更新资料</text>
 					<uni-icons type="right" size="15" color="#7f8697" />
 				</view>
@@ -63,14 +71,18 @@
 </template>
 
 <script>
+import { bootstrapAuth, getSessionSnapshot, subscribeSession } from '@/store/session'
+
 export default {
 	name: 'MinePage',
 	data() {
 		return {
 			user: {
-				name: '学者 Pipker',
-				vipExpireAt: '2025-12-31'
+				name: '微信用户',
+				avatarUrl: '',
+				vipExpireAt: '未开通'
 			},
+			unsubscribeSession: null,
 			vipFeatures: [
 				{ key: 'unlimited', text: '无限提问', icon: 'loop' },
 				{ key: 'priority', text: '优先处理', icon: 'headphones' },
@@ -85,7 +97,39 @@ export default {
 			]
 		};
 	},
+	onLoad() {
+		this.syncUser(getSessionSnapshot())
+		this.unsubscribeSession = subscribeSession((snapshot) => {
+			this.syncUser(snapshot)
+		})
+	},
+	onShow() {
+		bootstrapAuth({ silent: true }).catch((error) => {
+			console.warn('[mine] bootstrap failed', error)
+		})
+	},
+	onUnload() {
+		if (this.unsubscribeSession) {
+			this.unsubscribeSession()
+			this.unsubscribeSession = null
+		}
+	},
 	methods: {
+		syncUser(snapshot) {
+			const currentUser = snapshot && snapshot.currentUser ? snapshot.currentUser : null
+			this.user = {
+				name: currentUser && currentUser.nickname ? currentUser.nickname : '微信用户',
+				avatarUrl: currentUser && currentUser.avatarUrl ? currentUser.avatarUrl : '',
+				vipExpireAt: currentUser && currentUser.vipInfo && currentUser.vipInfo.isVip
+					? (currentUser.vipInfo.expireAt || '长期有效')
+					: '未开通'
+			}
+		},
+		goProfile() {
+			uni.navigateTo({
+				url: '/pages/profile/edit'
+			})
+		},
 		handleAction(key) {
 			const actionTextMap = {
 				profile: '更新资料',
@@ -130,6 +174,12 @@ export default {
 	box-shadow: 0 18rpx 32rpx rgba(33, 43, 52, 0.12);
 	overflow: hidden;
 	flex-shrink: 0;
+}
+
+.mine-page__avatar-image {
+	width: 100%;
+	height: 100%;
+	display: block;
 }
 
 .mine-page__avatar-glow {

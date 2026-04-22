@@ -15,6 +15,10 @@ public class AppUser implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    private String wechatOpenid;
+
+    private String wechatUnionid;
+
     private String username;
 
     private String nickname;

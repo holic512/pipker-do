@@ -3,9 +3,11 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 CREATE TABLE IF NOT EXISTS app_user (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户ID',
-    username VARCHAR(50) NOT NULL COMMENT '用户名',
+    wechat_openid VARCHAR(64) DEFAULT NULL COMMENT '微信小程序openid',
+    wechat_unionid VARCHAR(64) DEFAULT NULL COMMENT '微信unionid',
+    username VARCHAR(50) DEFAULT NULL COMMENT '用户名',
     nickname VARCHAR(50) NOT NULL COMMENT '昵称',
-    password_hash VARCHAR(255) NOT NULL COMMENT '密码加密',
+    password_hash VARCHAR(255) DEFAULT NULL COMMENT '密码加密',
     phone VARCHAR(20) DEFAULT NULL COMMENT '手机号',
     email VARCHAR(100) DEFAULT NULL COMMENT '邮箱',
     avatar_url VARCHAR(255) DEFAULT NULL COMMENT '头像地址',
@@ -17,8 +19,10 @@ CREATE TABLE IF NOT EXISTS app_user (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_app_user_username (username),
+    UNIQUE KEY uk_app_user_wechat_openid (wechat_openid),
     UNIQUE KEY uk_app_user_phone (phone),
     UNIQUE KEY uk_app_user_email (email),
+    KEY idx_app_user_wechat_unionid (wechat_unionid),
     KEY idx_app_user_status_created_at (status, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 

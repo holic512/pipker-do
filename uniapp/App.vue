@@ -1,11 +1,16 @@
 <script>
+	import { bootstrapAuth } from '@/store/session'
+
 	export default {
 		onLaunch: function() {
-			console.warn('当前组件仅支持 uni_modules 目录结构 ，请升级 HBuilderX 到 3.1.0 版本以上！')
-			console.log('App Launch')
+			bootstrapAuth().catch((error) => {
+				console.warn('[auth] bootstrap onLaunch failed', error)
+			})
 		},
 		onShow: function() {
-			console.log('App Show')
+			bootstrapAuth().catch((error) => {
+				console.warn('[auth] bootstrap onShow failed', error)
+			})
 		},
 		onHide: function() {
 			console.log('App Hide')
