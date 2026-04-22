@@ -24,6 +24,15 @@ export function installRouterGuards(router: Router, pinia: Pinia) {
         : { path: '/workspace' }
     }
 
+    const requiredRoles = Array.isArray(to.meta.roles) ? to.meta.roles.map(String) : []
+    if (requiredRoles.length > 0) {
+      const currentRoles = sessionStore.adminUser?.roles || []
+      const hasRequiredRole = requiredRoles.some((role) => currentRoles.includes(role))
+      if (!hasRequiredRole) {
+        return { path: '/workspace' }
+      }
+    }
+
     if (to.params.projectCode) {
       const projectCode = String(to.params.projectCode)
       if (!sessionStore.availableProjects.some((project) => project.code === projectCode)) {

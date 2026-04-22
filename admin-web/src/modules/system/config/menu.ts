@@ -5,6 +5,7 @@ import {
   FolderOpened,
   House,
   Lock,
+  Medal,
   Notebook,
   Setting,
   User,
@@ -17,6 +18,7 @@ export interface MenuItem {
   route: string
   icon: Component
   projectScoped?: boolean
+  roles?: string[]
 }
 
 export interface MenuSection {
@@ -26,7 +28,14 @@ export interface MenuSection {
   items: MenuItem[]
 }
 
-export function buildAdminMenus(projectCode: string | null): MenuSection[] {
+function canAccess(allowedRoles: string[] | undefined, currentRoles: string[]): boolean {
+  if (!allowedRoles?.length) {
+    return true
+  }
+  return allowedRoles.some((role) => currentRoles.includes(role))
+}
+
+export function buildAdminMenus(projectCode: string | null, currentRoles: string[] = []): MenuSection[] {
   const currentProjectCode = projectCode || 'kyzz'
 
   return [
@@ -58,13 +67,22 @@ export function buildAdminMenus(projectCode: string | null): MenuSection[] {
           key: 'system-users',
           label: '用户管理',
           route: '/system/users',
-          icon: User
+          icon: User,
+          roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN']
         },
         {
           key: 'system-admins',
           label: '管理员管理',
           route: '/system/admins',
-          icon: UserFilled
+          icon: UserFilled,
+          roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN']
+        },
+        {
+          key: 'system-admin-roles',
+          label: '角色管理',
+          route: '/system/admin-roles',
+          icon: Medal,
+          roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN']
         }
       ]
     },
@@ -89,5 +107,8 @@ export function buildAdminMenus(projectCode: string | null): MenuSection[] {
         }
       ]
     }
-  ]
+  ].map((section) => ({
+    ...section,
+    items: section.items.filter((item) => canAccess(item.roles, currentRoles))
+  })).filter((section) => section.items.length > 0)
 }

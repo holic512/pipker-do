@@ -215,7 +215,7 @@ const themeMode = computed({
   set: (value: AdminThemeMode) => themeStore.setThemeMode(value)
 })
 
-const menuSections = computed(() => buildAdminMenus(sessionStore.currentProjectCode))
+const menuSections = computed(() => buildAdminMenus(sessionStore.currentProjectCode, sessionStore.adminUser?.roles || []))
 const activeMenuPath = computed(() => route.path)
 const adminRoles = computed(() => (sessionStore.adminUser?.roles || []).join(' / ') || '管理员')
 

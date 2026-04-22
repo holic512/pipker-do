@@ -29,14 +29,22 @@ const router = createRouter({
           component: () => import('@/modules/system/pages/AdminProfilePage.vue')
         },
         {
+          path: '/system/admin-roles',
+          name: 'system-admin-roles',
+          component: () => import('@/modules/system/pages/AdminRoleManagementPage.vue'),
+          meta: { roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] }
+        },
+        {
           path: '/system/admins',
           name: 'system-admins',
-          component: () => import('@/modules/system/pages/SystemPlaceholderPage.vue')
+          component: () => import('@/modules/system/pages/AdminManagementPage.vue'),
+          meta: { roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] }
         },
         {
           path: '/system/users',
           name: 'system-users',
-          component: () => import('@/modules/system/pages/UserManagementPage.vue')
+          component: () => import('@/modules/system/pages/UserManagementPage.vue'),
+          meta: { roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] }
         },
         {
           path: '/project/:projectCode/overview',
