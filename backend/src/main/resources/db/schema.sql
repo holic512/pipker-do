@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS app_user (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户ID',
     username VARCHAR(50) NOT NULL COMMENT '用户名',
     nickname VARCHAR(50) NOT NULL COMMENT '昵称',
-    password_hash VARCHAR(255) NOT NULL COMMENT '密码哈希',
+    password_hash VARCHAR(255) NOT NULL COMMENT '密码加密',
     phone VARCHAR(20) DEFAULT NULL COMMENT '手机号',
     email VARCHAR(100) DEFAULT NULL COMMENT '邮箱',
     avatar_url VARCHAR(255) DEFAULT NULL COMMENT '头像地址',
@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS app_user (
     PRIMARY KEY (id),
     UNIQUE KEY uk_app_user_username (username),
     UNIQUE KEY uk_app_user_phone (phone),
-    UNIQUE KEY uk_app_user_email (email)
+    UNIQUE KEY uk_app_user_email (email),
+    KEY idx_app_user_status_created_at (status, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 CREATE TABLE IF NOT EXISTS app_user_vip (
@@ -30,18 +31,17 @@ CREATE TABLE IF NOT EXISTS app_user_vip (
     amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '支付金额',
     start_time DATETIME NOT NULL COMMENT '开始时间',
     end_time DATETIME NOT NULL COMMENT '结束时间',
-    is_auto_renew TINYINT NOT NULL DEFAULT 0 COMMENT '是否自动续费：0否 1是',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
-    KEY idx_app_user_vip_user_id (user_id),
+    KEY idx_app_user_vip_user_status_end_time (user_id, vip_status, end_time),
     KEY idx_app_user_vip_status_end_time (vip_status, end_time),
     CONSTRAINT fk_app_user_vip_user_id FOREIGN KEY (user_id) REFERENCES app_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户VIP表';
 
+
 CREATE TABLE IF NOT EXISTS kyzz_category (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '分类ID',
-    parent_id BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '父分类ID，0表示顶级',
     category_code VARCHAR(50) NOT NULL COMMENT '分类编码',
     category_name VARCHAR(100) NOT NULL COMMENT '分类名称',
     category_level TINYINT NOT NULL DEFAULT 1 COMMENT '层级',
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS kyzz_category (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_kyzz_category_code (category_code),
-    KEY idx_kyzz_category_parent_id (parent_id)
+    KEY idx_kyzz_category_enabled_sort_no (is_enabled, sort_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='考研政治分类表';
 
 CREATE TABLE IF NOT EXISTS kyzz_question_bank (
@@ -75,8 +75,9 @@ CREATE TABLE IF NOT EXISTS kyzz_question_bank (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_kyzz_question_bank_code (bank_code),
-    KEY idx_kyzz_question_bank_category_id (category_id),
+    KEY idx_kyzz_question_bank_category_status_sort_no (category_id, status, sort_no),
     KEY idx_kyzz_question_bank_status_sort_no (status, sort_no),
+    KEY idx_kyzz_question_bank_created_by (created_by),
     CONSTRAINT fk_kyzz_question_bank_category_id FOREIGN KEY (category_id) REFERENCES kyzz_category (id),
     CONSTRAINT fk_kyzz_question_bank_created_by FOREIGN KEY (created_by) REFERENCES app_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题库表';
@@ -98,8 +99,8 @@ CREATE TABLE IF NOT EXISTS kyzz_question (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
-    KEY idx_kyzz_question_bank_id (question_bank_id),
-    KEY idx_kyzz_question_category_id (category_id),
+    KEY idx_kyzz_question_bank_status_sort_no (question_bank_id, status, sort_no),
+    KEY idx_kyzz_question_category_status_sort_no (category_id, status, sort_no),
     KEY idx_kyzz_question_type_status (question_type, status),
     CONSTRAINT fk_kyzz_question_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id),
     CONSTRAINT fk_kyzz_question_category_id FOREIGN KEY (category_id) REFERENCES kyzz_category (id)
@@ -116,7 +117,6 @@ CREATE TABLE IF NOT EXISTS kyzz_question_option (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_kyzz_question_option_question_id_option_key (question_id, option_key),
-    KEY idx_kyzz_question_option_question_id (question_id),
     CONSTRAINT fk_kyzz_question_option_question_id FOREIGN KEY (question_id) REFERENCES kyzz_question (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目选项表';
 
@@ -191,8 +191,10 @@ CREATE TABLE IF NOT EXISTS kyzz_user_answer (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
-    KEY idx_kyzz_user_answer_user_bank (user_id, question_bank_id),
-    KEY idx_kyzz_user_answer_user_question (user_id, question_id),
+    KEY idx_kyzz_user_answer_user_bank_submitted_at (user_id, question_bank_id, submitted_at),
+    KEY idx_kyzz_user_answer_user_question_submitted_at (user_id, question_id, submitted_at),
+    KEY idx_kyzz_user_answer_question_id (question_id),
+    KEY idx_kyzz_user_answer_bank_id (question_bank_id),
     KEY idx_kyzz_user_answer_submitted_at (submitted_at),
     CONSTRAINT fk_kyzz_user_answer_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
     CONSTRAINT fk_kyzz_user_answer_question_id FOREIGN KEY (question_id) REFERENCES kyzz_question (id),
@@ -202,12 +204,11 @@ CREATE TABLE IF NOT EXISTS kyzz_user_answer (
 CREATE TABLE IF NOT EXISTS kyzz_user_favorite (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '收藏ID',
     user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
-    target_type VARCHAR(20) NOT NULL COMMENT '收藏类型：question/bank/note',
     target_id BIGINT UNSIGNED NOT NULL COMMENT '目标ID',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_kyzz_user_favorite_user_target (user_id, target_type, target_id),
-    KEY idx_kyzz_user_favorite_target (target_type, target_id),
+    KEY idx_kyzz_user_favorite_user_id (user_id),
+    KEY idx_kyzz_user_favorite_target_id (target_id),
     CONSTRAINT fk_kyzz_user_favorite_user_id FOREIGN KEY (user_id) REFERENCES app_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='收藏表';
 
@@ -225,8 +226,8 @@ CREATE TABLE IF NOT EXISTS kyzz_user_wrong_question (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_kyzz_user_wrong_question_user_question (user_id, question_id),
-    KEY idx_kyzz_user_wrong_question_bank_id (question_bank_id),
-    KEY idx_kyzz_user_wrong_question_mastered (is_mastered),
+    KEY idx_kyzz_user_wrong_question_user_mastered_last_wrong_at (user_id, is_mastered, last_wrong_at),
+    KEY idx_kyzz_user_wrong_question_bank_mastered (question_bank_id, is_mastered),
     CONSTRAINT fk_kyzz_user_wrong_question_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
     CONSTRAINT fk_kyzz_user_wrong_question_question_id FOREIGN KEY (question_id) REFERENCES kyzz_question (id),
     CONSTRAINT fk_kyzz_user_wrong_question_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id)
@@ -245,9 +246,9 @@ CREATE TABLE IF NOT EXISTS kyzz_user_note (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
-    KEY idx_kyzz_user_note_user_id (user_id),
+    KEY idx_kyzz_user_note_user_created_at (user_id, created_at),
     KEY idx_kyzz_user_note_question_id (question_id),
-    KEY idx_kyzz_user_note_bank_id (question_bank_id),
+    KEY idx_kyzz_user_note_bank_public_created_at (question_bank_id, is_public, created_at),
     CONSTRAINT fk_kyzz_user_note_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
     CONSTRAINT fk_kyzz_user_note_question_id FOREIGN KEY (question_id) REFERENCES kyzz_question (id),
     CONSTRAINT fk_kyzz_user_note_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id)
@@ -267,9 +268,10 @@ CREATE TABLE IF NOT EXISTS kyzz_comment (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
-    KEY idx_kyzz_comment_target (target_type, target_id),
-    KEY idx_kyzz_comment_parent_id (parent_id),
-    KEY idx_kyzz_comment_user_id (user_id),
+    KEY idx_kyzz_comment_target_parent_status_created_at (target_type, target_id, parent_id, status, created_at),
+    KEY idx_kyzz_comment_parent_id_created_at (parent_id, created_at),
+    KEY idx_kyzz_comment_user_id_created_at (user_id, created_at),
+    KEY idx_kyzz_comment_reply_to_user_id (reply_to_user_id),
     CONSTRAINT fk_kyzz_comment_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
     CONSTRAINT fk_kyzz_comment_reply_to_user_id FOREIGN KEY (reply_to_user_id) REFERENCES app_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='评论表，支持回复';
