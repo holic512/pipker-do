@@ -1,82 +1,96 @@
 <template>
   <PageContainer title="管理员管理" description="统一维护后台管理员账号、角色分配、项目授权与安全操作。">
-    <template #actions>
-      <el-button type="primary" @click="openCreateDialog">新增管理员</el-button>
-    </template>
-
     <section class="admin-management-page">
-      <article class="admin-management-page__hero admin-card">
-        <div>
-          <div class="admin-management-page__hero-mark">账号治理</div>
-          <h2>先收口管理员边界，再放开业务权限</h2>
-          <p>这页负责后台管理员账号的全生命周期管理。首版先聚焦账号、角色、项目和安全四个核心面，避免把权限体系做得过重。</p>
-        </div>
-        <div class="admin-management-page__hero-stats">
-          <div class="admin-management-page__metric">
-            <span>管理员总数</span>
-            <strong>{{ adminStats.total }}</strong>
-          </div>
-          <div class="admin-management-page__metric">
-            <span>启用账号</span>
-            <strong>{{ adminStats.enabled }}</strong>
-          </div>
-          <div class="admin-management-page__metric">
-            <span>受保护账号</span>
-            <strong>{{ adminStats.protected }}</strong>
-          </div>
-          <div class="admin-management-page__metric">
-            <span>项目授权数</span>
-            <strong>{{ adminStats.projectAssignments }}</strong>
-          </div>
-        </div>
-      </article>
-
-      <section class="admin-management-page__filters admin-card">
-        <el-input
-          v-model="filters.keyword"
-          class="admin-management-page__search"
-          clearable
-          placeholder="搜索账号或显示名称"
-          @keyup.enter="loadAdmins"
-          @clear="loadAdmins"
+      <div class="overview-section">
+        <el-alert
+          type="info"
+          show-icon
+          :closable="false"
+          class="strategy-alert"
+          title="账号治理策略：管理员页聚焦账号状态、角色边界、项目授权和安全处置四个核心动作，避免把权限系统堆成难维护的重型配置台。"
         />
-        <el-select v-model="filters.status" clearable placeholder="全部状态" @change="loadAdmins">
-          <el-option label="启用中" :value="1" />
-          <el-option label="已停用" :value="0" />
-        </el-select>
-        <el-select v-model="filters.roleCode" clearable placeholder="全部角色" @change="loadAdmins">
-          <el-option v-for="role in roleOptions" :key="role.id" :label="role.roleName" :value="role.roleCode" />
-        </el-select>
-        <el-select v-model="filters.projectCode" clearable placeholder="全部项目" @change="loadAdmins">
-          <el-option v-for="project in projectOptions" :key="project.code" :label="project.name" :value="project.code" />
-        </el-select>
-        <el-button @click="loadAdmins">查询</el-button>
-        <el-button @click="resetFilters">重置</el-button>
-      </section>
 
-      <section class="admin-management-page__table admin-card">
-        <el-table v-loading="loading" :data="admins" stripe>
-          <el-table-column label="管理员" min-width="260">
+        <div class="stats-row">
+          <div class="stat-item">
+            <span class="label">全部管理员</span>
+            <span class="value">{{ adminStats.total }}</span>
+          </div>
+          <el-divider direction="vertical" />
+          <div class="stat-item">
+            <span class="label">启用中</span>
+            <span class="value success">{{ adminStats.enabled }}</span>
+          </div>
+          <el-divider direction="vertical" />
+          <div class="stat-item">
+            <span class="label">受保护账号</span>
+            <span class="value warning">{{ adminStats.protected }}</span>
+          </div>
+          <el-divider direction="vertical" />
+          <div class="stat-item">
+            <span class="label">项目授权数</span>
+            <span class="value">{{ adminStats.projectAssignments }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <el-input
+              v-model="filters.keyword"
+              class="search-input"
+              clearable
+              placeholder="搜索账号 / 显示名称"
+              :prefix-icon="Search"
+              @keyup.enter="loadAdmins"
+              @clear="loadAdmins"
+            />
+            <el-select v-model="filters.status" clearable placeholder="全部状态" class="status-select" @change="loadAdmins">
+              <el-option label="启用中" :value="1" />
+              <el-option label="已停用" :value="0" />
+            </el-select>
+            <el-select v-model="filters.roleCode" clearable placeholder="全部角色" class="role-select" @change="loadAdmins">
+              <el-option v-for="role in roleOptions" :key="role.id" :label="role.roleName" :value="role.roleCode" />
+            </el-select>
+            <el-select
+              v-model="filters.projectCode"
+              clearable
+              placeholder="全部项目"
+              class="project-select"
+              @change="loadAdmins"
+            >
+              <el-option v-for="project in projectOptions" :key="project.code" :label="project.name" :value="project.code" />
+            </el-select>
+            <el-button type="primary" plain :icon="Search" @click="loadAdmins">查询</el-button>
+            <el-button :icon="Refresh" @click="resetFilters">重置</el-button>
+          </div>
+          <div class="toolbar-right">
+            <el-button type="primary" :icon="Plus" @click="openCreateDialog">新增管理员</el-button>
+          </div>
+        </div>
+
+        <el-table v-loading="loading" :data="admins" class="admin-table" row-key="id">
+          <el-table-column label="账号信息" min-width="260">
             <template #default="{ row }">
               <div class="admin-management-page__account">
                 <div class="admin-management-page__account-head">
-                  <strong>{{ row.displayName }}</strong>
-                  <el-tag v-if="row.protectedAccount" type="danger" effect="light">受保护</el-tag>
+                  <span class="admin-management-page__account-name">{{ row.displayName }}</span>
+                  <el-tag v-if="row.protectedAccount" type="danger" size="small" effect="plain">受保护</el-tag>
                 </div>
                 <div class="admin-management-page__account-sub">{{ row.username }}</div>
               </div>
             </template>
           </el-table-column>
 
-          <el-table-column label="角色" min-width="280">
+          <el-table-column label="角色分配" min-width="280">
             <template #default="{ row }">
               <div class="admin-management-page__tag-group">
                 <el-tag
                   v-for="role in row.roles"
                   :key="`${row.id}-${role.id}`"
                   :type="role.status === 1 ? 'primary' : 'info'"
-                  effect="plain"
-                  round
+                  size="small"
+                  effect="light"
                 >
                   {{ role.roleName }}
                 </el-tag>
@@ -85,28 +99,24 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="项目权限" min-width="240">
+          <el-table-column label="项目权限" min-width="260">
             <template #default="{ row }">
-              <div class="admin-management-page__tag-group">
-                <el-tag v-for="project in row.projects" :key="`${row.id}-${project.code}`" effect="plain" round>
-                  {{ project.name }}
-                </el-tag>
-                <span v-if="!row.projects.length" class="admin-management-page__muted">未配置项目</span>
+              <div class="admin-management-page__project-list">
+                <div class="admin-management-page__tag-group">
+                  <el-tag
+                    v-for="project in row.projects"
+                    :key="`${row.id}-${project.code}`"
+                    size="small"
+                    effect="light"
+                  >
+                    {{ project.name }}
+                  </el-tag>
+                  <span v-if="!row.projects.length" class="admin-management-page__muted">未配置项目</span>
+                </div>
+                <span v-if="row.defaultProjectName" class="admin-management-page__project-default">
+                  默认：{{ row.defaultProjectName }}
+                </span>
               </div>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="默认项目" width="130">
-            <template #default="{ row }">
-              {{ row.defaultProjectName || '-' }}
-            </template>
-          </el-table-column>
-
-          <el-table-column label="状态" width="110" align="center">
-            <template #default="{ row }">
-              <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="light">
-                {{ row.status === 1 ? '启用中' : '已停用' }}
-              </el-tag>
             </template>
           </el-table-column>
 
@@ -122,24 +132,27 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="操作" width="220" fixed="right">
+          <el-table-column label="状态" width="110" align="center">
             <template #default="{ row }">
-              <div class="admin-management-page__actions">
-                <el-button link type="primary" @click="openAdminDrawer(row.id)">详情</el-button>
-                <el-button
-                  link
-                  :type="row.status === 1 ? 'warning' : 'success'"
-                  :disabled="isStatusActionDisabled(row)"
-                  :loading="togglingUserId === row.id"
-                  @click="toggleUserStatus(row)"
-                >
-                  {{ row.status === 1 ? '停用' : '启用' }}
-                </el-button>
-              </div>
+              <el-switch
+                :model-value="row.status === 1"
+                :disabled="isStatusActionDisabled(row) || togglingUserId === row.id"
+                :loading="togglingUserId === row.id"
+                inline-prompt
+                active-text="启"
+                inactive-text="停"
+                @change="toggleUserStatus(row)"
+              />
+            </template>
+          </el-table-column>
+
+          <el-table-column label="操作" width="140" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" :icon="View" @click="openAdminDrawer(row.id)">详情</el-button>
             </template>
           </el-table-column>
         </el-table>
-      </section>
+      </div>
     </section>
 
     <el-dialog v-model="createDialogVisible" title="新增管理员" width="720px" destroy-on-close>
@@ -440,6 +453,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, Refresh, Search, View } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import PageContainer from '@/shared/components/PageContainer.vue'
 import { fetchAdminRoles } from '@/modules/system/api/role'
@@ -938,92 +952,22 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-.admin-management-page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+@use '../../../styles/system-management.scss' as systemManagement;
+
+@include systemManagement.management-page-shell('.admin-management-page');
+@include systemManagement.plain-surface-card(
+  '.admin-management-page__form-panel',
+  '.admin-management-page__info-card',
+  '.admin-management-page__security-card'
+);
+
+.role-select,
+.project-select {
+  width: 150px;
 }
 
-.admin-management-page__hero,
-.admin-management-page__filters,
-.admin-management-page__table,
-.admin-management-page__form-panel,
-.admin-management-page__info-card,
-.admin-management-page__security-card {
-  border-radius: var(--admin-radius-md);
-  border: 1px solid var(--admin-border);
-  background: var(--admin-surface);
-  box-shadow: var(--admin-shadow);
-}
-
-.admin-management-page__hero {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 28px;
-  background:
-    linear-gradient(135deg, rgba(84, 94, 118, 0.96), rgba(120, 132, 159, 0.88)),
-    #545e76;
-  color: #fff;
-}
-
-.admin-management-page__hero-mark {
-  font-size: 13px;
-  letter-spacing: 0.16em;
-  opacity: 0.78;
-}
-
-.admin-management-page__hero h2 {
-  margin: 12px 0 8px;
-  font-size: 30px;
-}
-
-.admin-management-page__hero p {
-  margin: 0;
-  max-width: 760px;
-  line-height: 1.8;
-  opacity: 0.88;
-}
-
-.admin-management-page__hero-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
-  gap: 12px;
-  min-width: 320px;
-}
-
-.admin-management-page__metric {
-  padding: 16px 18px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-}
-
-.admin-management-page__metric span {
-  display: block;
-  font-size: 13px;
-  opacity: 0.8;
-}
-
-.admin-management-page__metric strong {
-  display: block;
-  margin-top: 10px;
-  font-size: 28px;
-}
-
-.admin-management-page__filters {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 18px 20px;
-}
-
-.admin-management-page__search {
-  width: 320px;
-}
-
-.admin-management-page__table {
-  padding: 8px 0 2px;
+.admin-table {
+  width: 100%;
 }
 
 .admin-management-page__account {
@@ -1038,6 +982,12 @@ onMounted(async () => {
   gap: 8px;
 }
 
+.admin-management-page__account-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
 .admin-management-page__account-sub,
 .admin-management-page__muted,
 .admin-management-page__dialog-tip,
@@ -1050,16 +1000,21 @@ onMounted(async () => {
   color: var(--admin-text-soft);
 }
 
+.admin-management-page__project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-management-page__project-default {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
 .admin-management-page__tag-group {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.admin-management-page__actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 
 .admin-management-page__dialog-grid {
@@ -1186,14 +1141,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 1200px) {
-  .admin-management-page__hero {
-    flex-direction: column;
-  }
-
-  .admin-management-page__hero-stats {
-    min-width: 0;
-  }
-
   .admin-management-page__tab-grid,
   .admin-management-page__security-grid {
     grid-template-columns: 1fr;
@@ -1201,21 +1148,27 @@ onMounted(async () => {
 }
 
 @media (max-width: 900px) {
-  .admin-management-page__filters,
   .admin-management-page__dialog-grid,
   .admin-management-page__card-grid {
     grid-template-columns: 1fr;
-    flex-wrap: wrap;
   }
 
-  .admin-management-page__search {
+  .search-input,
+  .status-select,
+  .role-select,
+  .project-select {
     width: 100%;
   }
 }
 
 @media (max-width: 768px) {
-  .admin-management-page__hero-stats {
-    grid-template-columns: 1fr 1fr;
+  .toolbar-left,
+  .toolbar-right {
+    width: 100%;
+  }
+
+  .toolbar-right :deep(.el-button) {
+    width: 100%;
   }
 }
 </style>

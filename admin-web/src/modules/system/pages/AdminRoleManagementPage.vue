@@ -1,165 +1,196 @@
 <template>
-  <PageContainer title="角色管理" description="维护后台角色定义、状态和职责边界，当前采用角色能力与项目范围两层控制。">
-    <template #actions>
-      <el-button type="primary" @click="openCreateDrawer">新增角色</el-button>
-    </template>
+  <PageContainer title="角色管理" description="维护系统角色定义与状态，结合项目范围实现权限控制。">
+    <div class="role-management">
+      <!-- 顶部信息与统计 (轻量化设计，取代原先厚重的 Hero) -->
+      <div class="overview-section">
+        <el-alert
+            type="info"
+            show-icon
+            :closable="false"
+            class="strategy-alert"
+        >
+          <template #title>权限治理策略：当前系统侧重于“角色职责边界”与“项目范围”的双层控制，暂未启用按钮级细粒度权限管控。</template>
+        </el-alert>
 
-    <section class="role-page">
-      <article class="role-page__hero admin-card">
-        <div>
-          <div class="role-page__hero-mark">权限治理</div>
-          <h2>先管角色边界，再分配管理员</h2>
-          <p>当前系统还没有按钮级权限表，所以首版角色管理重点是定义职责范围、保持角色状态清晰，并与项目权限配合使用。</p>
+        <div class="stats-row">
+          <div class="stat-item">
+            <span class="label">全部角色</span>
+            <span class="value">{{ roleStats.total }}</span>
+          </div>
+          <el-divider direction="vertical" />
+          <div class="stat-item">
+            <span class="label">启用中</span>
+            <span class="value success">{{ roleStats.enabled }}</span>
+          </div>
+          <el-divider direction="vertical" />
+          <div class="stat-item">
+            <span class="label">系统保护</span>
+            <span class="value warning">{{ roleStats.protected }}</span>
+          </div>
+          <el-divider direction="vertical" />
+          <div class="stat-item">
+            <span class="label">已分配账号</span>
+            <span class="value">{{ roleStats.assignments }}</span>
+          </div>
         </div>
-        <div class="role-page__hero-stats">
-          <div class="role-page__metric">
-            <span>角色总数</span>
-            <strong>{{ roleStats.total }}</strong>
+      </div>
+
+      <!-- 主体内容区 (搜索区与表格融为一体) -->
+      <div class="main-content">
+        <!-- 工具栏 -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <el-input
+                v-model="filters.keyword"
+                placeholder="搜索角色编码 / 名称"
+                clearable
+                class="search-input"
+                :prefix-icon="Search"
+                @keyup.enter="loadRoles"
+                @clear="loadRoles"
+            />
+            <el-select v-model="filters.status" clearable placeholder="全部状态" class="status-select" @change="loadRoles">
+              <el-option label="启用中" :value="1" />
+              <el-option label="已停用" :value="0" />
+            </el-select>
+            <el-button type="primary" plain :icon="Search" @click="loadRoles">查询</el-button>
+            <el-button :icon="Refresh" @click="resetFilters">重置</el-button>
           </div>
-          <div class="role-page__metric">
-            <span>启用角色</span>
-            <strong>{{ roleStats.enabled }}</strong>
-          </div>
-          <div class="role-page__metric">
-            <span>受保护角色</span>
-            <strong>{{ roleStats.protected }}</strong>
-          </div>
-          <div class="role-page__metric">
-            <span>角色分配数</span>
-            <strong>{{ roleStats.assignments }}</strong>
+          <div class="toolbar-right">
+            <el-button type="primary" :icon="Plus" @click="openCreateDrawer">新增角色</el-button>
           </div>
         </div>
-      </article>
 
-      <section class="role-page__filters admin-card">
-        <el-input
-          v-model="filters.keyword"
-          class="role-page__search"
-          clearable
-          placeholder="搜索角色编码或角色名称"
-          @keyup.enter="loadRoles"
-          @clear="loadRoles"
-        />
-        <el-select v-model="filters.status" clearable placeholder="全部状态" @change="loadRoles">
-          <el-option label="启用中" :value="1" />
-          <el-option label="已停用" :value="0" />
-        </el-select>
-        <el-button @click="loadRoles">查询</el-button>
-        <el-button @click="resetFilters">重置</el-button>
-      </section>
-
-      <section class="role-page__table admin-card">
-        <el-table v-loading="loading" :data="roles" stripe>
-          <el-table-column label="角色" min-width="240">
+        <!-- 数据表格 -->
+        <el-table v-loading="loading" :data="roles" class="role-table" row-key="id">
+          <el-table-column label="角色信息" min-width="220">
             <template #default="{ row }">
-              <div class="role-page__role-cell">
-                <div class="role-page__role-head">
-                  <strong>{{ row.roleName }}</strong>
-                  <el-tag v-if="row.protectedRole" type="danger" effect="light">受保护</el-tag>
+              <div class="role-info">
+                <div class="role-name">
+                  <span>{{ row.roleName }}</span>
+                  <el-tag v-if="row.protectedRole" type="danger" size="small" effect="plain" class="ml-2">系统保护</el-tag>
                 </div>
-                <div class="role-page__role-code">{{ row.roleCode }}</div>
+                <div class="role-code">{{ row.roleCode }}</div>
               </div>
             </template>
           </el-table-column>
 
-          <el-table-column label="职责说明" min-width="280">
-            <template #default="{ row }">
-              <div class="role-page__description">{{ row.description }}</div>
-            </template>
-          </el-table-column>
+          <el-table-column prop="description" label="职责说明" min-width="260" show-overflow-tooltip />
 
-          <el-table-column label="能力边界" min-width="300">
+          <el-table-column label="能力边界" min-width="320">
             <template #default="{ row }">
-              <div class="role-page__capabilities">
-                <el-tag v-for="capability in row.capabilities" :key="capability" effect="plain" round>
-                  {{ capability }}
+              <div class="capability-tags">
+                <el-tag
+                    v-for="cap in row.capabilities"
+                    :key="cap"
+                    size="small"
+                    type="info"
+                    effect="light"
+                >
+                  {{ cap }}
                 </el-tag>
               </div>
             </template>
           </el-table-column>
 
-          <el-table-column label="关联管理员" width="120" align="center">
+          <el-table-column label="关联账号" width="100" align="center">
             <template #default="{ row }">
-              <strong>{{ row.adminCount }}</strong>
+              <el-link v-if="row.adminCount > 0" type="primary" :underline="false">{{ row.adminCount }}</el-link>
+              <span v-else class="text-muted">0</span>
             </template>
           </el-table-column>
 
-          <el-table-column label="状态" width="120" align="center">
+          <el-table-column label="状态" width="100" align="center">
             <template #default="{ row }">
-              <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="light">
-                {{ row.status === 1 ? '启用中' : '已停用' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="最近更新" width="170">
-            <template #default="{ row }">
-              {{ formatDateTime(row.updatedAt) }}
-            </template>
-          </el-table-column>
-
-          <el-table-column label="操作" width="210" fixed="right">
-            <template #default="{ row }">
-              <div class="role-page__actions">
-                <el-button link type="primary" :disabled="isEditDisabled(row)" @click="openEditDrawer(row)">
-                  编辑
-                </el-button>
-                <el-button
-                  link
-                  :type="row.status === 1 ? 'warning' : 'success'"
-                  :disabled="isToggleDisabled(row)"
+              <el-switch
+                  :model-value="row.status === 1"
+                  :disabled="isToggleDisabled(row) || togglingRoleId === row.id"
                   :loading="togglingRoleId === row.id"
-                  @click="handleToggleStatus(row)"
-                >
-                  {{ row.status === 1 ? '停用' : '启用' }}
-                </el-button>
-              </div>
+                  inline-prompt
+                  active-text="启"
+                  inactive-text="停"
+                  @change="handleToggleStatus(row)"
+              />
+            </template>
+          </el-table-column>
+
+          <el-table-column label="操作" width="140" fixed="right">
+            <template #default="{ row }">
+              <el-button
+                  link
+                  type="primary"
+                  :icon="Edit"
+                  :disabled="isEditDisabled(row)"
+                  @click="openEditDrawer(row)"
+              >
+                编辑
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
-      </section>
-    </section>
+      </div>
+    </div>
 
-    <el-drawer v-model="drawerVisible" :title="editingRoleId ? '编辑角色' : '新增角色'" size="520px" destroy-on-close>
-      <el-form ref="formRef" :model="form" :rules="formRules" label-position="top">
-        <el-form-item label="角色编码" prop="roleCode">
+    <!-- 表单抽屉 (标准的结构与间距) -->
+    <el-drawer
+        v-model="drawerVisible"
+        :title="editingRoleId ? '编辑角色' : '新增角色'"
+        size="480px"
+        destroy-on-close
+    >
+      <el-form ref="formRef" :model="form" :rules="formRules" label-position="top" class="role-form">
+        <el-form-item label="角色编码 (唯一标识)" prop="roleCode">
           <el-input
-            v-model="form.roleCode"
-            :disabled="!!editingRoleId"
-            maxlength="50"
-            placeholder="例如 SYSTEM_ADMIN"
+              v-model="form.roleCode"
+              :disabled="!!editingRoleId"
+              maxlength="50"
+              placeholder="例如: SYSTEM_ADMIN"
           />
-          <div class="role-page__field-tip">建议使用大写字母、数字和下划线，后续可直接作为权限判断标识。</div>
+          <div class="form-tip">建议使用大写字母、数字和下划线，不可随意修改。</div>
         </el-form-item>
 
-        <el-form-item label="角色名称" prop="roleName">
-          <el-input v-model="form.roleName" maxlength="50" placeholder="例如 系统管理员" />
+        <el-form-item label="角色名称 (展示用)" prop="roleName">
+          <el-input v-model="form.roleName" maxlength="50" placeholder="例如: 系统管理员" />
         </el-form-item>
 
         <el-form-item v-if="!editingRoleId" label="初始状态" prop="status">
-          <el-radio-group v-model="form.status">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">停用</el-radio>
-          </el-radio-group>
+          <el-switch
+              v-model="form.status"
+              :active-value="1"
+              :inactive-value="0"
+              active-text="立即启用"
+              inactive-text="暂不启用"
+          />
         </el-form-item>
 
-        <section class="role-page__preview">
-          <div class="role-page__preview-title">角色能力预览</div>
-          <p>{{ previewProfile.description }}</p>
-          <div class="role-page__capabilities">
-            <el-tag v-for="capability in previewProfile.capabilities" :key="capability" effect="plain" round>
-              {{ capability }}
-            </el-tag>
+        <!-- 动态提示区域，取代原先花哨的预览框 -->
+        <el-alert
+            v-if="form.roleCode"
+            :title="`${form.roleCode} 权限预设参考`"
+            type="info"
+            :closable="false"
+            class="mt-4"
+        >
+          <div class="preview-content">
+            <p>{{ previewProfile.description }}</p>
+            <div class="capability-tags mt-2">
+              <el-tag v-for="cap in previewProfile.capabilities" :key="cap" size="small" type="info">
+                {{ cap }}
+              </el-tag>
+            </div>
           </div>
-        </section>
+        </el-alert>
+      </el-form>
 
-        <div class="role-page__drawer-actions">
+      <!-- 使用标准插槽 -->
+      <template #footer>
+        <div class="drawer-footer">
           <el-button @click="drawerVisible = false">取消</el-button>
           <el-button type="primary" :loading="saving" @click="submitForm">
-            {{ editingRoleId ? '保存修改' : '创建角色' }}
+            {{ editingRoleId ? '保存修改' : '确认创建' }}
           </el-button>
         </div>
-      </el-form>
+      </template>
     </el-drawer>
   </PageContainer>
 </template>
@@ -167,6 +198,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, Refresh, Plus, Edit } from '@element-plus/icons-vue' // 引入图标
 import type { FormInstance, FormRules } from 'element-plus'
 import PageContainer from '@/shared/components/PageContainer.vue'
 import { createAdminRole, fetchAdminRoles, updateAdminRole, updateAdminRoleStatus } from '@/modules/system/api/role'
@@ -183,12 +215,9 @@ const editingRoleId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
 const roles = ref<AdminRoleSummary[]>([])
 
-const filters = reactive<{
-  keyword: string
-  status: number | undefined
-}>({
+const filters = reactive({
   keyword: '',
-  status: undefined
+  status: undefined as number | undefined
 })
 
 const form = reactive({
@@ -197,26 +226,27 @@ const form = reactive({
   status: 1
 })
 
+// 原有逻辑保留
 const roleProfileMap: Record<string, { description: string; capabilities: string[] }> = {
   SUPER_ADMIN: {
-    description: '负责后台全局治理，拥有管理员、角色、项目授权和全部业务数据的最高权限。',
-    capabilities: ['管理所有管理员账号', '管理角色定义与启停', '配置全部项目访问范围', '访问所有业务管理菜单']
+    description: '全局最高权限，拥有管理员、角色、项目授权和全部业务数据的控制权。',
+    capabilities: ['管理管理员', '管理角色', '全项目授权', '全部业务菜单']
   },
   SYSTEM_ADMIN: {
-    description: '负责后台通用治理，侧重管理员、角色和项目权限的日常维护。',
-    capabilities: ['管理普通管理员账号', '维护角色状态与说明', '配置项目授权范围', '访问通用管理菜单']
+    description: '通用系统治理，侧重日常维护。',
+    capabilities: ['普通账号管理', '角色状态维护', '项目授权配置', '通用管理菜单']
   },
   PROJECT_ADMIN: {
-    description: '负责单个或多个业务项目的后台运营与配置，不处理系统级账号治理。',
-    capabilities: ['访问被授权项目菜单', '维护项目业务内容', '管理项目内运营配置', '查看项目数据概览']
+    description: '负责单/多业务项目的运营与配置。',
+    capabilities: ['授权项目菜单', '维护业务内容', '项目运营配置']
   },
   CONTENT_OPERATOR: {
-    description: '负责题库、分类、标签等内容维护工作，强调内容编辑而非系统治理。',
-    capabilities: ['维护题库与标签', '处理内容上下架', '查看内容运营数据', '限制在授权项目内操作']
+    description: '负责题库、标签等内容编辑。',
+    capabilities: ['题库与标签', '内容上下架', '授权项目限制']
   },
   DATA_VIEWER: {
-    description: '负责查看后台数据和报表，不参与新增、修改、删除等写操作。',
-    capabilities: ['查看工作台与报表', '查看列表与详情', '不能执行写操作', '限制在授权项目内访问']
+    description: '仅查看数据和报表，无写操作权限。',
+    capabilities: ['工作台与报表', '列表与详情', '禁止写操作']
   }
 }
 
@@ -225,13 +255,9 @@ const formRules: FormRules<typeof form> = {
     { required: true, message: '请输入角色编码', trigger: 'blur' },
     {
       validator: (_, value, callback) => {
-        if (editingRoleId.value) {
-          callback()
-          return
-        }
+        if (editingRoleId.value) return callback()
         if (!/^[A-Z][A-Z0-9_]{1,49}$/.test(value || '')) {
-          callback(new Error('角色编码需为 2 到 50 位大写字母、数字或下划线，且以字母开头'))
-          return
+          return callback(new Error('需为 2-50 位大写字母、数字或下划线，以字母开头'))
         }
         callback()
       },
@@ -240,7 +266,7 @@ const formRules: FormRules<typeof form> = {
   ],
   roleName: [
     { required: true, message: '请输入角色名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '角色名称长度保持在 2 到 50 个字符之间', trigger: 'blur' }
+    { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
   ]
 }
 
@@ -255,17 +281,14 @@ const roleStats = computed(() => ({
 }))
 
 const previewProfile = computed(() => {
-  const roleCode = (form.roleCode || '').trim().toUpperCase()
-  return roleProfileMap[roleCode] || {
-    description: '自定义角色当前按角色编码进行职责约定，后续如果引入细粒度权限表，可以继续扩展到菜单或按钮级别。',
-    capabilities: ['可参与管理员角色分配', '可结合项目授权限制范围', '当前不区分按钮级权限']
+  const code = (form.roleCode || '').trim().toUpperCase()
+  return roleProfileMap[code] || {
+    description: '自定义角色目前将作为身份标识，具体权限由后续项目授权和菜单分配决定。',
+    capabilities: ['可分配管理员', '受项目授权限制']
   }
 })
 
-function formatDateTime(value: string) {
-  return value ? value.replace('T', ' ').slice(0, 16) : '-'
-}
-
+// 方法区
 function resetFilters() {
   filters.keyword = ''
   filters.status = undefined
@@ -298,10 +321,7 @@ function isEditDisabled(role: AdminRoleSummary) {
 }
 
 function isToggleDisabled(role: AdminRoleSummary) {
-  if (role.roleCode === 'SUPER_ADMIN') {
-    return true
-  }
-  return role.protectedRole && !isSuperAdmin.value
+  return role.roleCode === 'SUPER_ADMIN' || (role.protectedRole && !isSuperAdmin.value)
 }
 
 async function loadRoles() {
@@ -320,23 +340,20 @@ async function submitForm() {
   await formRef.value?.validate()
   saving.value = true
   try {
+    const payload = {
+      roleCode: form.roleCode.trim().toUpperCase(),
+      roleName: form.roleName.trim(),
+      status: form.status
+    }
     if (editingRoleId.value) {
-      await updateAdminRole(editingRoleId.value, {
-        roleCode: form.roleCode.trim().toUpperCase(),
-        roleName: form.roleName.trim(),
-        status: form.status
-      })
-      ElMessage.success('角色信息已更新')
+      await updateAdminRole(editingRoleId.value, payload)
+      ElMessage.success('更新成功')
     } else {
-      await createAdminRole({
-        roleCode: form.roleCode.trim().toUpperCase(),
-        roleName: form.roleName.trim(),
-        status: form.status
-      })
-      ElMessage.success('角色已创建')
+      await createAdminRole(payload)
+      ElMessage.success('创建成功')
     }
     drawerVisible.value = false
-    await loadRoles()
+    loadRoles()
   } finally {
     saving.value = false
   }
@@ -344,200 +361,92 @@ async function submitForm() {
 
 async function handleToggleStatus(role: AdminRoleSummary) {
   const nextStatus = role.status === 1 ? 0 : 1
-  await ElMessageBox.confirm(
-    nextStatus === 1 ? `确定启用角色“${role.roleName}”吗？` : `确定停用角色“${role.roleName}”吗？`,
-    nextStatus === 1 ? '启用角色' : '停用角色',
-    {
-      confirmButtonText: nextStatus === 1 ? '确认启用' : '确认停用',
-      cancelButtonText: '取消',
-      type: nextStatus === 1 ? 'success' : 'warning'
-    }
-  )
+  const actionText = nextStatus === 1 ? '启用' : '停用'
 
-  togglingRoleId.value = role.id
   try {
+    await ElMessageBox.confirm(
+        `确定要${actionText}角色【${role.roleName}】吗？`,
+        '状态变更确认',
+        { type: 'warning' }
+    )
+    togglingRoleId.value = role.id
     await updateAdminRoleStatus(role.id, nextStatus)
-    ElMessage.success(nextStatus === 1 ? '角色已启用' : '角色已停用')
-    await loadRoles()
+    ElMessage.success(`角色已${actionText}`)
+    role.status = nextStatus // 乐观更新
+  } catch (e) {
+    // 取消操作或接口报错不处理
   } finally {
     togglingRoleId.value = null
   }
 }
 
-onMounted(() => {
-  loadRoles()
-})
+onMounted(() => loadRoles())
 </script>
 
 <style scoped lang="scss">
-.role-page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+@use '../../../styles/system-management.scss' as systemManagement;
+
+@include systemManagement.management-page-shell('.role-management');
+
+/* 表格定制样式 */
+.role-table {
+  width: 100%;
+
+  .role-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .role-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--el-text-color-primary);
+      display: flex;
+      align-items: center;
+    }
+    .role-code {
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+      font-family: monospace;
+    }
+  }
+
+  .capability-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .text-muted {
+    color: var(--el-text-color-placeholder);
+  }
 }
 
-.role-page__hero,
-.role-page__filters,
-.role-page__table {
-  border-radius: var(--admin-radius-md);
-  border: 1px solid var(--admin-border);
-  background: var(--admin-surface);
-  box-shadow: var(--admin-shadow);
+/* 表单与抽屉样式 */
+.role-form {
+  .form-tip {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+    line-height: 1.4;
+    margin-top: 4px;
+  }
+
+  .preview-content {
+    font-size: 13px;
+    p {
+      margin: 0;
+      line-height: 1.5;
+    }
+  }
 }
 
-.role-page__hero {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 28px;
-  background:
-    linear-gradient(135deg, rgba(84, 94, 118, 0.96), rgba(120, 132, 159, 0.88)),
-    #545e76;
-  color: #fff;
-}
-
-.role-page__hero-mark {
-  font-size: 13px;
-  letter-spacing: 0.16em;
-  opacity: 0.78;
-}
-
-.role-page__hero h2 {
-  margin: 12px 0 8px;
-  font-size: 30px;
-}
-
-.role-page__hero p {
-  margin: 0;
-  max-width: 760px;
-  line-height: 1.8;
-  opacity: 0.88;
-}
-
-.role-page__hero-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
-  gap: 12px;
-  min-width: 320px;
-}
-
-.role-page__metric {
-  padding: 16px 18px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-}
-
-.role-page__metric span {
-  display: block;
-  font-size: 13px;
-  opacity: 0.8;
-}
-
-.role-page__metric strong {
-  display: block;
-  margin-top: 10px;
-  font-size: 28px;
-}
-
-.role-page__filters {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 18px 20px;
-}
-
-.role-page__search {
-  width: 320px;
-}
-
-.role-page__table {
-  padding: 8px 0 2px;
-}
-
-.role-page__role-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.role-page__role-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.role-page__role-code,
-.role-page__description {
-  color: var(--admin-text-soft);
-  line-height: 1.7;
-}
-
-.role-page__capabilities {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.role-page__actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.role-page__field-tip {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--admin-text-soft);
-}
-
-.role-page__preview {
-  margin-top: 8px;
-  padding: 18px;
-  border-radius: 16px;
-  background: var(--admin-surface-soft);
-}
-
-.role-page__preview-title {
-  margin-bottom: 10px;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.role-page__preview p {
-  margin: 0 0 14px;
-  color: var(--admin-text-soft);
-  line-height: 1.7;
-}
-
-.role-page__drawer-actions {
+.drawer-footer {
+  width: 100%;
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 28px;
 }
 
-@media (max-width: 1080px) {
-  .role-page__hero {
-    flex-direction: column;
-  }
-
-  .role-page__hero-stats {
-    min-width: 0;
-  }
-}
-
-@media (max-width: 768px) {
-  .role-page__hero-stats {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .role-page__filters {
-    flex-wrap: wrap;
-  }
-
-  .role-page__search {
-    width: 100%;
-  }
-}
+.ml-2 { margin-left: 8px; }
+.mt-2 { margin-top: 8px; }
+.mt-4 { margin-top: 16px; }
 </style>

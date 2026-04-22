@@ -1,0 +1,108 @@
+@mixin management-page-shell($root-selector) {
+  #{$root-selector} {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    .overview-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .strategy-alert {
+      border-radius: 6px;
+      background-color: var(--el-color-info-light-9);
+    }
+
+    .stats-row {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 16px 24px;
+      background-color: var(--admin-surface);
+      border-radius: 8px;
+      border: 1px solid var(--el-border-color-lighter);
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .stat-item .label {
+      font-size: 14px;
+      color: var(--el-text-color-regular);
+    }
+
+    .stat-item .value {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--el-text-color-primary);
+    }
+
+    .stat-item .value.success {
+      color: var(--el-color-success);
+    }
+
+    .stat-item .value.warning {
+      color: var(--el-color-warning);
+    }
+
+    .main-content {
+      background-color: var(--admin-surface);
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid var(--el-border-color-lighter);
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .search-input {
+      width: 260px;
+    }
+
+    .status-select {
+      width: 120px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    #{$root-selector} {
+      .stats-row {
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+
+      .stats-row .el-divider {
+        display: none;
+      }
+    }
+  }
+}
+
+@mixin plain-surface-card($selectors...) {
+  @each $selector in $selectors {
+    #{$selector} {
+      border-radius: var(--admin-radius-md);
+      border: 1px solid var(--admin-border);
+      background: var(--admin-surface);
+    }
+  }
+}
