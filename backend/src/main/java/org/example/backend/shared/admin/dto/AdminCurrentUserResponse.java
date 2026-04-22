@@ -3,6 +3,7 @@ package org.example.backend.shared.admin.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -20,4 +21,6 @@ public class AdminCurrentUserResponse {
     private List<AdminProjectResponse> projects;
 
     private String defaultProjectCode;
+
+    private LocalDateTime lastLoginAt;
 }

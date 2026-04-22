@@ -155,6 +155,12 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu>
+                <el-dropdown-item command="profile">
+                  个人资料
+                </el-dropdown-item>
+                <el-dropdown-item command="password">
+                  修改密码
+                </el-dropdown-item>
                 <el-dropdown-item command="logout" divided class="text-danger">
                   退出登录
                 </el-dropdown-item>
@@ -254,6 +260,14 @@ function handleThemeChange(mode: AdminThemeMode) {
 }
 
 function handleUserCommand(command: string) {
+  if (command === 'profile') {
+    router.push('/system/profile')
+    return
+  }
+  if (command === 'password') {
+    router.push('/system/profile?tab=password')
+    return
+  }
   if (command === 'logout') {
     ElMessageBox.confirm('确定要退出当前登录状态吗？', '退出提示', {
       confirmButtonText: '确定退出',

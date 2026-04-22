@@ -103,6 +103,10 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     setStoredProjectCode(projectCode)
   }
 
+  async function refreshCurrentUser() {
+    await initializeSession(true)
+  }
+
   return {
     token,
     adminUser,
@@ -112,6 +116,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     initialized,
     isAuthenticated,
     initializeSession,
+    refreshCurrentUser,
     login,
     logout,
     switchProject,

@@ -4,6 +4,7 @@ import {
   Document,
   FolderOpened,
   House,
+  Lock,
   Notebook,
   Setting,
   User,
@@ -47,6 +48,12 @@ export function buildAdminMenus(projectCode: string | null): MenuSection[] {
       label: '通用管理',
       icon: Setting,
       items: [
+        {
+          key: 'system-profile',
+          label: '个人资料',
+          route: '/system/profile',
+          icon: Lock
+        },
         {
           key: 'system-users',
           label: '用户管理',

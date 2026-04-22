@@ -6,7 +6,9 @@ import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.shared.admin.dto.AdminCurrentUserResponse;
 import org.example.backend.shared.admin.dto.AdminLoginResponse;
+import org.example.backend.shared.admin.dto.AdminPasswordUpdateRequest;
 import org.example.backend.shared.admin.dto.AdminProjectResponse;
+import org.example.backend.shared.admin.dto.AdminProfileUpdateRequest;
 import org.example.backend.shared.admin.entity.AdminProjectAccess;
 import org.example.backend.shared.admin.entity.AdminRole;
 import org.example.backend.shared.admin.entity.AdminUser;
@@ -84,8 +86,70 @@ public class AdminAuthService {
                 adminUser.getDisplayName(),
                 roles,
                 projects,
-                defaultProjectCode
+                defaultProjectCode,
+                adminUser.getLastLoginAt()
         );
+    }
+
+    @Transactional
+    public AdminCurrentUserResponse updateProfile(Long adminId, AdminProfileUpdateRequest request) {
+        AdminUser adminUser = requireAdmin(adminId);
+        String displayName = request.getDisplayName() == null ? "" : request.getDisplayName().trim();
+        if (!StringUtils.hasText(displayName)) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "显示名称不能为空");
+        }
+        if (displayName.length() > 50) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "显示名称不能超过50个字符");
+        }
+
+        List<AdminProjectResponse> projects = getAvailableProjects(adminId);
+        if (projects.isEmpty()) {
+            throw new BusinessException(ApiResponseCode.FORBIDDEN, "当前管理员未分配任何项目权限");
+        }
+
+        String defaultProjectCode = request.getDefaultProjectCode() == null ? "" : request.getDefaultProjectCode().trim();
+        if (!StringUtils.hasText(defaultProjectCode)) {
+            defaultProjectCode = resolveDefaultProjectCode(adminUser.getDefaultProjectCode(), projects);
+        }
+        final String finalDefaultProjectCode = defaultProjectCode;
+        boolean hasProjectAccess = projects.stream().anyMatch(project -> finalDefaultProjectCode.equals(project.getCode()));
+        if (!hasProjectAccess) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "默认项目必须是当前账号有权限访问的项目");
+        }
+
+        adminUserMapper.update(null, new LambdaUpdateWrapper<AdminUser>()
+                .eq(AdminUser::getId, adminId)
+                .set(AdminUser::getDisplayName, displayName)
+                .set(AdminUser::getDefaultProjectCode, defaultProjectCode));
+
+        return buildCurrentAdmin(adminId);
+    }
+
+    @Transactional
+    public void updatePassword(Long adminId, AdminPasswordUpdateRequest request) {
+        AdminUser adminUser = requireAdmin(adminId);
+        String currentPassword = request.getCurrentPassword() == null ? "" : request.getCurrentPassword();
+        String newPassword = request.getNewPassword() == null ? "" : request.getNewPassword();
+        String confirmPassword = request.getConfirmPassword() == null ? "" : request.getConfirmPassword();
+
+        if (!StringUtils.hasText(currentPassword) || !StringUtils.hasText(newPassword) || !StringUtils.hasText(confirmPassword)) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "请完整填写当前密码、新密码和确认密码");
+        }
+        if (!StringUtils.hasText(adminUser.getPasswordHash()) || !SCryptUtil.verifyPassword(currentPassword, adminUser.getPasswordHash())) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "当前密码不正确");
+        }
+        if (!newPassword.equals(confirmPassword)) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "两次输入的新密码不一致");
+        }
+        if (currentPassword.equals(newPassword)) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "新密码不能与当前密码相同");
+        }
+
+        validateNewPassword(newPassword, adminUser.getUsername());
+
+        adminUserMapper.update(null, new LambdaUpdateWrapper<AdminUser>()
+                .eq(AdminUser::getId, adminId)
+                .set(AdminUser::getPasswordHash, SCryptUtil.hashPassword(newPassword)));
     }
 
     public List<AdminProjectResponse> getAvailableProjects(Long adminId) {
@@ -106,6 +170,32 @@ public class AdminAuthService {
             return savedProjectCode;
         }
         return projects.get(0).getCode();
+    }
+
+    private void validateNewPassword(String password, String username) {
+        if (password.length() < 8 || password.length() > 32) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "新密码长度需保持在8到32位之间");
+        }
+        if (StringUtils.hasText(username) && password.toLowerCase().contains(username.toLowerCase())) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "新密码不能包含账号名");
+        }
+
+        int strength = 0;
+        if (password.chars().anyMatch(Character::isLowerCase)) {
+            strength++;
+        }
+        if (password.chars().anyMatch(Character::isUpperCase)) {
+            strength++;
+        }
+        if (password.chars().anyMatch(Character::isDigit)) {
+            strength++;
+        }
+        if (password.chars().anyMatch(ch -> !Character.isLetterOrDigit(ch))) {
+            strength++;
+        }
+        if (strength < 3) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "新密码需至少包含大写字母、小写字母、数字、符号中的3类");
+        }
     }
 
     private AdminUser requireAdmin(Long adminId) {

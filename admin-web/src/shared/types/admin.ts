@@ -11,6 +11,7 @@ export interface AdminCurrentUser {
   roles: string[]
   projects: AdminProject[]
   defaultProjectCode: string | null
+  lastLoginAt: string | null
 }
 
 export interface AdminLoginData {

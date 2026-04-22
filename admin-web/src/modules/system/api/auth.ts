@@ -6,6 +6,17 @@ export interface AdminLoginRequest {
   password: string
 }
 
+export interface AdminProfileUpdateRequest {
+  displayName: string
+  defaultProjectCode: string
+}
+
+export interface AdminPasswordUpdateRequest {
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
+}
+
 export function loginByPassword(data: AdminLoginRequest): Promise<AdminLoginData> {
   return http.post('/admin/auth/login', data)
 }
@@ -20,4 +31,12 @@ export function fetchAdminMe(): Promise<AdminCurrentUser> {
 
 export function fetchAdminProjects(): Promise<AdminProject[]> {
   return http.get('/admin/auth/projects')
+}
+
+export function updateAdminProfile(data: AdminProfileUpdateRequest): Promise<AdminCurrentUser> {
+  return http.put('/admin/auth/profile', data)
+}
+
+export function updateAdminPassword(data: AdminPasswordUpdateRequest): Promise<void> {
+  return http.put('/admin/auth/password', data)
 }

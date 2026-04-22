@@ -24,6 +24,11 @@ const router = createRouter({
           component: () => import('@/modules/system/pages/WorkspacePage.vue')
         },
         {
+          path: '/system/profile',
+          name: 'system-profile',
+          component: () => import('@/modules/system/pages/AdminProfilePage.vue')
+        },
+        {
           path: '/system/admins',
           name: 'system-admins',
           component: () => import('@/modules/system/pages/SystemPlaceholderPage.vue')
