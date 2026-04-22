@@ -12,6 +12,7 @@ export interface KyzzQuestionDashboardQuery {
   keyword?: string
   questionBankId?: number
   categoryId?: number
+  tagId?: number
   questionType?: string
   status?: number
   difficultyLevel?: number
@@ -37,6 +38,7 @@ export interface KyzzQuestionUpsertRequest {
   yearNo: number | null
   sortNo: number
   status: number
+  tagIds: number[]
   options: KyzzQuestionOptionPayload[]
 }
 

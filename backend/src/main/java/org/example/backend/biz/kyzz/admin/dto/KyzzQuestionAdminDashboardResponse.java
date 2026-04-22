@@ -21,4 +21,6 @@ public class KyzzQuestionAdminDashboardResponse {
     private List<KyzzQuestionBankOptionResponse> questionBanks;
 
     private List<KyzzCategoryOptionResponse> categories;
+
+    private List<KyzzQuestionTagOptionResponse> tags;
 }

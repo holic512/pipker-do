@@ -164,6 +164,43 @@ export interface KyzzQuestionBankOption {
   status: number
 }
 
+export interface KyzzQuestionTagOption {
+  id: number
+  tagName: string
+  color: string | null
+  useCount: number
+}
+
+export interface KyzzQuestionTagItem {
+  id: number
+  tagName: string
+  color: string | null
+}
+
+export interface KyzzQuestionTagAdminStats {
+  totalTags: number
+  usedTags: number
+  unusedTags: number
+  taggedQuestionCount: number
+}
+
+export interface KyzzQuestionTagAdminRow {
+  id: number
+  tagName: string
+  color: string | null
+  useCount: number
+  actualUseCount: number
+  canDelete: boolean
+  deleteBlockReason: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface KyzzQuestionTagAdminDashboard {
+  stats: KyzzQuestionTagAdminStats
+  tags: KyzzQuestionTagAdminRow[]
+}
+
 export interface KyzzQuestionAdminOption {
   id: number | null
   optionKey: string
@@ -205,6 +242,7 @@ export interface KyzzQuestionAdminItem {
   stemPreview: string
   analysis: string | null
   answerText: string | null
+  tags: KyzzQuestionTagItem[]
   correctOptionKeys: string[]
   optionCount: number
   canDelete: boolean
@@ -223,4 +261,5 @@ export interface KyzzQuestionAdminDashboard {
   pagination: KyzzQuestionAdminPagination
   questionBanks: KyzzQuestionBankOption[]
   categories: KyzzCategoryOption[]
+  tags: KyzzQuestionTagOption[]
 }

@@ -15,6 +15,8 @@ import org.example.backend.biz.kyzz.admin.dto.KyzzQuestionAdminStatsResponse;
 import org.example.backend.biz.kyzz.admin.dto.KyzzQuestionAdminUpsertRequest;
 import org.example.backend.biz.kyzz.admin.dto.KyzzQuestionBankOptionResponse;
 import org.example.backend.biz.kyzz.admin.dto.KyzzQuestionStatusUpdateRequest;
+import org.example.backend.biz.kyzz.admin.dto.KyzzQuestionTagOptionResponse;
+import org.example.backend.biz.kyzz.admin.dto.KyzzQuestionTagSimpleResponse;
 import org.example.backend.biz.kyzz.admin.support.KyzzAdminAccessSupport;
 import org.example.backend.biz.kyzz.entity.KyzzCategory;
 import org.example.backend.biz.kyzz.entity.KyzzComment;
@@ -22,6 +24,7 @@ import org.example.backend.biz.kyzz.entity.KyzzQuestion;
 import org.example.backend.biz.kyzz.entity.KyzzQuestionBank;
 import org.example.backend.biz.kyzz.entity.KyzzQuestionOption;
 import org.example.backend.biz.kyzz.entity.KyzzQuestionTagRel;
+import org.example.backend.biz.kyzz.entity.KyzzTag;
 import org.example.backend.biz.kyzz.entity.KyzzUserAnswer;
 import org.example.backend.biz.kyzz.entity.KyzzUserNote;
 import org.example.backend.biz.kyzz.entity.KyzzUserWrongQuestion;
@@ -31,6 +34,7 @@ import org.example.backend.biz.kyzz.mapper.KyzzQuestionBankMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionOptionMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionTagRelMapper;
+import org.example.backend.biz.kyzz.mapper.KyzzTagMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserAnswerMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserNoteMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserWrongQuestionMapper;
@@ -63,6 +67,7 @@ public class KyzzQuestionAdminService {
     private static final String QUESTION_TYPE_SINGLE = "single";
     private static final String QUESTION_TYPE_MULTIPLE = "multiple";
     private static final String QUESTION_TYPE_SHORT = "short";
+    private static final String QUESTION_TAG_TYPE = "question";
     private static final int DEFAULT_PAGE_NO = 1;
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 100;
@@ -74,6 +79,7 @@ public class KyzzQuestionAdminService {
     private final KyzzQuestionOptionMapper kyzzQuestionOptionMapper;
     private final KyzzQuestionBankMapper kyzzQuestionBankMapper;
     private final KyzzCategoryMapper kyzzCategoryMapper;
+    private final KyzzTagMapper kyzzTagMapper;
     private final KyzzUserAnswerMapper kyzzUserAnswerMapper;
     private final KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper;
     private final KyzzUserNoteMapper kyzzUserNoteMapper;
@@ -81,22 +87,26 @@ public class KyzzQuestionAdminService {
     private final KyzzQuestionTagRelMapper kyzzQuestionTagRelMapper;
     private final KyzzAdminAccessSupport kyzzAdminAccessSupport;
     private final KyzzQuestionBankAdminService kyzzQuestionBankAdminService;
+    private final KyzzQuestionTagAdminService kyzzQuestionTagAdminService;
 
     public KyzzQuestionAdminService(KyzzQuestionMapper kyzzQuestionMapper,
                                     KyzzQuestionOptionMapper kyzzQuestionOptionMapper,
                                     KyzzQuestionBankMapper kyzzQuestionBankMapper,
                                     KyzzCategoryMapper kyzzCategoryMapper,
+                                    KyzzTagMapper kyzzTagMapper,
                                     KyzzUserAnswerMapper kyzzUserAnswerMapper,
                                     KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper,
                                     KyzzUserNoteMapper kyzzUserNoteMapper,
                                     KyzzCommentMapper kyzzCommentMapper,
                                     KyzzQuestionTagRelMapper kyzzQuestionTagRelMapper,
                                     KyzzAdminAccessSupport kyzzAdminAccessSupport,
-                                    KyzzQuestionBankAdminService kyzzQuestionBankAdminService) {
+                                    KyzzQuestionBankAdminService kyzzQuestionBankAdminService,
+                                    KyzzQuestionTagAdminService kyzzQuestionTagAdminService) {
         this.kyzzQuestionMapper = kyzzQuestionMapper;
         this.kyzzQuestionOptionMapper = kyzzQuestionOptionMapper;
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
         this.kyzzCategoryMapper = kyzzCategoryMapper;
+        this.kyzzTagMapper = kyzzTagMapper;
         this.kyzzUserAnswerMapper = kyzzUserAnswerMapper;
         this.kyzzUserWrongQuestionMapper = kyzzUserWrongQuestionMapper;
         this.kyzzUserNoteMapper = kyzzUserNoteMapper;
@@ -104,6 +114,7 @@ public class KyzzQuestionAdminService {
         this.kyzzQuestionTagRelMapper = kyzzQuestionTagRelMapper;
         this.kyzzAdminAccessSupport = kyzzAdminAccessSupport;
         this.kyzzQuestionBankAdminService = kyzzQuestionBankAdminService;
+        this.kyzzQuestionTagAdminService = kyzzQuestionTagAdminService;
     }
 
     public KyzzQuestionAdminDashboardResponse getDashboard(Long operatorId,
@@ -112,13 +123,14 @@ public class KyzzQuestionAdminService {
                                                            String keyword,
                                                            Long questionBankId,
                                                            Long categoryId,
+                                                           Long tagId,
                                                            String questionType,
                                                            Integer status,
                                                            Integer difficultyLevel,
                                                            Integer yearNo) {
         kyzzAdminAccessSupport.requireProjectAccess(operatorId);
 
-        QueryFilter filter = normalizeFilter(pageNo, pageSize, keyword, questionBankId, categoryId, questionType, status, difficultyLevel, yearNo);
+        QueryFilter filter = normalizeFilter(pageNo, pageSize, keyword, questionBankId, categoryId, tagId, questionType, status, difficultyLevel, yearNo);
         List<KyzzQuestionBank> allBanks = loadAllBanks();
         List<KyzzCategory> allCategories = loadAllCategories();
         Map<Long, KyzzQuestionBank> questionBankMap = buildQuestionBankMap(allBanks);
@@ -130,11 +142,13 @@ public class KyzzQuestionAdminService {
                 .orderByDesc(KyzzQuestion::getId));
 
         List<KyzzQuestion> questions = resultPage.getRecords();
-        Map<Long, List<KyzzQuestionOption>> optionMap = loadOptionMap(questions.stream().map(KyzzQuestion::getId).toList());
-        Map<Long, String> deleteReasonMap = buildDeleteReasonMap(questions.stream().map(KyzzQuestion::getId).toList());
+        List<Long> questionIds = questions.stream().map(KyzzQuestion::getId).toList();
+        Map<Long, List<KyzzQuestionOption>> optionMap = loadOptionMap(questionIds);
+        Map<Long, List<KyzzQuestionTagSimpleResponse>> tagMap = loadQuestionTagMap(questionIds);
+        Map<Long, String> deleteReasonMap = buildDeleteReasonMap(questionIds);
 
         List<KyzzQuestionAdminItemResponse> records = questions.stream()
-                .map(question -> toItem(question, questionBankMap, categoryMap, optionMap, deleteReasonMap))
+                .map(question -> toItem(question, questionBankMap, categoryMap, optionMap, tagMap, deleteReasonMap))
                 .toList();
 
         List<KyzzQuestionBankOptionResponse> questionBanks = allBanks.stream()
@@ -156,13 +170,15 @@ public class KyzzQuestionAdminService {
                         category.getIsEnabled()
                 ))
                 .toList();
+        List<KyzzQuestionTagOptionResponse> tags = kyzzQuestionTagAdminService.listQuestionTagOptions();
 
         return new KyzzQuestionAdminDashboardResponse(
                 buildStats(filter),
                 records,
                 new KyzzQuestionAdminPaginationResponse(resultPage.getCurrent(), resultPage.getSize(), resultPage.getTotal(), resultPage.getPages()),
                 questionBanks,
-                categories
+                categories,
+                tags
         );
     }
 
@@ -195,6 +211,7 @@ public class KyzzQuestionAdminService {
         kyzzQuestionMapper.insert(question);
 
         replaceQuestionOptions(question.getId(), payload);
+        replaceQuestionTags(question.getId(), List.of(), payload.tagIds());
         kyzzQuestionBankAdminService.syncQuestionCounts(List.of(payload.questionBankId()));
         return requireDetail(question.getId());
     }
@@ -207,6 +224,7 @@ public class KyzzQuestionAdminService {
         }
 
         KyzzQuestion existing = requireQuestion(questionId);
+        List<Long> previousTagIds = loadQuestionTagIds(questionId);
         NormalizedQuestionPayload payload = normalizePayload(request, existing);
         Long previousBankId = existing.getQuestionBankId();
 
@@ -226,6 +244,7 @@ public class KyzzQuestionAdminService {
                 .set(KyzzQuestion::getStatus, payload.status()));
 
         replaceQuestionOptions(questionId, payload);
+        replaceQuestionTags(questionId, previousTagIds, payload.tagIds());
         kyzzQuestionBankAdminService.syncQuestionCounts(List.of(previousBankId, payload.questionBankId()));
         return requireDetail(questionId);
     }
@@ -257,11 +276,13 @@ public class KyzzQuestionAdminService {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, deleteBlockReason);
         }
 
+        List<Long> previousTagIds = loadQuestionTagIds(questionId);
         kyzzQuestionOptionMapper.delete(new LambdaQueryWrapper<KyzzQuestionOption>()
                 .eq(KyzzQuestionOption::getQuestionId, questionId));
         kyzzQuestionTagRelMapper.delete(new LambdaQueryWrapper<KyzzQuestionTagRel>()
                 .eq(KyzzQuestionTagRel::getQuestionId, questionId));
         kyzzQuestionMapper.deleteById(questionId);
+        kyzzQuestionTagAdminService.syncUseCounts(previousTagIds);
         kyzzQuestionBankAdminService.syncQuestionCounts(List.of(question.getQuestionBankId()));
     }
 
@@ -272,8 +293,9 @@ public class KyzzQuestionAdminService {
                 ? Map.of()
                 : buildCategoryMap(List.of(requireCategory(question.getCategoryId())));
         Map<Long, List<KyzzQuestionOption>> optionMap = loadOptionMap(List.of(questionId));
+        Map<Long, List<KyzzQuestionTagSimpleResponse>> tagMap = loadQuestionTagMap(List.of(questionId));
         Map<Long, String> deleteReasonMap = buildDeleteReasonMap(List.of(questionId));
-        return toItem(question, questionBankMap, categoryMap, optionMap, deleteReasonMap);
+        return toItem(question, questionBankMap, categoryMap, optionMap, tagMap, deleteReasonMap);
     }
 
     private KyzzQuestionAdminDetailResponse requireDetail(Long questionId) {
@@ -283,8 +305,9 @@ public class KyzzQuestionAdminService {
                 ? Map.of()
                 : buildCategoryMap(List.of(requireCategory(question.getCategoryId())));
         Map<Long, List<KyzzQuestionOption>> optionMap = loadOptionMap(List.of(questionId));
+        Map<Long, List<KyzzQuestionTagSimpleResponse>> tagMap = loadQuestionTagMap(List.of(questionId));
         Map<Long, String> deleteReasonMap = buildDeleteReasonMap(List.of(questionId));
-        return toDetail(question, questionBankMap, categoryMap, optionMap, deleteReasonMap);
+        return toDetail(question, questionBankMap, categoryMap, optionMap, tagMap, deleteReasonMap);
     }
 
     private List<KyzzQuestionBank> loadAllBanks() {
@@ -317,6 +340,7 @@ public class KyzzQuestionAdminService {
                                         String keyword,
                                         Long questionBankId,
                                         Long categoryId,
+                                        Long tagId,
                                         String questionType,
                                         Integer status,
                                         Integer difficultyLevel,
@@ -333,6 +357,7 @@ public class KyzzQuestionAdminService {
                 trimToNull(keyword),
                 questionBankId,
                 categoryId,
+                tagId,
                 normalizedQuestionType,
                 status,
                 difficultyLevel,
@@ -354,6 +379,9 @@ public class KyzzQuestionAdminService {
         }
         if (filter.categoryId() != null) {
             wrapper.eq(KyzzQuestion::getCategoryId, filter.categoryId());
+        }
+        if (filter.tagId() != null) {
+            wrapper.inSql(KyzzQuestion::getId, "select question_id from kyzz_question_tag_rel where tag_id = " + filter.tagId());
         }
         if (StringUtils.hasText(filter.questionType())) {
             wrapper.eq(KyzzQuestion::getQuestionType, filter.questionType());
@@ -401,6 +429,7 @@ public class KyzzQuestionAdminService {
         Integer yearNo = request.getYearNo();
         Integer sortNo = request.getSortNo() == null ? 0 : request.getSortNo();
         Integer status = request.getStatus() == null ? 1 : request.getStatus();
+        List<Long> tagIds = kyzzQuestionTagAdminService.normalizeQuestionTagIds(request.getTagIds());
 
         validateDifficultyLevel(difficultyLevel, false);
         validateYearNo(yearNo, true);
@@ -426,6 +455,7 @@ public class KyzzQuestionAdminService {
                 yearNo,
                 sortNo,
                 status,
+                tagIds,
                 options
         );
     }
@@ -490,6 +520,24 @@ public class KyzzQuestionAdminService {
         });
     }
 
+    private void replaceQuestionTags(Long questionId, Collection<Long> previousTagIds, List<Long> nextTagIds) {
+        kyzzQuestionTagRelMapper.delete(new LambdaQueryWrapper<KyzzQuestionTagRel>()
+                .eq(KyzzQuestionTagRel::getQuestionId, questionId));
+        nextTagIds.forEach(tagId -> {
+            KyzzQuestionTagRel relation = new KyzzQuestionTagRel();
+            relation.setQuestionId(questionId);
+            relation.setTagId(tagId);
+            kyzzQuestionTagRelMapper.insert(relation);
+        });
+
+        LinkedHashSet<Long> affectedTagIds = new LinkedHashSet<>();
+        if (previousTagIds != null) {
+            affectedTagIds.addAll(previousTagIds);
+        }
+        affectedTagIds.addAll(nextTagIds);
+        kyzzQuestionTagAdminService.syncUseCounts(affectedTagIds);
+    }
+
     private String buildObjectiveAnswerText(List<NormalizedOptionPayload> options) {
         return options.stream()
                 .filter(option -> option.isCorrect() == 1)
@@ -515,6 +563,57 @@ public class KyzzQuestionAdminService {
                         .orderByAsc(KyzzQuestionOption::getId))
                 .forEach(option -> result.computeIfAbsent(option.getQuestionId(), key -> new ArrayList<>()).add(option));
         return result;
+    }
+
+    private Map<Long, List<KyzzQuestionTagSimpleResponse>> loadQuestionTagMap(List<Long> questionIds) {
+        LinkedHashSet<Long> normalizedIds = questionIds.stream()
+                .filter(Objects::nonNull)
+                .collect(LinkedHashSet::new, LinkedHashSet::add, LinkedHashSet::addAll);
+        if (normalizedIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, List<Long>> questionTagIdsMap = new HashMap<>();
+        LinkedHashSet<Long> tagIds = new LinkedHashSet<>();
+        kyzzQuestionTagRelMapper.selectList(new LambdaQueryWrapper<KyzzQuestionTagRel>()
+                        .in(KyzzQuestionTagRel::getQuestionId, normalizedIds)
+                        .orderByAsc(KyzzQuestionTagRel::getQuestionId)
+                        .orderByAsc(KyzzQuestionTagRel::getId))
+                .forEach(relation -> {
+                    questionTagIdsMap.computeIfAbsent(relation.getQuestionId(), key -> new ArrayList<>()).add(relation.getTagId());
+                    tagIds.add(relation.getTagId());
+                });
+        if (tagIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, KyzzTag> tagEntityMap = new HashMap<>();
+        kyzzTagMapper.selectList(new LambdaQueryWrapper<KyzzTag>()
+                        .in(KyzzTag::getId, tagIds)
+                        .eq(KyzzTag::getTagType, QUESTION_TAG_TYPE))
+                .forEach(tag -> tagEntityMap.put(tag.getId(), tag));
+
+        Map<Long, List<KyzzQuestionTagSimpleResponse>> result = new HashMap<>();
+        questionTagIdsMap.forEach((questionId, relatedTagIds) -> {
+            List<KyzzQuestionTagSimpleResponse> tags = new ArrayList<>();
+            relatedTagIds.forEach(tagId -> {
+                KyzzTag tag = tagEntityMap.get(tagId);
+                if (tag != null) {
+                    tags.add(new KyzzQuestionTagSimpleResponse(tag.getId(), tag.getTagName(), tag.getColor()));
+                }
+            });
+            result.put(questionId, tags);
+        });
+        return result;
+    }
+
+    private List<Long> loadQuestionTagIds(Long questionId) {
+        return kyzzQuestionTagRelMapper.selectList(new LambdaQueryWrapper<KyzzQuestionTagRel>()
+                        .eq(KyzzQuestionTagRel::getQuestionId, questionId)
+                        .orderByAsc(KyzzQuestionTagRel::getId))
+                .stream()
+                .map(KyzzQuestionTagRel::getTagId)
+                .toList();
     }
 
     private Map<Long, String> buildDeleteReasonMap(List<Long> questionIds) {
@@ -598,10 +697,12 @@ public class KyzzQuestionAdminService {
                                                  Map<Long, KyzzQuestionBank> questionBankMap,
                                                  Map<Long, KyzzCategory> categoryMap,
                                                  Map<Long, List<KyzzQuestionOption>> optionMap,
+                                                 Map<Long, List<KyzzQuestionTagSimpleResponse>> tagMap,
                                                  Map<Long, String> deleteReasonMap) {
         KyzzQuestionBank questionBank = questionBankMap.get(question.getQuestionBankId());
         KyzzCategory category = question.getCategoryId() == null ? null : categoryMap.get(question.getCategoryId());
         List<KyzzQuestionOption> options = optionMap.getOrDefault(question.getId(), List.of());
+        List<KyzzQuestionTagSimpleResponse> tags = tagMap.getOrDefault(question.getId(), List.of());
         List<String> correctOptionKeys = options.stream()
                 .filter(option -> Objects.equals(option.getIsCorrect(), 1))
                 .sorted(Comparator.comparing(KyzzQuestionOption::getSortNo, Comparator.nullsFirst(Integer::compareTo))
@@ -626,6 +727,7 @@ public class KyzzQuestionAdminService {
                 buildPreview(question.getStem()),
                 question.getAnalysis(),
                 question.getAnswerText(),
+                tags,
                 correctOptionKeys,
                 options.size(),
                 !StringUtils.hasText(deleteReason),
@@ -639,8 +741,9 @@ public class KyzzQuestionAdminService {
                                                      Map<Long, KyzzQuestionBank> questionBankMap,
                                                      Map<Long, KyzzCategory> categoryMap,
                                                      Map<Long, List<KyzzQuestionOption>> optionMap,
+                                                     Map<Long, List<KyzzQuestionTagSimpleResponse>> tagMap,
                                                      Map<Long, String> deleteReasonMap) {
-        KyzzQuestionAdminItemResponse item = toItem(question, questionBankMap, categoryMap, optionMap, deleteReasonMap);
+        KyzzQuestionAdminItemResponse item = toItem(question, questionBankMap, categoryMap, optionMap, tagMap, deleteReasonMap);
         List<KyzzQuestionAdminOptionResponse> options = optionMap.getOrDefault(question.getId(), List.of()).stream()
                 .map(option -> new KyzzQuestionAdminOptionResponse(
                         option.getId(),
@@ -667,6 +770,7 @@ public class KyzzQuestionAdminService {
                 item.getStemPreview(),
                 item.getAnalysis(),
                 item.getAnswerText(),
+                item.getTags(),
                 item.getCorrectOptionKeys(),
                 item.getOptionCount(),
                 item.getCanDelete(),
@@ -821,6 +925,7 @@ public class KyzzQuestionAdminService {
                                String keyword,
                                Long questionBankId,
                                Long categoryId,
+                               Long tagId,
                                String questionType,
                                Integer status,
                                Integer difficultyLevel,
@@ -839,6 +944,7 @@ public class KyzzQuestionAdminService {
                                              Integer yearNo,
                                              Integer sortNo,
                                              Integer status,
+                                             List<Long> tagIds,
                                              List<NormalizedOptionPayload> options) {
     }
 

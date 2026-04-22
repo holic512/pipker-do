@@ -90,6 +90,21 @@
                 />
               </el-select>
               <el-select
+                v-model="filters.tagId"
+                clearable
+                filterable
+                placeholder="全部标签"
+                class="tag-select"
+                @change="handleSearch"
+              >
+                <el-option
+                  v-for="tag in questionTagOptions"
+                  :key="tag.id"
+                  :label="formatTagOptionLabel(tag)"
+                  :value="tag.id"
+                />
+              </el-select>
+              <el-select
                 v-model="filters.questionType"
                 clearable
                 placeholder="全部题型"
@@ -153,6 +168,14 @@
             class="kyzz-question-page__entry-alert"
             :title="`当前由题库“${prefilledBank.bankName}”快捷进入，题库筛选已默认带出；重置筛选时会回到该题库。`"
           />
+          <el-alert
+            v-if="prefilledTag"
+            type="info"
+            show-icon
+            :closable="false"
+            class="kyzz-question-page__entry-alert"
+            :title="`当前由标签“${prefilledTag.tagName}”快捷进入，标签筛选已默认带出；重置筛选时会回到该标签。`"
+          />
 
           <el-table v-loading="loading" :data="dashboard.records" row-key="id" class="kyzz-question-page__table">
             <el-table-column label="题目内容" min-width="420">
@@ -167,6 +190,20 @@
                   <div v-if="row.sourceName || row.yearNo" class="kyzz-question-page__subtext">
                     <span v-if="row.sourceName">来源：{{ row.sourceName }}</span>
                     <span v-if="row.yearNo">年份：{{ row.yearNo }}</span>
+                  </div>
+                  <div class="kyzz-question-page__tag-strip">
+                    <template v-if="row.tags.length">
+                      <el-tag
+                        v-for="tag in row.tags"
+                        :key="`${row.id}-${tag.id}`"
+                        size="small"
+                        effect="light"
+                        :style="buildTagStyle(tag.color)"
+                      >
+                        {{ tag.tagName }}
+                      </el-tag>
+                    </template>
+                    <span v-else class="kyzz-question-page__content-meta">未打标签</span>
                   </div>
                   <div v-if="row.analysis" class="kyzz-question-page__analysis">
                     解析：{{ previewText(row.analysis, 72) }}
@@ -357,6 +394,30 @@
                     <el-radio :value="1">启用</el-radio>
                     <el-radio :value="0">停用</el-radio>
                   </el-radio-group>
+                </el-form-item>
+
+                <el-form-item class="is-span-2" label="题目标签">
+                  <div class="kyzz-question-page__tag-panel">
+                    <el-select
+                      v-model="form.tagIds"
+                      multiple
+                      filterable
+                      clearable
+                      collapse-tags
+                      collapse-tags-tooltip
+                      placeholder="可选多个标签，不打标签也可保存"
+                    >
+                      <el-option
+                        v-for="tag in questionTagOptions"
+                        :key="tag.id"
+                        :label="formatTagOptionLabel(tag)"
+                        :value="tag.id"
+                      />
+                    </el-select>
+                    <div class="kyzz-question-page__tag-tip">
+                      建议用标签标记“高频考点”“易错题”“真题改编”等运营语义，便于后续筛选和维护。
+                    </div>
+                  </div>
                 </el-form-item>
 
                 <el-form-item class="is-span-2" label="分类联动">
@@ -573,7 +634,8 @@ import type {
   KyzzQuestionAdminDashboard,
   KyzzQuestionAdminDetail,
   KyzzQuestionAdminItem,
-  KyzzQuestionBankOption
+  KyzzQuestionBankOption,
+  KyzzQuestionTagOption
 } from '@/shared/types/admin'
 import {
   createKyzzQuestion,
@@ -640,13 +702,15 @@ const dashboard = reactive<KyzzQuestionAdminDashboard>({
     totalPages: 0
   },
   questionBanks: [],
-  categories: []
+  categories: [],
+  tags: []
 })
 
 const filters = reactive({
   keyword: '',
   questionBankId: undefined as number | undefined,
   categoryId: undefined as number | undefined,
+  tagId: undefined as number | undefined,
   questionType: undefined as string | undefined,
   status: undefined as number | undefined,
   difficultyLevel: undefined as number | undefined,
@@ -668,6 +732,7 @@ const form = reactive({
   yearNo: currentYear as number | null,
   sortNo: 0,
   status: 1,
+  tagIds: [] as number[],
   options: [] as QuestionOptionForm[]
 })
 
@@ -704,15 +769,25 @@ const routeBankId = computed(() => {
   const parsed = Number(raw)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
 })
+const routeTagId = computed(() => {
+  const raw = Array.isArray(route.query.tagId) ? route.query.tagId[0] : route.query.tagId
+  if (!raw) {
+    return undefined
+  }
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
+})
 
 const questionBankOptions = computed(() => dashboard.questionBanks)
 const categoryOptions = computed(() => dashboard.categories)
+const questionTagOptions = computed(() => dashboard.tags)
 const questionBankMap = computed(() => {
   const result = new Map<number, KyzzQuestionBankOption>()
   questionBankOptions.value.forEach((bank) => result.set(bank.id, bank))
   return result
 })
 const prefilledBank = computed(() => questionBankOptions.value.find((bank) => bank.id === routeBankId.value))
+const prefilledTag = computed(() => questionTagOptions.value.find((tag) => tag.id === routeTagId.value))
 const isObjectiveQuestion = computed(() => form.questionType !== 'short')
 const drawerTitle = computed(() => {
   if (drawerMode.value === 'edit') {
@@ -795,6 +870,22 @@ function formatBankLabel(bank: KyzzQuestionBankOption) {
   return `${bank.bankName} · ${bank.bankCode}`
 }
 
+function formatTagOptionLabel(tag: KyzzQuestionTagOption) {
+  return `${tag.tagName} · ${tag.useCount} 题`
+}
+
+function buildTagStyle(color?: string | null) {
+  const normalized = (color || '').trim()
+  if (!normalized) {
+    return {}
+  }
+  return {
+    color: normalized,
+    borderColor: `${normalized}33`,
+    backgroundColor: `${normalized}14`
+  }
+}
+
 function previewText(value: string | null | undefined, limit = 60) {
   const normalized = (value || '').replace(/\s+/g, ' ').trim()
   if (!normalized) {
@@ -838,6 +929,7 @@ function resetForm() {
   form.yearNo = currentYear
   form.sortNo = 0
   form.status = 1
+  form.tagIds = filters.tagId ? [filters.tagId] : []
   setFormOptions(createDefaultOptions())
   syncCategoryFromBank()
 }
@@ -903,6 +995,7 @@ function fillForm(detail: KyzzQuestionAdminDetail, mode: 'edit' | 'copy') {
   form.yearNo = detail.yearNo
   form.sortNo = detail.sortNo
   form.status = mode === 'copy' ? 1 : detail.status
+  form.tagIds = detail.tags.map((tag) => tag.id)
   setFormOptions(
     detail.questionType === 'short'
       ? []
@@ -932,6 +1025,7 @@ async function loadDashboard() {
       keyword: filters.keyword.trim() || undefined,
       questionBankId: filters.questionBankId,
       categoryId: filters.categoryId,
+      tagId: filters.tagId,
       questionType: filters.questionType,
       status: filters.status,
       difficultyLevel: filters.difficultyLevel,
@@ -942,6 +1036,7 @@ async function loadDashboard() {
     dashboard.pagination = result.pagination
     dashboard.questionBanks = result.questionBanks
     dashboard.categories = result.categories
+    dashboard.tags = result.tags
   } catch (error) {
     ElMessage.error((error as Error).message || '加载题目失败')
   } finally {
@@ -958,6 +1053,7 @@ function resetFilters() {
   filters.keyword = ''
   filters.questionBankId = routeBankId.value
   filters.categoryId = undefined
+  filters.tagId = routeTagId.value
   filters.questionType = undefined
   filters.status = undefined
   filters.difficultyLevel = undefined
@@ -1107,6 +1203,7 @@ async function submitForm() {
       yearNo: form.yearNo,
       sortNo: form.sortNo,
       status: form.status,
+      tagIds: form.tagIds,
       options: form.questionType === 'short'
         ? []
         : form.options.map((option) => ({
@@ -1178,9 +1275,10 @@ async function handleDelete(row: KyzzQuestionAdminItem) {
 }
 
 watch(
-  () => routeBankId.value,
-  (bankId) => {
+  () => [routeBankId.value, routeTagId.value],
+  ([bankId, tagId]) => {
     filters.questionBankId = bankId
+    filters.tagId = tagId
     filters.pageNo = 1
     void loadDashboard()
   },
@@ -1220,6 +1318,10 @@ watch(
     width: 220px;
   }
 
+  .tag-select {
+    width: 220px;
+  }
+
   .type-select,
   .difficulty-select {
     width: 140px;
@@ -1247,6 +1349,12 @@ watch(
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: 8px;
+}
+
+.kyzz-question-page__tag-strip {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -1333,6 +1441,7 @@ watch(
   grid-column: 1 / -1;
 }
 
+.kyzz-question-page__tag-panel,
 .kyzz-question-page__category-panel {
   display: flex;
   flex-direction: column;
@@ -1341,6 +1450,12 @@ watch(
   border-radius: 12px;
   border: 1px solid var(--admin-border);
   background: var(--admin-surface-soft);
+}
+
+.kyzz-question-page__tag-tip {
+  color: var(--admin-text-soft);
+  font-size: 13px;
+  line-height: 1.7;
 }
 
 .kyzz-question-page__category-head {

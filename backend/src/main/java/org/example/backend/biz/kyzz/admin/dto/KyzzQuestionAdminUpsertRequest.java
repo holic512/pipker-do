@@ -35,5 +35,7 @@ public class KyzzQuestionAdminUpsertRequest {
 
     private Integer status;
 
+    private List<Long> tagIds;
+
     private List<KyzzQuestionAdminOptionRequest> options;
 }

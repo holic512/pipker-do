@@ -46,6 +46,8 @@ public class KyzzQuestionAdminItemResponse {
 
     private String answerText;
 
+    private List<KyzzQuestionTagSimpleResponse> tags;
+
     private List<String> correctOptionKeys;
 
     private Integer optionCount;
