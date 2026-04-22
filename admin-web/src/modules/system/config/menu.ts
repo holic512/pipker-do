@@ -1,39 +1,64 @@
-import type { RouteLocationRaw } from 'vue-router'
-
 export interface MenuItem {
   key: string
   label: string
-  route: RouteLocationRaw
-  section: 'workspace' | 'system' | 'project'
+  route: string
+  projectScoped?: boolean
 }
 
-export function buildAdminMenus(projectCode: string | null): MenuItem[] {
+export interface MenuSection {
+  key: 'workspace' | 'system' | 'project'
+  label: string
+  items: MenuItem[]
+}
+
+export function buildAdminMenus(projectCode: string | null): MenuSection[] {
   const currentProjectCode = projectCode || 'kyzz'
 
   return [
     {
       key: 'workspace',
       label: '工作台',
-      route: '/workspace',
-      section: 'workspace'
+      items: [
+        {
+          key: 'workspace',
+          label: '工作台',
+          route: '/workspace'
+        }
+      ]
     },
     {
-      key: 'system-admins',
-      label: '管理员与权限',
-      route: '/system/admins',
-      section: 'system'
+      key: 'system',
+      label: '通用管理',
+      items: [
+        {
+          key: 'system-users',
+          label: '用户管理',
+          route: '/system/users'
+        },
+        {
+          key: 'system-admins',
+          label: '管理员管理',
+          route: '/system/admins'
+        }
+      ]
     },
     {
-      key: 'project-overview',
-      label: '项目首页',
-      route: `/project/${currentProjectCode}/overview`,
-      section: 'project'
-    },
-    {
-      key: 'project-placeholder',
+      key: 'project',
       label: '业务管理',
-      route: `/project/${currentProjectCode}/content`,
-      section: 'project'
+      items: [
+        {
+          key: 'project-overview',
+          label: '项目概览',
+          route: `/project/${currentProjectCode}/overview`,
+          projectScoped: true
+        },
+        {
+          key: 'project-content',
+          label: '业务内容',
+          route: `/project/${currentProjectCode}/content`,
+          projectScoped: true
+        }
+      ]
     }
   ]
 }

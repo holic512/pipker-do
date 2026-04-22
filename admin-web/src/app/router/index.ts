@@ -29,6 +29,11 @@ const router = createRouter({
           component: () => import('@/modules/system/pages/SystemPlaceholderPage.vue')
         },
         {
+          path: '/system/users',
+          name: 'system-users',
+          component: () => import('@/modules/system/pages/UserManagementPage.vue')
+        },
+        {
           path: '/project/:projectCode/overview',
           name: 'project-overview',
           component: () => import('@/modules/system/pages/ProjectPlaceholderPage.vue')

@@ -1,2 +1,3 @@
 export const ADMIN_TOKEN_KEY = 'pipker_admin_token'
 export const ADMIN_PROJECT_KEY = 'pipker_admin_project'
+export const ADMIN_THEME_MODE_KEY = 'pipker_admin_theme_mode'

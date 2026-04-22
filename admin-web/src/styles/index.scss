@@ -1,17 +1,24 @@
-:root {
-  color-scheme: light;
+@use './admin-layout.scss';
+@use './element-overrides.scss';
+
+ :root {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --admin-primary: #545e76;
+  --admin-primary-soft: #d7e2ff;
+  --admin-radius-lg: 24px;
+  --admin-radius-md: 18px;
+}
+
+:root,
+[data-theme='light'] {
+  color-scheme: light;
   --admin-bg: #f5f7f8;
   --admin-surface: #ffffff;
   --admin-surface-soft: #eef2f3;
   --admin-border: #e3e9ec;
   --admin-text: #2b3437;
   --admin-text-soft: #69757d;
-  --admin-primary: #545e76;
-  --admin-primary-soft: #d7e2ff;
   --admin-shadow: 0 18px 40px -16px rgba(43, 52, 55, 0.14);
-  --admin-radius-lg: 24px;
-  --admin-radius-md: 18px;
   --el-color-primary: #545e76;
   --el-color-primary-light-3: #7f889b;
   --el-color-primary-light-5: #9da5b4;
@@ -26,8 +33,37 @@
   --el-text-color-primary: #2b3437;
   --el-text-color-regular: #556168;
   --el-text-color-secondary: #7d878f;
-  --el-border-radius-base: 14px;
-  --el-box-shadow-light: 0 18px 40px -18px rgba(43, 52, 55, 0.18);
+  --el-border-radius-base: 8px;
+  --el-box-shadow-light: 0 8px 24px -16px rgba(43, 52, 55, 0.18);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --admin-bg: #13181c;
+  --admin-surface: #1c2328;
+  --admin-surface-soft: #252d33;
+  --admin-border: #313b43;
+  --admin-text: #eef2f4;
+  --admin-text-soft: #a0aab2;
+  --admin-shadow: 0 18px 40px -20px rgba(0, 0, 0, 0.55);
+  --el-color-primary: #8f9cb9;
+  --el-color-primary-light-3: #a5afc7;
+  --el-color-primary-light-5: #bcc4d5;
+  --el-color-primary-light-7: #d2d7e3;
+  --el-color-primary-light-8: #dfe3ea;
+  --el-color-primary-light-9: #eef1f5;
+  --el-border-color: #313b43;
+  --el-border-color-light: #3b4650;
+  --el-fill-color-blank: #1c2328;
+  --el-bg-color: #1c2328;
+  --el-bg-color-page: #13181c;
+  --el-text-color-primary: #eef2f4;
+  --el-text-color-regular: #d7dde1;
+  --el-text-color-secondary: #a0aab2;
+  --el-fill-color-light: #252d33;
+  --el-fill-color: #252d33;
+  --el-mask-color: rgba(0, 0, 0, 0.65);
+  --el-box-shadow-light: 0 12px 30px -20px rgba(0, 0, 0, 0.72);
 }
 
 * {
@@ -53,10 +89,10 @@ a {
 }
 
 .admin-card {
-  border: 1px solid rgba(227, 233, 236, 0.9);
-  border-radius: var(--admin-radius-md);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
   background: var(--admin-surface);
-  box-shadow: var(--admin-shadow);
+  box-shadow: 0 1px 2px rgba(43, 52, 55, 0.04);
 }
 
 .admin-muted {

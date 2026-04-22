@@ -1,0 +1,40 @@
+.el-menu {
+  --el-menu-bg-color: transparent;
+  --el-menu-hover-bg-color: var(--admin-surface-soft);
+  --el-menu-active-color: var(--admin-primary);
+  --el-menu-text-color: var(--admin-text);
+  --el-menu-item-height: 40px;
+  border-right: 0;
+}
+
+.el-sub-menu__title,
+.el-menu-item {
+  margin: 0;
+}
+
+.el-sub-menu__title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.el-menu-item {
+  font-size: 13px;
+}
+
+.el-menu-item.is-active {
+  font-weight: 600;
+}
+
+.el-button {
+  font-weight: 500;
+}
+
+.el-select__wrapper,
+.el-input__wrapper {
+  background: var(--admin-surface);
+  box-shadow: 0 0 0 1px var(--admin-border) inset;
+}
+
+.el-input__wrapper {
+  border-radius: 10px;
+}
