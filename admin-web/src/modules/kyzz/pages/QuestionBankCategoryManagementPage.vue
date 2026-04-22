@@ -59,9 +59,12 @@
                 <el-option label="已停用" :value="0" />
               </el-select>
               <el-select v-model="filters.categoryLevel" clearable placeholder="全部层级" class="level-select" @change="loadDashboard">
-                <el-option label="一级分类" :value="1" />
-                <el-option label="二级分类" :value="2" />
-                <el-option label="三级分类" :value="3" />
+                <el-option
+                  v-for="option in categoryLevelOptions"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
               </el-select>
               <el-button type="primary" plain :icon="Search" @click="loadDashboard">查询</el-button>
               <el-button :icon="Refresh" @click="resetFilters">重置</el-button>
@@ -141,16 +144,37 @@
         <el-form ref="formRef" :model="form" :rules="formRules" label-position="top">
           <div class="kyzz-category-page__form-grid">
             <el-form-item label="分类编码" prop="categoryCode">
-              <el-input v-model="form.categoryCode" maxlength="48" placeholder="例如 marxism_outline" />
+              <div class="kyzz-category-page__code-block">
+                <el-radio-group v-model="categoryCodeMode">
+                  <el-radio value="auto">自动生成</el-radio>
+                  <el-radio value="manual">手动输入</el-radio>
+                </el-radio-group>
+                <el-input
+                  v-if="categoryCodeMode === 'manual'"
+                  v-model="form.categoryCode"
+                  maxlength="48"
+                  placeholder="例如 marxism_outline"
+                />
+                <el-alert
+                  v-else
+                  type="info"
+                  :closable="false"
+                  show-icon
+                  :title="`系统将根据分类名称自动生成编码，当前预览：${categoryCodePreview}`"
+                />
+              </div>
             </el-form-item>
             <el-form-item label="分类名称" prop="categoryName">
               <el-input v-model="form.categoryName" maxlength="50" placeholder="例如 马原导学" />
             </el-form-item>
             <el-form-item label="分类层级" prop="categoryLevel">
               <el-select v-model="form.categoryLevel" placeholder="请选择层级">
-                <el-option label="一级分类" :value="1" />
-                <el-option label="二级分类" :value="2" />
-                <el-option label="三级分类" :value="3" />
+                <el-option
+                  v-for="option in categoryLevelOptions"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="排序值" prop="sortNo">
@@ -216,6 +240,12 @@ const projectName = computed(() => {
   return sessionStore.availableProjects.find((item) => item.code === projectCode.value)?.name || '考研政治'
 })
 
+const categoryLevelOptions = [
+  { label: '一级分类（学科板块）', value: 1 },
+  { label: '二级分类（章节专题）', value: 2 },
+  { label: '三级分类（训练单元）', value: 3 }
+]
+
 const loading = ref(false)
 const saving = ref(false)
 const togglingId = ref<number | null>(null)
@@ -223,6 +253,7 @@ const deletingId = ref<number | null>(null)
 const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
+const categoryCodeMode = ref<'auto' | 'manual'>('auto')
 
 const dashboard = reactive<KyzzCategoryAdminDashboard>({
   stats: {
@@ -251,11 +282,19 @@ const form = reactive({
 
 const formRules: FormRules<typeof form> = {
   categoryCode: [
-    { required: true, message: '请输入分类编码', trigger: 'blur' },
     {
       validator: (_, value, callback) => {
+        if (categoryCodeMode.value !== 'manual') {
+          callback()
+          return
+        }
+        if (!(value || '').trim()) {
+          callback(new Error('请输入分类编码'))
+          return
+        }
         if (!/^[a-z][a-z0-9_-]{1,47}$/.test(value || '')) {
-          return callback(new Error('编码需为 2-48 位小写字母、数字、下划线或中划线，并以字母开头'))
+          callback(new Error('编码需为 2-48 位小写字母、数字、下划线或中划线，并以字母开头'))
+          return
         }
         callback()
       },
@@ -275,12 +314,15 @@ const tableRows = computed(() => {
   return [...dashboard.categories].sort((a, b) => a.categoryLevel - b.categoryLevel || a.sortNo - b.sortNo || a.id - b.id)
 })
 
+const categoryCodePreview = computed(() => buildAutoCodePreview(form.categoryName, 'cat'))
+
 function resetForm() {
   form.categoryCode = ''
   form.categoryName = ''
   form.categoryLevel = 1
   form.sortNo = 0
   form.isEnabled = 1
+  categoryCodeMode.value = 'auto'
 }
 
 function fillForm(row: KyzzCategoryAdminItem) {
@@ -289,6 +331,7 @@ function fillForm(row: KyzzCategoryAdminItem) {
   form.categoryLevel = row.categoryLevel
   form.sortNo = row.sortNo
   form.isEnabled = row.isEnabled
+  categoryCodeMode.value = 'manual'
 }
 
 async function loadDashboard() {
@@ -345,7 +388,7 @@ async function submitForm() {
   saving.value = true
   try {
     const payload = {
-      categoryCode: form.categoryCode.trim(),
+      categoryCode: categoryCodeMode.value === 'manual' ? form.categoryCode.trim() : '',
       categoryName: form.categoryName.trim(),
       categoryLevel: form.categoryLevel,
       sortNo: form.sortNo,
@@ -414,6 +457,19 @@ function formatDateTime(value: string | null) {
     return '暂无记录'
   }
   return value.replace('T', ' ').slice(0, 16)
+}
+
+function buildAutoCodePreview(name: string, prefix: string) {
+  const normalized = (name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+  if (normalized) {
+    return normalized.slice(0, 48)
+  }
+  return `${prefix}_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`
 }
 
 onMounted(() => {
@@ -485,6 +541,12 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.kyzz-category-page__code-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 @media (max-width: 768px) {

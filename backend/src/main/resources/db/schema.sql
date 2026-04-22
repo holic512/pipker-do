@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS kyzz_question_bank (
     study_user_count INT NOT NULL DEFAULT 0 COMMENT '学习人数',
     status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0下架 1上架',
     sort_no INT NOT NULL DEFAULT 0 COMMENT '排序值',
-    created_by BIGINT UNSIGNED DEFAULT NULL COMMENT '创建人',
+    created_by BIGINT UNSIGNED DEFAULT NULL COMMENT '创建后台管理员ID',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS kyzz_question_bank (
     KEY idx_kyzz_question_bank_status_sort_no (status, sort_no),
     KEY idx_kyzz_question_bank_created_by (created_by),
     CONSTRAINT fk_kyzz_question_bank_category_id FOREIGN KEY (category_id) REFERENCES kyzz_category (id),
-    CONSTRAINT fk_kyzz_question_bank_created_by FOREIGN KEY (created_by) REFERENCES app_user (id)
+    CONSTRAINT fk_kyzz_question_bank_created_by FOREIGN KEY (created_by) REFERENCES admin_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题库表';
 
 CREATE TABLE IF NOT EXISTS kyzz_question (

@@ -47,6 +47,11 @@ const router = createRouter({
           meta: { roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] }
         },
         {
+          path: '/project/:projectCode/question-banks',
+          name: 'project-question-banks',
+          component: () => import('@/modules/kyzz/pages/QuestionBankManagementPage.vue')
+        },
+        {
           path: '/project/:projectCode/question-bank-categories',
           name: 'project-question-bank-categories',
           component: () => import('@/modules/kyzz/pages/QuestionBankCategoryManagementPage.vue')

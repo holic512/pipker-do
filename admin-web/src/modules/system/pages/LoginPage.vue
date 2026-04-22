@@ -49,7 +49,7 @@ const form = reactive({
 
 function resolveProjectEntry(projectCode: string | null) {
   if (projectCode === 'kyzz') {
-    return `/project/${projectCode}/question-bank-categories`
+    return `/project/${projectCode}/question-banks`
   }
   return '/workspace'
 }

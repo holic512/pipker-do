@@ -4,7 +4,7 @@ import { useAdminSessionStore } from '@/modules/system/store/session'
 
 function resolveProjectEntry(projectCode: string | null): { path: string } {
   if (projectCode === 'kyzz') {
-    return { path: `/project/${projectCode}/question-bank-categories` }
+    return { path: `/project/${projectCode}/question-banks` }
   }
   return { path: '/workspace' }
 }

@@ -33,12 +33,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 @Service
 public class KyzzCategoryAdminService {
 
     private static final String PROJECT_CODE = "kyzz";
     private static final Pattern CATEGORY_CODE_PATTERN = Pattern.compile("^[a-z][a-z0-9_-]{1,47}$");
+    private static final Pattern SIMPLE_SEGMENT_PATTERN = Pattern.compile("[a-z0-9]+");
 
     private final KyzzCategoryMapper kyzzCategoryMapper;
     private final KyzzQuestionBankMapper kyzzQuestionBankMapper;
@@ -93,7 +96,7 @@ public class KyzzCategoryAdminService {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "分类参数不能为空");
         }
 
-        NormalizedCategoryPayload payload = normalizePayload(request);
+        NormalizedCategoryPayload payload = normalizePayload(request, null);
         ensureCategoryCodeUnique(payload.categoryCode(), null);
 
         KyzzCategory category = new KyzzCategory();
@@ -114,7 +117,7 @@ public class KyzzCategoryAdminService {
         }
 
         requireCategory(categoryId);
-        NormalizedCategoryPayload payload = normalizePayload(request);
+        NormalizedCategoryPayload payload = normalizePayload(request, categoryId);
         ensureCategoryCodeUnique(payload.categoryCode(), categoryId);
 
         kyzzCategoryMapper.update(null, new LambdaUpdateWrapper<KyzzCategory>()
@@ -167,19 +170,27 @@ public class KyzzCategoryAdminService {
         return toItem(category, buildAggregate(List.of(category)));
     }
 
-    private NormalizedCategoryPayload normalizePayload(KyzzCategoryAdminUpsertRequest request) {
-        String categoryCode = normalizeCategoryCode(request.getCategoryCode());
+    private NormalizedCategoryPayload normalizePayload(KyzzCategoryAdminUpsertRequest request, Long excludeId) {
         String categoryName = normalizeCategoryName(request.getCategoryName());
+        String categoryCode = resolveCategoryCode(request.getCategoryCode(), categoryName, excludeId);
         Integer categoryLevel = request.getCategoryLevel() == null ? 1 : request.getCategoryLevel();
         Integer sortNo = request.getSortNo() == null ? 0 : request.getSortNo();
         Integer isEnabled = request.getIsEnabled() == null ? 1 : request.getIsEnabled();
 
-        validateCategoryCode(categoryCode);
         validateCategoryName(categoryName);
         validateCategoryLevel(categoryLevel);
         validateSortNo(sortNo);
         validateEnabled(isEnabled, false);
         return new NormalizedCategoryPayload(categoryCode, categoryName, categoryLevel, sortNo, isEnabled);
+    }
+
+    private String resolveCategoryCode(String incomingCode, String categoryName, Long excludeId) {
+        String normalizedCode = normalizeCategoryCode(incomingCode);
+        if (StringUtils.hasText(normalizedCode)) {
+            validateCategoryCode(normalizedCode);
+            return normalizedCode;
+        }
+        return generateUniqueCode(categoryName, "cat", excludeId);
     }
 
     private void ensureCategoryCodeUnique(String categoryCode, Long excludeId) {
@@ -267,6 +278,67 @@ public class KyzzCategoryAdminService {
 
     private String normalizeCategoryCode(String categoryCode) {
         return categoryCode == null ? "" : categoryCode.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String generateUniqueCode(String seed, String prefix, Long excludeId) {
+        String base = normalizeSegment(seed);
+        if (!StringUtils.hasText(base)) {
+            base = prefix + "_" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
+        }
+        if (!Character.isLetter(base.charAt(0))) {
+            base = prefix + "_" + base;
+        }
+        base = truncateCode(base, 48);
+
+        String candidate = base;
+        int suffix = 2;
+        while (categoryCodeExists(candidate, excludeId)) {
+            String tail = "_" + suffix;
+            candidate = truncateCode(base, 48 - tail.length()) + tail;
+            suffix++;
+        }
+        return candidate;
+    }
+
+    private boolean categoryCodeExists(String categoryCode, Long excludeId) {
+        LambdaQueryWrapper<KyzzCategory> queryWrapper = new LambdaQueryWrapper<KyzzCategory>()
+                .eq(KyzzCategory::getCategoryCode, categoryCode);
+        if (excludeId != null) {
+            queryWrapper.ne(KyzzCategory::getId, excludeId);
+        }
+        return kyzzCategoryMapper.selectCount(queryWrapper) > 0;
+    }
+
+    private String normalizeSegment(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        String lowered = value.trim().toLowerCase(Locale.ROOT);
+        StringBuilder builder = new StringBuilder();
+        boolean lastUnderscore = false;
+        for (int i = 0; i < lowered.length(); i++) {
+            char ch = lowered.charAt(i);
+            if (Character.isLetterOrDigit(ch) && SIMPLE_SEGMENT_PATTERN.matcher(String.valueOf(ch)).matches()) {
+                builder.append(ch);
+                lastUnderscore = false;
+                continue;
+            }
+            if (!lastUnderscore && builder.length() > 0) {
+                builder.append('_');
+                lastUnderscore = true;
+            }
+        }
+        while (builder.length() > 0 && builder.charAt(builder.length() - 1) == '_') {
+            builder.deleteCharAt(builder.length() - 1);
+        }
+        return builder.toString();
+    }
+
+    private String truncateCode(String value, int maxLength) {
+        if (value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
     }
 
     private String normalizeCategoryName(String categoryName) {

@@ -63,6 +63,14 @@ export interface ApiResponse<T> {
   timestamp: string
 }
 
+export interface UploadFileResponse {
+  storageKey: string
+  url: string
+  size: number
+  contentType: string
+  originalFilename: string
+}
+
 export interface AdminSessionState {
   token: string
   adminUser: AdminCurrentUser | null
@@ -95,4 +103,54 @@ export interface KyzzCategoryAdminItem {
 export interface KyzzCategoryAdminDashboard {
   stats: KyzzCategoryAdminStats
   categories: KyzzCategoryAdminItem[]
+}
+
+export interface KyzzCategoryOption {
+  id: number
+  categoryCode: string
+  categoryName: string
+  categoryLevel: number
+  isEnabled: number
+}
+
+export interface KyzzQuestionBankAdminStats {
+  totalBanks: number
+  activeBanks: number
+  inactiveBanks: number
+  uncategorizedBanks: number
+  totalQuestions: number
+  totalStudyUsers: number
+}
+
+export interface KyzzQuestionBankAdminItem {
+  id: number
+  bankCode: string
+  bankName: string
+  subtitle: string | null
+  coverUrl: string | null
+  coverStorageKey: string | null
+  description: string | null
+  categoryId: number | null
+  categoryName: string | null
+  categoryLevel: number | null
+  difficultyLevel: number
+  questionCount: number
+  actualQuestionCount: number
+  totalScore: number
+  ratingCount: number
+  collectCount: number
+  studyUserCount: number
+  status: number
+  sortNo: number
+  createdBy: number | null
+  createdByDisplayName: string | null
+  canDelete: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface KyzzQuestionBankAdminDashboard {
+  stats: KyzzQuestionBankAdminStats
+  banks: KyzzQuestionBankAdminItem[]
+  categories: KyzzCategoryOption[]
 }

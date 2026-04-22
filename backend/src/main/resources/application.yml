@@ -35,8 +35,8 @@ spring:
         min-idle: 0
   servlet:
     multipart:
-      max-file-size: 2MB
-      max-request-size: 2MB
+      max-file-size: 5MB
+      max-request-size: 5MB
 
 
 mybatis-plus:
@@ -65,6 +65,7 @@ storage:
     keep-extension: true
     allowed-biz-types:
       - avatar
+      - kyzz-question-bank-cover
 
 sa-token:
   token-name: Authorization

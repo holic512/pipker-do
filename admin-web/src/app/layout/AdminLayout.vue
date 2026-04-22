@@ -249,7 +249,7 @@ const defaultOpenSections = computed(() => {
 async function handleProjectChange(value: string) {
   sessionStore.switchProject(value)
   if (value === 'kyzz') {
-    await router.push(`/project/${value}/question-bank-categories`)
+    await router.push(`/project/${value}/question-banks`)
   } else {
     await router.push('/workspace')
   }
