@@ -1,40 +1,329 @@
-.el-menu {
-  --el-menu-bg-color: transparent;
-  --el-menu-hover-bg-color: var(--admin-surface-soft);
-  --el-menu-active-color: var(--admin-primary);
-  --el-menu-text-color: var(--admin-text);
-  --el-menu-item-height: 40px;
-  border-right: 0;
+.admin-layout {
+  height: 100vh;
+  width: 100%;
+  background-color: var(--admin-bg, #f5f7fa);
 }
 
-.el-sub-menu__title,
-.el-menu-item {
-  margin: 0;
+/* --- 左侧侧边栏 --- */
+.admin-layout__sidebar {
+  flex: 0 0 240px;
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--admin-surface, #ffffff);
+  border-right: 1px solid var(--admin-border, #e4e7ed);
+  z-index: 10;
+  /* 增加丝滑的宽度过渡动画 */
+  transition: width 0.3s cubic-bezier(0.2, 0, 0, 1), flex-basis 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 
-.el-sub-menu__title {
-  font-size: 13px;
+.admin-layout.is-collapsed .admin-layout__sidebar {
+  flex-basis: 64px;
+  width: 64px;
+}
+
+.admin-layout__brand {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  border-bottom: 1px solid var(--admin-border, #e4e7ed);
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* 折叠状态下的 Logo 居中补偿 */
+.admin-layout__sidebar.is-collapsed .admin-layout__brand {
+  padding: 0;
+  justify-content: center;
+}
+
+.admin-layout__brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  background: var(--el-color-primary, #409eff);
+  flex-shrink: 0;
+}
+
+.admin-layout__brand-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* 文字过渡效果，防止折叠时文字换行闪烁 */
+  animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.admin-layout__brand-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--admin-text, #303133);
+  line-height: 1.2;
+}
+
+.admin-layout__brand-subtitle {
+  font-size: 12px;
+  color: var(--admin-text-soft, #909399);
+  margin-top: 2px;
+}
+
+.admin-layout__sidebar-search {
+  padding: 16px 16px 8px;
+}
+
+.admin-layout__menu-wrap {
+  flex: 1;
+  overflow: hidden;
+}
+
+.admin-layout__menu {
+  border-right: none;
+}
+
+.admin-layout__menu-icon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+/* 防止折叠时的原生宽度导致滚动条出现 */
+.admin-layout__menu:not(.el-menu--collapse) {
+  width: 100%;
+}
+
+.admin-layout__menu-empty {
+  padding-top: 40px;
+}
+
+/* --- 右侧布局 --- */
+.admin-layout__main {
+  flex: 1 1 auto;
+  width: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background-color: var(--admin-bg, #f5f7fa);
+}
+
+.admin-layout__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--admin-surface, #ffffff);
+  border-bottom: 1px solid var(--admin-border, #e4e7ed);
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.admin-layout__header-left {
+  display: flex;
+  align-items: center;
+}
+
+.admin-layout__header-context {
+  display: flex;
+  align-items: center;
+}
+
+.admin-layout__header-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--admin-text, #303133);
+}
+
+.admin-layout__project-switch {
+  width: 200px;
+}
+
+.admin-layout__header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-divider {
+  margin: 0 12px;
+  height: 18px;
+}
+
+/* 顶部图标按钮 (折叠/主题) */
+.admin-action-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--admin-text-soft, #606266);
+  transition: all 0.2s;
+}
+
+.admin-action-btn:hover {
+  background-color: var(--admin-surface-soft, #f4f4f5);
+  color: var(--el-color-primary, #409eff);
+}
+
+.admin-action-btn:focus-visible {
+  outline: none;
+}
+
+/* 用户信息下拉区 */
+.admin-user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.admin-user-profile:hover {
+  background-color: var(--admin-surface-soft, #f4f4f5);
+}
+
+.admin-user-profile:focus-visible {
+  outline: none;
+}
+
+.admin-user-avatar {
+  background: var(--el-color-primary-light-3, #79bbff);
+  color: #fff;
   font-weight: 600;
 }
 
-.el-menu-item {
-  font-size: 13px;
+.admin-user-info {
+  display: flex;
+  flex-direction: column;
 }
 
-.el-menu-item.is-active {
-  font-weight: 600;
-}
-
-.el-button {
+.admin-user-name {
+  font-size: 14px;
   font-weight: 500;
+  color: var(--admin-text, #303133);
+  line-height: 1.2;
 }
 
-.el-select__wrapper,
-.el-input__wrapper {
-  background: var(--admin-surface);
-  box-shadow: 0 0 0 1px var(--admin-border) inset;
+.admin-user-role {
+  font-size: 12px;
+  color: var(--admin-text-soft, #909399);
+  margin-top: 2px;
 }
 
-.el-input__wrapper {
+.text-danger {
+  color: var(--el-color-danger, #f56c6c) !important;
+}
+
+.admin-layout__content {
+  padding: 20px;
+  position: relative;
+  overflow-y: auto;
+}
+
+.admin-layout__collapsed-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 0 0;
+}
+
+.admin-layout__collapsed-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-layout__collapsed-section-mark {
+  width: 28px;
+  height: 18px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: var(--admin-text-soft, #909399);
+  background: var(--admin-surface-soft, #f4f4f5);
+}
+
+.admin-layout__collapsed-item {
+  width: 36px;
+  height: 36px;
+  border: 0;
   border-radius: 10px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: transparent;
+  color: var(--admin-text, #303133);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.admin-layout__collapsed-item:hover {
+  background: var(--admin-surface-soft, #f4f4f5);
+  color: var(--el-color-primary, #409eff);
+}
+
+.admin-layout__collapsed-item.is-active {
+  background: var(--el-color-primary, #409eff);
+  color: #fff;
+}
+
+/* 路由内容区切换动画 */
+.fade-transform-leave-active,
+.fade-transform-enter-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fade-transform-enter-from {
+  opacity: 0;
+  transform: translateX(-15px);
+}
+.fade-transform-leave-to {
+  opacity: 0;
+  transform: translateX(15px);
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  /* 移动端强制隐藏侧边栏文字和折叠状态适配 */
+  .admin-layout__sidebar {
+    width: 64px !important;
+  }
+  .admin-layout__brand-info,
+  .admin-layout__sidebar-search {
+    display: none !important;
+  }
+  .admin-layout__brand {
+    padding: 0;
+    justify-content: center;
+  }
+
+  /* 顶部省略文字 */
+  .admin-layout__header-title,
+  .admin-user-info {
+    display: none;
+  }
+  .admin-layout__project-switch {
+    width: 140px;
+  }
+  /* 移动端隐藏手动折叠按钮（因为已经强制折叠了） */
+  .admin-layout__header-left .admin-action-btn {
+    display: none;
+  }
+  .admin-layout__header-left .header-divider:first-of-type {
+    display: none;
+  }
 }

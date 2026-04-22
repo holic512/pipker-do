@@ -1,16 +1,23 @@
 .admin-layout {
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  display: flex;
   background: var(--admin-bg);
 }
 
 .admin-layout__sidebar {
+  flex: 0 0 240px;
+  width: 240px;
   display: flex;
   flex-direction: column;
   padding: 16px 0 12px;
   background: var(--admin-surface);
   border-right: 1px solid var(--admin-border);
+  transition: width 0.24s ease, flex-basis 0.24s ease;
+}
+
+.admin-layout.is-collapsed .admin-layout__sidebar {
+  flex-basis: 64px;
+  width: 64px;
 }
 
 .admin-layout__brand {
@@ -55,6 +62,11 @@
   overflow-y: auto;
 }
 
+.admin-layout__menu-icon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
 .admin-layout__sidebar-search {
   padding: 12px 18px 8px;
 }
@@ -71,6 +83,8 @@
 }
 
 .admin-layout__main {
+  flex: 1 1 auto;
+  width: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -179,9 +193,60 @@
   padding: 18px;
 }
 
+.admin-layout__collapsed-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 0 0;
+}
+
+.admin-layout__collapsed-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-layout__collapsed-section-mark {
+  width: 28px;
+  height: 18px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: var(--admin-text-soft);
+  background: var(--admin-surface-soft);
+}
+
+.admin-layout__collapsed-item {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-text);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.admin-layout__collapsed-item:hover {
+  background: var(--admin-surface-soft);
+  color: var(--admin-primary);
+}
+
+.admin-layout__collapsed-item.is-active {
+  color: #fff;
+  background: var(--admin-primary);
+}
+
 @media (max-width: 1080px) {
-  .admin-layout {
-    grid-template-columns: 220px minmax(0, 1fr);
+  .admin-layout__sidebar {
+    flex-basis: 220px;
+    width: 220px;
   }
 
   .admin-layout__header {
