@@ -4,6 +4,7 @@ import cn.dev33.satoken.context.SaHolder;
 import cn.dev33.satoken.filter.SaServletFilter;
 import cn.dev33.satoken.router.SaRouter;
 import cn.dev33.satoken.stp.StpInterface;
+import org.example.backend.common.api.ApiResponse;
 import org.example.backend.shared.admin.mapper.AdminRoleMapper;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.api.ApiResponseFactory;
@@ -39,8 +40,25 @@ public class SaTokenConfig {
                 .setError(e -> {
                     SaHolder.getResponse().setStatus(401);
                     SaHolder.getResponse().setHeader("Content-Type", "application/json;charset=UTF-8");
-                    return responseFactory.failure(ApiResponseCode.UNAUTHORIZED, "未登录或登录态已失效", null);
+                    ApiResponse<Object> response = responseFactory.failure(
+                            ApiResponseCode.UNAUTHORIZED,
+                            "未登录或登录态已失效",
+                            null
+                    );
+                    return "{\"code\":" + response.getCode()
+                            + ",\"message\":\"" + escapeJson(response.getMessage())
+                            + "\",\"data\":null"
+                            + ",\"requestId\":\"" + escapeJson(response.getRequestId())
+                            + "\",\"timestamp\":\"" + escapeJson(response.getTimestamp())
+                            + "\"}";
                 });
+    }
+
+    private static String escapeJson(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     @Bean

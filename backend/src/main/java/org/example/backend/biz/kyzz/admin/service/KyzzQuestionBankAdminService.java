@@ -10,6 +10,7 @@ import org.example.backend.biz.kyzz.admin.dto.KyzzQuestionBankAdminStatsResponse
 import org.example.backend.biz.kyzz.admin.dto.KyzzQuestionBankCoverUpdateRequest;
 import org.example.backend.biz.kyzz.admin.dto.KyzzQuestionBankAdminUpsertRequest;
 import org.example.backend.biz.kyzz.admin.dto.KyzzQuestionBankStatusUpdateRequest;
+import org.example.backend.biz.kyzz.admin.support.KyzzAdminAccessSupport;
 import org.example.backend.biz.kyzz.entity.KyzzCategory;
 import org.example.backend.biz.kyzz.entity.KyzzQuestion;
 import org.example.backend.biz.kyzz.entity.KyzzQuestionBank;
@@ -24,9 +25,7 @@ import org.example.backend.biz.kyzz.mapper.KyzzUserAnswerMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserQuestionBankMapper;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
-import org.example.backend.shared.admin.entity.AdminProjectAccess;
 import org.example.backend.shared.admin.entity.AdminUser;
-import org.example.backend.shared.admin.mapper.AdminProjectAccessMapper;
 import org.example.backend.shared.admin.mapper.AdminUserMapper;
 import org.example.backend.shared.storage.service.LocalFileStorage;
 import org.springframework.stereotype.Service;
@@ -47,7 +46,6 @@ import java.util.regex.Pattern;
 @Service
 public class KyzzQuestionBankAdminService {
 
-    private static final String PROJECT_CODE = "kyzz";
     private static final Pattern BANK_CODE_PATTERN = Pattern.compile("^[a-z][a-z0-9_-]{1,47}$");
     private static final Pattern SIMPLE_SEGMENT_PATTERN = Pattern.compile("[a-z0-9]+");
 
@@ -57,9 +55,9 @@ public class KyzzQuestionBankAdminService {
     private final KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper;
     private final KyzzQuestionBankRatingMapper kyzzQuestionBankRatingMapper;
     private final KyzzUserAnswerMapper kyzzUserAnswerMapper;
-    private final AdminProjectAccessMapper adminProjectAccessMapper;
     private final AdminUserMapper adminUserMapper;
     private final LocalFileStorage localFileStorage;
+    private final KyzzAdminAccessSupport kyzzAdminAccessSupport;
 
     public KyzzQuestionBankAdminService(KyzzQuestionBankMapper kyzzQuestionBankMapper,
                                         KyzzCategoryMapper kyzzCategoryMapper,
@@ -67,18 +65,18 @@ public class KyzzQuestionBankAdminService {
                                         KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper,
                                         KyzzQuestionBankRatingMapper kyzzQuestionBankRatingMapper,
                                         KyzzUserAnswerMapper kyzzUserAnswerMapper,
-                                        AdminProjectAccessMapper adminProjectAccessMapper,
                                         AdminUserMapper adminUserMapper,
-                                        LocalFileStorage localFileStorage) {
+                                        LocalFileStorage localFileStorage,
+                                        KyzzAdminAccessSupport kyzzAdminAccessSupport) {
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
         this.kyzzCategoryMapper = kyzzCategoryMapper;
         this.kyzzQuestionMapper = kyzzQuestionMapper;
         this.kyzzUserQuestionBankMapper = kyzzUserQuestionBankMapper;
         this.kyzzQuestionBankRatingMapper = kyzzQuestionBankRatingMapper;
         this.kyzzUserAnswerMapper = kyzzUserAnswerMapper;
-        this.adminProjectAccessMapper = adminProjectAccessMapper;
         this.adminUserMapper = adminUserMapper;
         this.localFileStorage = localFileStorage;
+        this.kyzzAdminAccessSupport = kyzzAdminAccessSupport;
     }
 
     public KyzzQuestionBankAdminDashboardResponse getDashboard(Long operatorId,
@@ -86,7 +84,7 @@ public class KyzzQuestionBankAdminService {
                                                                Integer status,
                                                                Long categoryId,
                                                                Integer difficultyLevel) {
-        requireProjectAccess(operatorId);
+        kyzzAdminAccessSupport.requireProjectAccess(operatorId);
         validateStatus(status, true);
         validateDifficultyLevel(difficultyLevel, true);
 
@@ -136,7 +134,7 @@ public class KyzzQuestionBankAdminService {
 
     @Transactional
     public KyzzQuestionBankAdminItemResponse createQuestionBank(Long operatorId, KyzzQuestionBankAdminUpsertRequest request) {
-        requireProjectAccess(operatorId);
+        kyzzAdminAccessSupport.requireProjectAccess(operatorId);
         if (request == null) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "题库参数不能为空");
         }
@@ -167,7 +165,7 @@ public class KyzzQuestionBankAdminService {
     public KyzzQuestionBankAdminItemResponse updateQuestionBank(Long operatorId,
                                                                 Long bankId,
                                                                 KyzzQuestionBankAdminUpsertRequest request) {
-        requireProjectAccess(operatorId);
+        kyzzAdminAccessSupport.requireProjectAccess(operatorId);
         if (request == null) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "题库参数不能为空");
         }
@@ -196,7 +194,7 @@ public class KyzzQuestionBankAdminService {
     public KyzzQuestionBankAdminItemResponse updateQuestionBankStatus(Long operatorId,
                                                                       Long bankId,
                                                                       KyzzQuestionBankStatusUpdateRequest request) {
-        requireProjectAccess(operatorId);
+        kyzzAdminAccessSupport.requireProjectAccess(operatorId);
         if (request == null || request.getStatus() == null) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "题库状态不能为空");
         }
@@ -213,7 +211,7 @@ public class KyzzQuestionBankAdminService {
     public KyzzQuestionBankAdminItemResponse updateQuestionBankCover(Long operatorId,
                                                                      Long bankId,
                                                                      KyzzQuestionBankCoverUpdateRequest request) {
-        requireProjectAccess(operatorId);
+        kyzzAdminAccessSupport.requireProjectAccess(operatorId);
         if (request == null) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "题库封面参数不能为空");
         }
@@ -236,7 +234,7 @@ public class KyzzQuestionBankAdminService {
 
     @Transactional
     public void deleteQuestionBank(Long operatorId, Long bankId) {
-        requireProjectAccess(operatorId);
+        kyzzAdminAccessSupport.requireProjectAccess(operatorId);
         KyzzQuestionBank bank = requireQuestionBank(bankId);
 
         if (countActualQuestions(bankId) > 0) {
@@ -259,6 +257,14 @@ public class KyzzQuestionBankAdminService {
             localFileStorage.deleteByKey(bank.getCoverUrl());
         }
         kyzzQuestionBankMapper.deleteById(bankId);
+    }
+
+    @Transactional
+    public KyzzQuestionBankAdminItemResponse syncQuestionCount(Long operatorId, Long bankId) {
+        kyzzAdminAccessSupport.requireProjectAccess(operatorId);
+        requireQuestionBank(bankId);
+        syncQuestionCounts(List.of(bankId));
+        return requireItem(bankId);
     }
 
     private KyzzQuestionBankAdminItemResponse requireItem(Long bankId) {
@@ -440,6 +446,24 @@ public class KyzzQuestionBankAdminService {
         return coverValue;
     }
 
+    void syncQuestionCounts(Collection<Long> bankIds) {
+        LinkedHashSet<Long> normalizedIds = bankIds.stream()
+                .filter(Objects::nonNull)
+                .collect(LinkedHashSet::new, LinkedHashSet::add, LinkedHashSet::addAll);
+        if (normalizedIds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Integer> actualQuestionCountByBankId = loadRelationCountMap(kyzzQuestionMapper.selectMaps(
+                new QueryWrapper<KyzzQuestion>()
+                        .select("question_bank_id AS relationId", "COUNT(*) AS relationCount")
+                        .in("question_bank_id", normalizedIds)
+                        .groupBy("question_bank_id")));
+        normalizedIds.forEach(bankId -> kyzzQuestionBankMapper.update(null, new LambdaUpdateWrapper<KyzzQuestionBank>()
+                .eq(KyzzQuestionBank::getId, bankId)
+                .set(KyzzQuestionBank::getQuestionCount, actualQuestionCountByBankId.getOrDefault(bankId, 0))));
+    }
+
     private int countActualQuestions(Long bankId) {
         Long count = kyzzQuestionMapper.selectCount(new LambdaQueryWrapper<KyzzQuestion>()
                 .eq(KyzzQuestion::getQuestionBankId, bankId));
@@ -590,21 +614,6 @@ public class KyzzQuestionBankAdminService {
         }
         if (status == null || (status != 0 && status != 1)) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "题库状态仅支持 0 或 1");
-        }
-    }
-
-    private void requireProjectAccess(Long operatorId) {
-        AdminUser adminUser = adminUserMapper.selectById(operatorId);
-        if (adminUser == null || !Objects.equals(adminUser.getStatus(), 1)) {
-            throw new BusinessException(ApiResponseCode.FORBIDDEN, "当前管理员不可用");
-        }
-
-        long projectAccess = adminProjectAccessMapper.selectCount(new LambdaQueryWrapper<AdminProjectAccess>()
-                .eq(AdminProjectAccess::getUserId, operatorId)
-                .eq(AdminProjectAccess::getProjectCode, PROJECT_CODE)
-                .eq(AdminProjectAccess::getEnabled, 1));
-        if (projectAccess <= 0) {
-            throw new BusinessException(ApiResponseCode.FORBIDDEN, "当前管理员没有考研政治项目权限");
         }
     }
 

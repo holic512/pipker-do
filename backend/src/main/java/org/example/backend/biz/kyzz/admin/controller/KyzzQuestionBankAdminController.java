@@ -69,6 +69,11 @@ public class KyzzQuestionBankAdminController {
         return responseFactory.success(kyzzQuestionBankAdminService.updateQuestionBankCover(AdminSecurityContext.requireAdminId(), bankId, request));
     }
 
+    @PutMapping("/{bankId}/sync-question-count")
+    public ApiResponse<KyzzQuestionBankAdminItemResponse> syncQuestionCount(@PathVariable Long bankId) {
+        return responseFactory.success(kyzzQuestionBankAdminService.syncQuestionCount(AdminSecurityContext.requireAdminId(), bankId));
+    }
+
     @DeleteMapping("/{bankId}")
     public ApiResponse<Void> deleteQuestionBank(@PathVariable Long bankId) {
         kyzzQuestionBankAdminService.deleteQuestionBank(AdminSecurityContext.requireAdminId(), bankId);

@@ -8,6 +8,7 @@ import org.example.backend.biz.kyzz.admin.dto.KyzzCategoryAdminItemResponse;
 import org.example.backend.biz.kyzz.admin.dto.KyzzCategoryAdminStatsResponse;
 import org.example.backend.biz.kyzz.admin.dto.KyzzCategoryAdminUpsertRequest;
 import org.example.backend.biz.kyzz.admin.dto.KyzzCategoryStatusUpdateRequest;
+import org.example.backend.biz.kyzz.admin.support.KyzzAdminAccessSupport;
 import org.example.backend.biz.kyzz.entity.KyzzCategory;
 import org.example.backend.biz.kyzz.entity.KyzzQuestion;
 import org.example.backend.biz.kyzz.entity.KyzzQuestionBank;
@@ -16,10 +17,6 @@ import org.example.backend.biz.kyzz.mapper.KyzzQuestionBankMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionMapper;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
-import org.example.backend.shared.admin.entity.AdminProjectAccess;
-import org.example.backend.shared.admin.entity.AdminUser;
-import org.example.backend.shared.admin.mapper.AdminProjectAccessMapper;
-import org.example.backend.shared.admin.mapper.AdminUserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -39,30 +36,26 @@ import java.time.format.DateTimeFormatter;
 @Service
 public class KyzzCategoryAdminService {
 
-    private static final String PROJECT_CODE = "kyzz";
     private static final Pattern CATEGORY_CODE_PATTERN = Pattern.compile("^[a-z][a-z0-9_-]{1,47}$");
     private static final Pattern SIMPLE_SEGMENT_PATTERN = Pattern.compile("[a-z0-9]+");
 
     private final KyzzCategoryMapper kyzzCategoryMapper;
     private final KyzzQuestionBankMapper kyzzQuestionBankMapper;
     private final KyzzQuestionMapper kyzzQuestionMapper;
-    private final AdminProjectAccessMapper adminProjectAccessMapper;
-    private final AdminUserMapper adminUserMapper;
+    private final KyzzAdminAccessSupport kyzzAdminAccessSupport;
 
     public KyzzCategoryAdminService(KyzzCategoryMapper kyzzCategoryMapper,
                                     KyzzQuestionBankMapper kyzzQuestionBankMapper,
                                     KyzzQuestionMapper kyzzQuestionMapper,
-                                    AdminProjectAccessMapper adminProjectAccessMapper,
-                                    AdminUserMapper adminUserMapper) {
+                                    KyzzAdminAccessSupport kyzzAdminAccessSupport) {
         this.kyzzCategoryMapper = kyzzCategoryMapper;
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
         this.kyzzQuestionMapper = kyzzQuestionMapper;
-        this.adminProjectAccessMapper = adminProjectAccessMapper;
-        this.adminUserMapper = adminUserMapper;
+        this.kyzzAdminAccessSupport = kyzzAdminAccessSupport;
     }
 
     public KyzzCategoryAdminDashboardResponse getDashboard(Long operatorId, String keyword, Integer isEnabled, Long categoryLevel) {
-        requireProjectAccess(operatorId);
+        kyzzAdminAccessSupport.requireProjectAccess(operatorId);
         validateEnabled(isEnabled, true);
 
         List<KyzzCategory> allCategories = kyzzCategoryMapper.selectList(new LambdaQueryWrapper<KyzzCategory>()
@@ -91,7 +84,7 @@ public class KyzzCategoryAdminService {
 
     @Transactional
     public KyzzCategoryAdminItemResponse createCategory(Long operatorId, KyzzCategoryAdminUpsertRequest request) {
-        requireProjectAccess(operatorId);
+        kyzzAdminAccessSupport.requireProjectAccess(operatorId);
         if (request == null) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "分类参数不能为空");
         }
@@ -111,7 +104,7 @@ public class KyzzCategoryAdminService {
 
     @Transactional
     public KyzzCategoryAdminItemResponse updateCategory(Long operatorId, Long categoryId, KyzzCategoryAdminUpsertRequest request) {
-        requireProjectAccess(operatorId);
+        kyzzAdminAccessSupport.requireProjectAccess(operatorId);
         if (request == null) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "分类参数不能为空");
         }
@@ -132,7 +125,7 @@ public class KyzzCategoryAdminService {
 
     @Transactional
     public KyzzCategoryAdminItemResponse updateCategoryStatus(Long operatorId, Long categoryId, KyzzCategoryStatusUpdateRequest request) {
-        requireProjectAccess(operatorId);
+        kyzzAdminAccessSupport.requireProjectAccess(operatorId);
         if (request == null || request.getIsEnabled() == null) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "分类状态不能为空");
         }
@@ -147,7 +140,7 @@ public class KyzzCategoryAdminService {
 
     @Transactional
     public void deleteCategory(Long operatorId, Long categoryId) {
-        requireProjectAccess(operatorId);
+        kyzzAdminAccessSupport.requireProjectAccess(operatorId);
         requireCategory(categoryId);
 
         long bankCount = kyzzQuestionBankMapper.selectCount(new LambdaQueryWrapper<KyzzQuestionBank>()
@@ -381,21 +374,6 @@ public class KyzzCategoryAdminService {
         }
         if (isEnabled == null || (isEnabled != 0 && isEnabled != 1)) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "分类状态仅支持 0 或 1");
-        }
-    }
-
-    private void requireProjectAccess(Long operatorId) {
-        AdminUser adminUser = adminUserMapper.selectById(operatorId);
-        if (adminUser == null || !Objects.equals(adminUser.getStatus(), 1)) {
-            throw new BusinessException(ApiResponseCode.FORBIDDEN, "当前管理员不可用");
-        }
-
-        long projectAccess = adminProjectAccessMapper.selectCount(new LambdaQueryWrapper<AdminProjectAccess>()
-                .eq(AdminProjectAccess::getUserId, operatorId)
-                .eq(AdminProjectAccess::getProjectCode, PROJECT_CODE)
-                .eq(AdminProjectAccess::getEnabled, 1));
-        if (projectAccess <= 0) {
-            throw new BusinessException(ApiResponseCode.FORBIDDEN, "当前管理员没有考研政治项目权限");
         }
     }
 

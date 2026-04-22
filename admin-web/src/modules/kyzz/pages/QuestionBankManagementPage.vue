@@ -113,6 +113,15 @@
                   <span :class="{ mismatch: row.questionCount !== row.actualQuestionCount }">
                     实际 {{ row.actualQuestionCount }}
                   </span>
+                  <el-button
+                    v-if="row.questionCount !== row.actualQuestionCount"
+                    link
+                    type="warning"
+                    :loading="syncingId === row.id"
+                    @click="handleSyncQuestionCount(row)"
+                  >
+                    校准题量
+                  </el-button>
                 </div>
               </template>
             </el-table-column>
@@ -160,8 +169,9 @@
               </template>
             </el-table-column>
 
-            <el-table-column label="操作" width="230" fixed="right">
+            <el-table-column label="操作" width="300" fixed="right">
               <template #default="{ row }">
+                <el-button link type="primary" @click="openQuestionManagement(row)">维护题目</el-button>
                 <el-button link type="primary" :icon="Edit" @click="openEditDialog(row)">编辑</el-button>
                 <el-button link type="primary" :icon="Picture" @click="openCoverDialog(row)">封面</el-button>
                 <el-button
@@ -321,7 +331,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Picture, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
@@ -336,6 +346,7 @@ import {
   createKyzzQuestionBank,
   deleteKyzzQuestionBank,
   fetchKyzzQuestionBankDashboard,
+  syncKyzzQuestionBankQuestionCount,
   updateKyzzQuestionBank,
   updateKyzzQuestionBankCover,
   updateKyzzQuestionBankStatus,
@@ -343,6 +354,7 @@ import {
 } from '@/modules/kyzz/api/question-bank'
 
 const route = useRoute()
+const router = useRouter()
 const sessionStore = useAdminSessionStore()
 
 const projectCode = computed(() => String(route.params.projectCode || sessionStore.currentProjectCode || 'kyzz'))
@@ -362,6 +374,7 @@ const loading = ref(false)
 const saving = ref(false)
 const togglingId = ref<number | null>(null)
 const deletingId = ref<number | null>(null)
+const syncingId = ref<number | null>(null)
 const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
@@ -447,7 +460,14 @@ function difficultyLabel(level: number) {
 }
 
 function formatCategoryLabel(category: KyzzCategoryOption) {
-  return `${'L' + category.categoryLevel} · ${category.categoryName}`
+  const levelLabel = category.categoryLevel === 1
+    ? '一级分类'
+    : category.categoryLevel === 2
+      ? '二级分类'
+      : category.categoryLevel === 3
+        ? '三级分类'
+        : `第 ${category.categoryLevel} 级分类`
+  return `${levelLabel} · ${category.categoryName}`
 }
 
 function resetForm() {
@@ -524,6 +544,14 @@ function openEditDialog(row: KyzzQuestionBankAdminItem) {
 function openCoverDialog(row: KyzzQuestionBankAdminItem) {
   coverTarget.value = row
   coverDialogVisible.value = true
+}
+
+function openQuestionManagement(row: KyzzQuestionBankAdminItem) {
+  void router.push({
+    name: 'project-questions',
+    params: { projectCode: projectCode.value },
+    query: { questionBankId: String(row.id) }
+  })
 }
 
 async function submitForm() {
@@ -603,6 +631,19 @@ async function handleDelete(row: KyzzQuestionBankAdminItem) {
     ElMessage.error((error as Error).message || '删除题库失败')
   } finally {
     deletingId.value = null
+  }
+}
+
+async function handleSyncQuestionCount(row: KyzzQuestionBankAdminItem) {
+  syncingId.value = row.id
+  try {
+    await syncKyzzQuestionBankQuestionCount(row.id)
+    ElMessage.success('题库题量已校准')
+    await loadDashboard()
+  } catch (error) {
+    ElMessage.error((error as Error).message || '校准题量失败')
+  } finally {
+    syncingId.value = null
   }
 }
 

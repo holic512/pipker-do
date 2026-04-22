@@ -154,3 +154,73 @@ export interface KyzzQuestionBankAdminDashboard {
   banks: KyzzQuestionBankAdminItem[]
   categories: KyzzCategoryOption[]
 }
+
+export interface KyzzQuestionBankOption {
+  id: number
+  bankCode: string
+  bankName: string
+  categoryId: number | null
+  categoryName: string | null
+  status: number
+}
+
+export interface KyzzQuestionAdminOption {
+  id: number | null
+  optionKey: string
+  optionContent: string
+  isCorrect: number
+  sortNo: number
+}
+
+export interface KyzzQuestionAdminStats {
+  totalQuestions: number
+  activeQuestions: number
+  inactiveQuestions: number
+  singleChoiceQuestions: number
+  multipleChoiceQuestions: number
+  shortAnswerQuestions: number
+}
+
+export interface KyzzQuestionAdminPagination {
+  pageNo: number
+  pageSize: number
+  total: number
+  totalPages: number
+}
+
+export interface KyzzQuestionAdminItem {
+  id: number
+  questionBankId: number
+  questionBankName: string | null
+  categoryId: number | null
+  categoryName: string | null
+  questionType: string
+  difficultyLevel: number
+  score: number
+  sourceName: string | null
+  yearNo: number | null
+  sortNo: number
+  status: number
+  stem: string
+  stemPreview: string
+  analysis: string | null
+  answerText: string | null
+  correctOptionKeys: string[]
+  optionCount: number
+  canDelete: boolean
+  deleteBlockReason: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface KyzzQuestionAdminDetail extends KyzzQuestionAdminItem {
+  options: KyzzQuestionAdminOption[]
+}
+
+export interface KyzzQuestionAdminDashboard {
+  stats: KyzzQuestionAdminStats
+  records: KyzzQuestionAdminItem[]
+  pagination: KyzzQuestionAdminPagination
+  questionBanks: KyzzQuestionBankOption[]
+  categories: KyzzCategoryOption[]
+}

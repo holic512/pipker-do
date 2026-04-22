@@ -39,10 +39,14 @@ export function updateKyzzQuestionBankCover(bankId: number, coverStorageKey: str
   return http.put(`/admin/kyzz/question-banks/${bankId}/cover`, { coverStorageKey })
 }
 
+export function syncKyzzQuestionBankQuestionCount(bankId: number): Promise<KyzzQuestionBankAdminItem> {
+  return http.put(`/admin/kyzz/question-banks/${bankId}/sync-question-count`)
+}
+
 export function uploadKyzzQuestionBankCover(file: File): Promise<UploadFileResponse> {
   const formData = new FormData()
   formData.append('file', file)
-  return http.post('/files/kyzz-question-bank-cover', formData, {
+  return http.post('/admin/files/kyzz-question-bank-cover', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
