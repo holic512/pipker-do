@@ -248,11 +248,11 @@ const defaultOpenSections = computed(() => {
 
 async function handleProjectChange(value: string) {
   sessionStore.switchProject(value)
-  if (route.name === 'project-content') {
-    await router.push(`/project/${value}/content`)
-    return
+  if (value === 'kyzz') {
+    await router.push(`/project/${value}/question-bank-categories`)
+  } else {
+    await router.push('/workspace')
   }
-  await router.push(`/project/${value}/overview`)
 }
 
 function handleThemeChange(mode: AdminThemeMode) {

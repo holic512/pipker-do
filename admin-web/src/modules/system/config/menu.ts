@@ -6,7 +6,6 @@ import {
   House,
   Lock,
   Medal,
-  Notebook,
   Setting,
   User,
   UserFilled
@@ -91,20 +90,17 @@ export function buildAdminMenus(projectCode: string | null, currentRoles: string
       label: '业务管理',
       icon: FolderOpened,
       items: [
-        {
-          key: 'project-overview',
-          label: '项目概览',
-          route: `/project/${currentProjectCode}/overview`,
-          icon: Notebook,
-          projectScoped: true
-        },
-        {
-          key: 'project-content',
-          label: '业务内容',
-          route: `/project/${currentProjectCode}/content`,
-          icon: Document,
-          projectScoped: true
-        }
+        ...(currentProjectCode === 'kyzz'
+          ? [
+              {
+                key: 'project-kyzz-question-bank-categories',
+                label: '题库分类',
+                route: `/project/${currentProjectCode}/question-bank-categories`,
+                icon: Document,
+                projectScoped: true
+              } satisfies MenuItem
+            ]
+          : [])
       ]
     }
   ].map((section) => ({

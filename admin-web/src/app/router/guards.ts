@@ -2,6 +2,13 @@ import type { Pinia } from 'pinia'
 import type { Router } from 'vue-router'
 import { useAdminSessionStore } from '@/modules/system/store/session'
 
+function resolveProjectEntry(projectCode: string | null): { path: string } {
+  if (projectCode === 'kyzz') {
+    return { path: `/project/${projectCode}/question-bank-categories` }
+  }
+  return { path: '/workspace' }
+}
+
 export function installRouterGuards(router: Router, pinia: Pinia) {
   router.beforeEach(async (to) => {
     const sessionStore = useAdminSessionStore(pinia)
@@ -19,9 +26,7 @@ export function installRouterGuards(router: Router, pinia: Pinia) {
     }
 
     if (to.meta.guestOnly && sessionStore.isAuthenticated) {
-      return sessionStore.currentProjectCode
-        ? { path: `/project/${sessionStore.currentProjectCode}/overview` }
-        : { path: '/workspace' }
+      return resolveProjectEntry(sessionStore.currentProjectCode)
     }
 
     const requiredRoles = Array.isArray(to.meta.roles) ? to.meta.roles.map(String) : []
@@ -37,7 +42,7 @@ export function installRouterGuards(router: Router, pinia: Pinia) {
       const projectCode = String(to.params.projectCode)
       if (!sessionStore.availableProjects.some((project) => project.code === projectCode)) {
         if (sessionStore.currentProjectCode) {
-          return { path: `/project/${sessionStore.currentProjectCode}/overview` }
+          return resolveProjectEntry(sessionStore.currentProjectCode)
         }
         return { path: '/workspace' }
       }

@@ -47,6 +47,13 @@ const form = reactive({
   password: 'Admin@123456'
 })
 
+function resolveProjectEntry(projectCode: string | null) {
+  if (projectCode === 'kyzz') {
+    return `/project/${projectCode}/question-bank-categories`
+  }
+  return '/workspace'
+}
+
 async function handleLogin() {
   if (submitting.value) {
     return
@@ -60,11 +67,7 @@ async function handleLogin() {
       await router.replace(redirect)
       return
     }
-    if (sessionStore.currentProjectCode) {
-      await router.replace(`/project/${sessionStore.currentProjectCode}/overview`)
-      return
-    }
-    await router.replace('/workspace')
+    await router.replace(resolveProjectEntry(sessionStore.currentProjectCode))
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '登录失败')
   } finally {

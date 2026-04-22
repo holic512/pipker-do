@@ -69,3 +69,30 @@ export interface AdminSessionState {
   currentProjectCode: string | null
   availableProjects: AdminProject[]
 }
+
+export interface KyzzCategoryAdminStats {
+  totalCategories: number
+  enabledCategories: number
+  levelOneCategories: number
+  linkedQuestionBanks: number
+  linkedQuestions: number
+}
+
+export interface KyzzCategoryAdminItem {
+  id: number
+  categoryCode: string
+  categoryName: string
+  categoryLevel: number
+  sortNo: number
+  isEnabled: number
+  questionBankCount: number
+  questionCount: number
+  canDelete: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface KyzzCategoryAdminDashboard {
+  stats: KyzzCategoryAdminStats
+  categories: KyzzCategoryAdminItem[]
+}
