@@ -1,0 +1,35 @@
+{
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "Node",
+		"strict": true,
+		"allowJs": true,
+		"checkJs": false,
+		"isolatedModules": true,
+		"jsx": "preserve",
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"baseUrl": ".",
+		"paths": {
+			"@/*": [
+				"./*"
+			],
+			"vue": [
+				"../admin-web/node_modules/vue"
+			],
+			"@vue/*": [
+				"../admin-web/node_modules/@vue/*"
+			]
+		}
+	},
+	"include": [
+		"**/*.ts",
+		"**/*.d.ts",
+		"**/*.vue"
+	],
+	"exclude": [
+		"uni_modules/**",
+		"node_modules/**"
+	]
+}

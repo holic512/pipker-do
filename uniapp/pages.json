@@ -8,7 +8,15 @@
 		{
 			"path": "pages/kyzz/question-bank/index",
 			"style": {
-				"navigationBarTitleText": "题库"
+				"navigationBarTitleText": "题库",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/kyzz/question-bank/public",
+			"style": {
+				"navigationBarTitleText": "公共题库",
+				"navigationStyle": "default"
 			}
 		},
 		{

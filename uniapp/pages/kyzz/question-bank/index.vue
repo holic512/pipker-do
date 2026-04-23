@@ -1,460 +1,831 @@
 <template>
+	<!-- AI 索引: 我的题库页 -->
 	<page-shell
 		current="question-bank"
 		root-class="question-bank-page"
 		content-class="question-bank-page__content"
 	>
-		<view class="question-bank-page__search-row">
-			<view class="question-bank-page__search">
-				<uni-icons type="search" size="17" color="#8b93a6" />
-				<text class="question-bank-page__search-text">搜索题库、知识点...</text>
-			</view>
-
-			<view class="question-bank-page__filter">
-				<view class="question-bank-page__filter-line question-bank-page__filter-line--top"></view>
-				<view class="question-bank-page__filter-line question-bank-page__filter-line--bottom"></view>
-			</view>
+		<view class="question-bank-page__hero">
+			<text class="question-bank-page__title">我的题库</text>
+			<text class="question-bank-page__desc">把常刷题库收进个人清单，回到这里就能继续上次的进度。</text>
 		</view>
 
-		<text class="question-bank-page__title">我的题库</text>
+		<view class="question-bank-page__search-shell">
+			<uni-search-bar
+				v-model="keyword"
+				placeholder="搜索题库名称、副标题、分类"
+				cancel-button="none"
+				clear-button="auto"
+				radius="16"
+				bg-color="#f5f7fb"
+				@confirm="handleSearchConfirm"
+				@clear="handleSearchClear"
+			/>
+		</view>
 
-		<view class="question-bank-page__list">
+		<view v-if="loading && !loadedOnce" class="question-bank-page__state-card">
+			<text class="question-bank-page__state-title">正在整理你的题库...</text>
+			<text class="question-bank-page__state-desc">稍等一下，马上带出最近的学习进度。</text>
+		</view>
+
+		<view v-else-if="displayedBanks.length" class="question-bank-page__list">
 			<view
-				v-for="item in banks"
+				v-for="item in displayedBanks"
 				:key="item.id"
 				class="question-bank-page__card"
+				@tap="handleBankTap(item)"
 			>
 				<view class="question-bank-page__card-main">
-					<view
-						class="question-bank-page__icon-box"
-						:class="item.iconClass"
-					>
-						<view v-if="item.iconType === 'bookmark'" class="icon-bookmark">
-							<view class="icon-bookmark__cut"></view>
-						</view>
-						<text v-else-if="item.iconType === 'translate'" class="icon-text icon-text--translate">文A</text>
-						<view v-else class="icon-grid">
-							<view class="icon-grid__row">
-								<view class="icon-grid__dot"></view>
-								<view class="icon-grid__dot"></view>
+					<view class="question-bank-page__cover-stack">
+						<view
+							class="question-bank-page__cover-ring"
+							:class="coverRingClass(item)"
+							:style="coverRingStyle(item)"
+						>
+							<view class="question-bank-page__cover-shell">
+								<image
+									v-if="item.coverUrl"
+									class="question-bank-page__cover"
+									:src="item.coverUrl"
+									mode="aspectFill"
+								/>
+								<view v-else class="question-bank-page__cover question-bank-page__cover--fallback">
+									<text class="question-bank-page__cover-initial">{{ buildCoverInitial(item.bankName) }}</text>
+									<view class="question-bank-page__cover-grid">
+										<view class="question-bank-page__cover-dot"></view>
+										<view class="question-bank-page__cover-dot"></view>
+										<view class="question-bank-page__cover-dot"></view>
+										<view class="question-bank-page__cover-dot"></view>
+									</view>
+								</view>
 							</view>
-							<view class="icon-grid__row">
-								<view class="icon-grid__dot"></view>
-								<view class="icon-grid__dot"></view>
-							</view>
 						</view>
+						<text class="question-bank-page__cover-progress">{{ formatProgress(item.currentProgress) }}</text>
 					</view>
 
-					<view class="question-bank-page__body">
-						<view class="question-bank-page__head">
-							<view class="question-bank-page__head-copy">
-								<text class="question-bank-page__name">{{ item.name }}</text>
-								<view class="question-bank-page__meta-row">
-									<view class="question-bank-page__stars">
-										<uni-icons
-											v-for="star in 5"
-											:key="`${item.id}-${star}`"
-											type="star-filled"
-											size="10"
-											:color="star <= item.starCount ? '#F5B638' : '#E8EBF2'"
-										/>
-									</view>
-									<text class="question-bank-page__hint">{{ item.hint }}</text>
-								</view>
-								<text class="question-bank-page__count">≡ 共 {{ item.count }}</text>
+					<view class="question-bank-page__card-body">
+						<view class="question-bank-page__card-head">
+							<view class="question-bank-page__title-wrap">
+								<text class="question-bank-page__card-title">{{ item.bankName }}</text>
+								<text v-if="item.subtitle" class="question-bank-page__card-subtitle">{{ item.subtitle }}</text>
 							</view>
-
-							<view v-if="item.badge" class="question-bank-page__badge">{{ item.badge }}</view>
-							<view v-else class="question-bank-page__more">
-								<text class="question-bank-page__more-dot"></text>
-								<text class="question-bank-page__more-dot"></text>
-								<text class="question-bank-page__more-dot"></text>
+							<view class="question-bank-page__stage-badge" :class="stageClass(item)">
+								{{ stageText(item) }}
 							</view>
 						</view>
 
-						<view class="question-bank-page__progress-row">
-							<view class="question-bank-page__progress-track">
-								<view
-									class="question-bank-page__progress-value"
-									:style="{ width: `${item.progress}%` }"
-								></view>
-							</view>
-							<text class="question-bank-page__progress-text">{{ item.progress }}%</text>
+						<view class="question-bank-page__meta-row">
+							<text class="question-bank-page__meta-pill">{{ item.categoryName || '未分类' }}</text>
+							<text class="question-bank-page__meta-pill" :class="difficultyTagClass(item.difficultyLevel)">{{ difficultyLabel(item.difficultyLevel) }}</text>
+							<text class="question-bank-page__meta-pill">{{ item.questionCount }} 题</text>
+						</view>
+
+						<view class="question-bank-page__info-row">
+							<text class="question-bank-page__info-text">最近练习：{{ formatLastPractice(item.lastPracticeAt) }}</text>
+							<text class="question-bank-page__info-text">已做 {{ item.studiedCount }} / {{ item.questionCount }}</text>
 						</view>
 					</view>
 				</view>
 			</view>
+		</view>
 
-			<view class="question-bank-page__add-card">
-				<view class="question-bank-page__add-circle">+</view>
-				<text class="question-bank-page__add-text">添加新题库</text>
+		<view v-else class="question-bank-page__empty">
+			<view class="question-bank-page__empty-ornament">
+				<view class="question-bank-page__empty-ring"></view>
+				<view class="question-bank-page__empty-dot"></view>
 			</view>
+			<text class="question-bank-page__empty-title">{{ keyword.trim() ? '没有找到匹配题库' : '还没有加入题库' }}</text>
+			<text class="question-bank-page__empty-desc">
+				{{ keyword.trim() ? '换个关键词再试试，或者去公共题库看看有没有合适的内容。' : '先去公共题库挑几套常刷题库，之后这里会自动保存你的学习进度。' }}
+			</text>
+			<view class="question-bank-page__empty-actions">
+				<button
+					v-if="keyword.trim()"
+					class="question-bank-page__ghost-button"
+					@tap="resetKeyword"
+				>
+					清空搜索
+				</button>
+				<button class="question-bank-page__primary-button" @tap="goPublicBanks">
+					去添加题库
+				</button>
+			</view>
+		</view>
+
+		<view class="question-bank-page__add-card" @tap="goPublicBanks">
+			<view class="question-bank-page__add-mark">+</view>
+			<view class="question-bank-page__add-copy">
+				<text class="question-bank-page__add-title">添加新题库</text>
+				<text class="question-bank-page__add-desc">进入完整公共题库列表，按已选 / 未选和分类筛选。</text>
+			</view>
+			<uni-icons type="right" size="18" color="#7e8798" />
 		</view>
 	</page-shell>
 </template>
 
-<script>
-export default {
-	name: 'QuestionBankPage',
-	data() {
-		return {
-			banks: [
-				{
-					id: 'history',
-					name: '考研政治历年真题',
-					hint: '推荐度极高',
-					count: '1200 题',
-					progress: 45,
-					starCount: 5,
-					badge: '正在刷题',
-					iconType: 'bookmark',
-					iconClass: 'question-bank-page__icon-box--blue'
-				},
-				{
-					id: 'english',
-					name: '英语核心词汇练练',
-					hint: '重点钻句',
-					count: '5500 题',
-					progress: 82,
-					starCount: 4,
-					badge: '',
-					iconType: 'translate',
-					iconClass: 'question-bank-page__icon-box--sky'
-				},
-				{
-					id: 'math',
-					name: '数学一模拟冲刺卷',
-					hint: '阶段提升',
-					count: '20 套（440 题）',
-					progress: 15,
-					starCount: 0,
-					badge: '',
-					iconType: 'grid',
-					iconClass: 'question-bank-page__icon-box--purple'
-				}
-			]
-		}
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { bootstrapAuth } from '@/shared/session/session'
+import { getMineQuestionBanks } from '@/pages/kyzz/api/question-bank'
+import type {
+	KyzzQuestionBankMineDashboardState,
+	KyzzQuestionBankMineRecordResponse,
+	KyzzQuestionBankMineViewRecord,
+	SearchConfirmEvent
+} from '@/pages/kyzz/question-bank/types'
+
+const DIFFICULTY_MAP: Record<number, string> = {
+	1: '简单',
+	2: '中等',
+	3: '困难',
+	4: '冲刺'
+}
+
+interface LoadMineOptions {
+	silent?: boolean
+	fromPullDownRefresh?: boolean
+}
+
+interface MinePageState {
+	loading: boolean
+	loadedOnce: boolean
+	keyword: string
+	dashboard: KyzzQuestionBankMineDashboardState
+}
+
+function createEmptyMineDashboard(): KyzzQuestionBankMineDashboardState {
+	return {
+		summary: {
+			selectedCount: 0,
+			inProgressCount: 0,
+			completedCount: 0
+		},
+		records: []
 	}
 }
+
+function toNumber(value: unknown, fallback = 0): number {
+	const parsed = Number(value)
+	return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function resolveErrorMessage(error: unknown, fallback: string): string {
+	if (error instanceof Error && error.message) {
+		return error.message
+	}
+	return fallback
+}
+
+export default defineComponent({
+	name: 'QuestionBankPage',
+	data(): MinePageState {
+		return {
+			loading: false,
+			loadedOnce: false,
+			keyword: '',
+			dashboard: createEmptyMineDashboard()
+		}
+	},
+	computed: {
+		displayedBanks(): KyzzQuestionBankMineViewRecord[] {
+			const keyword = this.keyword.trim().toLowerCase()
+			if (!keyword) {
+				return this.dashboard.records
+			}
+			return this.dashboard.records.filter((item) => {
+				return [item.bankName, item.subtitle, item.categoryName]
+					.filter((field): field is string => Boolean(field))
+					.some((field) => field.toLowerCase().includes(keyword))
+			})
+		}
+	},
+	onShow() {
+		this.bootstrapAndLoad()
+	},
+	onPullDownRefresh() {
+		this.bootstrapAndLoad({ fromPullDownRefresh: true })
+	},
+	methods: {
+		async bootstrapAndLoad(options: LoadMineOptions = {}): Promise<void> {
+			try {
+				await bootstrapAuth({ silent: true })
+				await this.loadMineQuestionBanks({ silent: true })
+			} catch (error) {
+				if (!options.silent) {
+					uni.showToast({
+						title: resolveErrorMessage(error, '题库加载失败'),
+						icon: 'none'
+					})
+				}
+			} finally {
+				if (options.fromPullDownRefresh) {
+					uni.stopPullDownRefresh()
+				}
+			}
+		},
+		async loadMineQuestionBanks(options: Pick<LoadMineOptions, 'silent'> = {}): Promise<void> {
+			if (this.loading) {
+				return
+			}
+			this.loading = true
+			try {
+				const result = await getMineQuestionBanks()
+				this.dashboard = {
+					summary: result?.summary ?? createEmptyMineDashboard().summary,
+					records: Array.isArray(result?.records)
+						? result.records.map((record) => this.normalizeRecord(record))
+						: []
+				}
+				this.loadedOnce = true
+				if (!options.silent) {
+					uni.showToast({
+						title: '题库已刷新',
+						icon: 'none'
+					})
+				}
+			} catch (error) {
+				this.loadedOnce = true
+				throw error
+			} finally {
+				this.loading = false
+			}
+		},
+		normalizeRecord(record: KyzzQuestionBankMineRecordResponse): KyzzQuestionBankMineViewRecord {
+			return {
+				...record,
+				questionCount: toNumber(record.questionCount),
+				totalScore: toNumber(record.totalScore),
+				ratingCount: toNumber(record.ratingCount),
+				studyUserCount: toNumber(record.studyUserCount),
+				currentProgress: toNumber(record.currentProgress),
+				studiedCount: toNumber(record.studiedCount),
+				correctCount: toNumber(record.correctCount),
+				wrongCount: toNumber(record.wrongCount)
+			}
+		},
+		difficultyLabel(level: number): string {
+			return DIFFICULTY_MAP[level] || `L${level || 0}`
+		},
+		difficultyTagClass(level: number): string {
+			if (level === 1) {
+				return 'question-bank-page__meta-pill--simple'
+			}
+			if (level === 2) {
+				return 'question-bank-page__meta-pill--medium'
+			}
+			if (level === 3) {
+				return 'question-bank-page__meta-pill--hard'
+			}
+			if (level === 4) {
+				return 'question-bank-page__meta-pill--sprint'
+			}
+			return ''
+		},
+		progressPercent(item: KyzzQuestionBankMineViewRecord): number {
+			const value = toNumber(item.currentProgress)
+			if (value <= 0) {
+				return 0
+			}
+			if (value >= 100) {
+				return 100
+			}
+			return value
+		},
+		coverRingClass(item: KyzzQuestionBankMineViewRecord): string {
+			const progress = this.progressPercent(item)
+			if (progress >= 100 && item.questionCount > 0) {
+				return 'question-bank-page__cover-ring--done'
+			}
+			if (progress > 0) {
+				return 'question-bank-page__cover-ring--pulse'
+			}
+			return 'question-bank-page__cover-ring--idle'
+		},
+		coverRingStyle(item: KyzzQuestionBankMineViewRecord): Record<string, string> {
+			const progress = this.progressPercent(item)
+			const progressDegree = `${Math.max(0, Math.min(360, progress * 3.6))}deg`
+			const activeColor = progress >= 100 && item.questionCount > 0
+				? '#8eb89a'
+				: '#7a889f'
+			return {
+				background: `conic-gradient(${activeColor} 0deg, ${activeColor} ${progressDegree}, rgba(224, 230, 240, 0.88) ${progressDegree}, rgba(224, 230, 240, 0.88) 360deg)`
+			}
+		},
+		formatProgress(value: number): string {
+			const progress = toNumber(value)
+			const normalized = Math.round(progress * 10) / 10
+			const display = Number.isInteger(normalized) ? normalized : normalized.toFixed(1)
+			return `${display}%`
+		},
+		formatLastPractice(value: string | null): string {
+			if (!value) {
+				return '暂未开始'
+			}
+			const normalized = value.replace(/-/g, '/')
+			const practiceDate = new Date(normalized)
+			if (Number.isNaN(practiceDate.getTime())) {
+				return value.slice(0, 16).replace('T', ' ')
+			}
+			const today = new Date()
+			const oneDay = 24 * 60 * 60 * 1000
+			const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+			const practiceStart = new Date(practiceDate.getFullYear(), practiceDate.getMonth(), practiceDate.getDate()).getTime()
+			const diffDays = Math.floor((todayStart - practiceStart) / oneDay)
+			if (diffDays === 0) {
+				return '今天'
+			}
+			if (diffDays === 1) {
+				return '昨天'
+			}
+			if (diffDays > 1 && diffDays < 7) {
+				return `${diffDays} 天前`
+			}
+			return `${practiceDate.getFullYear()}-${this.pad(practiceDate.getMonth() + 1)}-${this.pad(practiceDate.getDate())}`
+		},
+		pad(value: number): string {
+			return String(value).padStart(2, '0')
+		},
+		stageText(item: KyzzQuestionBankMineViewRecord): string {
+			const progress = toNumber(item.currentProgress)
+			if (progress >= 100 && item.questionCount > 0) {
+				return '已完成'
+			}
+			if (progress > 0) {
+				return '进行中'
+			}
+			return '待开始'
+		},
+		stageClass(item: KyzzQuestionBankMineViewRecord): string {
+			const progress = toNumber(item.currentProgress)
+			if (progress >= 100 && item.questionCount > 0) {
+				return 'question-bank-page__stage-badge--done'
+			}
+			if (progress > 0) {
+				return 'question-bank-page__stage-badge--active'
+			}
+			return 'question-bank-page__stage-badge--idle'
+		},
+		buildCoverInitial(name: string): string {
+			if (!name) {
+				return '题'
+			}
+			return name.trim().slice(0, 1).toUpperCase()
+		},
+		handleSearchConfirm(event: SearchConfirmEvent): void {
+			this.keyword = event?.value || this.keyword
+		},
+		handleSearchClear(): void {
+			this.keyword = ''
+		},
+		resetKeyword(): void {
+			this.keyword = ''
+		},
+		goPublicBanks(): void {
+			uni.navigateTo({
+				url: '/pages/kyzz/question-bank/public'
+			})
+		},
+		handleBankTap(item: KyzzQuestionBankMineViewRecord): void {
+			uni.showToast({
+				title: `已为你保留“${item.bankName}”的入口，后续可直接接练习流转`,
+				icon: 'none'
+			})
+		}
+	}
+})
 </script>
 
 <style lang="scss">
+@import '@/uni.scss';
+
 .question-bank-page {
 	min-height: 100vh;
-	background: #f6f7fb;
+	background:
+		radial-gradient(circle at top, rgba(255, 255, 255, 0.98) 0%, rgba(245, 247, 250, 0.96) 42%, rgba(236, 241, 246, 0.94) 100%);
 	box-sizing: border-box;
 }
 
 .question-bank-page__content {
-	padding: 10rpx 14rpx calc(env(safe-area-inset-bottom) + 168rpx);
+	padding: 12rpx 24rpx calc(env(safe-area-inset-bottom) + 196rpx);
 	box-sizing: border-box;
 }
 
-.question-bank-page__search-row {
-	display: flex;
-	align-items: center;
-	gap: 16rpx;
-}
-
-.question-bank-page__search {
-	flex: 1;
-	height: 82rpx;
-	padding: 0 22rpx;
-	border: 2rpx solid #ebeef5;
-	border-radius: 24rpx;
-	background: #ffffff;
-	box-shadow: 0 6rpx 20rpx rgba(125, 136, 162, 0.08);
-	display: flex;
-	align-items: center;
-	gap: 12rpx;
-}
-
-.question-bank-page__search-text {
-	font-size: 25rpx;
-	color: #9ba3b3;
-}
-
-.question-bank-page__filter {
-	position: relative;
-	width: 64rpx;
-	height: 64rpx;
-	border-radius: 20rpx;
-	background: #dfe6ff;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	box-shadow: 0 8rpx 18rpx rgba(126, 144, 202, 0.18);
-}
-
-.question-bank-page__filter-line {
-	position: absolute;
-	height: 4rpx;
-	border-radius: 999rpx;
-	background: #5f6f92;
-}
-
-.question-bank-page__filter-line::after {
-	content: '';
-	position: absolute;
-	top: 50%;
-	width: 10rpx;
-	height: 10rpx;
-	border-radius: 50%;
-	background: #5f6f92;
-	transform: translateY(-50%);
-}
-
-.question-bank-page__filter-line--top {
-	width: 24rpx;
-	transform: translateY(-8rpx);
-}
-
-.question-bank-page__filter-line--top::after {
-	right: -2rpx;
-}
-
-.question-bank-page__filter-line--bottom {
-	width: 18rpx;
-	transform: translateY(8rpx);
-}
-
-.question-bank-page__filter-line--bottom::after {
-	left: -2rpx;
+.question-bank-page__hero {
+	padding: 12rpx 6rpx 0;
 }
 
 .question-bank-page__title {
 	display: block;
-	margin-top: 34rpx;
-	margin-bottom: 24rpx;
-	font-size: 46rpx;
+	font-size: 54rpx;
+	line-height: 1.08;
+	font-family: $heading-font-family;
 	font-weight: 700;
-	color: #2c3240;
+	color: #293241;
+}
+
+.question-bank-page__desc {
+	display: block;
+	margin-top: 16rpx;
+	font-size: 26rpx;
+	line-height: 1.7;
+	color: #6f7a86;
+}
+
+.question-bank-page__search-shell {
+	margin-top: 28rpx;
+	padding: 10rpx 14rpx;
+	border-radius: 28rpx;
+	background: rgba(255, 255, 255, 0.8);
+	box-shadow: 0 16rpx 36rpx rgba(43, 52, 55, 0.06);
+}
+
+.question-bank-page__state-card,
+.question-bank-page__empty {
+	margin-top: 26rpx;
+	padding: 44rpx 34rpx;
+	border-radius: 30rpx;
+	background: rgba(255, 255, 255, 0.92);
+	box-shadow: 0 18rpx 40rpx rgba(43, 52, 55, 0.06);
+}
+
+.question-bank-page__state-title,
+.question-bank-page__empty-title {
+	display: block;
+	font-size: 34rpx;
+	line-height: 1.25;
+	font-weight: 700;
+	color: #2d3642;
+}
+
+.question-bank-page__state-desc,
+.question-bank-page__empty-desc {
+	display: block;
+	margin-top: 16rpx;
+	font-size: 24rpx;
+	line-height: 1.7;
+	color: #7b8594;
 }
 
 .question-bank-page__list {
 	display: flex;
 	flex-direction: column;
 	gap: 18rpx;
+	margin-top: 26rpx;
 }
 
 .question-bank-page__card {
 	padding: 18rpx;
-	border-radius: 22rpx;
-	background: #ffffff;
-	box-shadow: 0 8rpx 24rpx rgba(114, 124, 148, 0.08);
+	border-radius: 28rpx;
+	background: rgba(255, 255, 255, 0.94);
+	box-shadow: 0 16rpx 34rpx rgba(43, 52, 55, 0.06);
 }
 
 .question-bank-page__card-main {
 	display: flex;
-	align-items: stretch;
+	align-items: flex-start;
 	gap: 18rpx;
 }
 
-.question-bank-page__icon-box {
-	flex-shrink: 0;
-	width: 64rpx;
-	height: 64rpx;
-	border-radius: 14rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.question-bank-page__icon-box--blue {
-	background: linear-gradient(180deg, #dbe4ff 0%, #cad6fb 100%);
-}
-
-.question-bank-page__icon-box--sky {
-	background: linear-gradient(180deg, #d7e8ff 0%, #c8dcff 100%);
-}
-
-.question-bank-page__icon-box--purple {
-	background: linear-gradient(180deg, #dfd6f4 0%, #cdc5ea 100%);
-}
-
-.icon-bookmark {
-	position: relative;
-	width: 22rpx;
-	height: 28rpx;
-	border-radius: 5rpx 5rpx 3rpx 3rpx;
-	background: #697390;
-}
-
-.icon-bookmark__cut {
-	position: absolute;
-	left: 50%;
-	bottom: 0;
-	width: 10rpx;
-	height: 10rpx;
-	background: linear-gradient(135deg, transparent 0 50%, #dbe4ff 50% 100%);
-	transform: translateX(-50%);
-}
-
-.icon-text {
-	font-size: 24rpx;
-	font-weight: 700;
-	color: #63708c;
-}
-
-.icon-text--translate {
-	letter-spacing: -0.04em;
-}
-
-.icon-grid {
+.question-bank-page__cover-stack {
 	display: flex;
 	flex-direction: column;
-	gap: 4rpx;
+	align-items: center;
+	gap: 12rpx;
+	width: 156rpx;
+	flex-shrink: 0;
 }
 
-.icon-grid__row {
-	display: flex;
-	gap: 4rpx;
+.question-bank-page__cover-ring {
+	position: relative;
+	width: 156rpx;
+	height: 156rpx;
+	padding: 8rpx;
+	border-radius: 30rpx;
+	box-shadow: 0 14rpx 28rpx rgba(112, 126, 151, 0.11);
 }
 
-.icon-grid__dot {
-	width: 8rpx;
-	height: 8rpx;
-	border-radius: 2rpx;
-	background: #6b718e;
+.question-bank-page__cover-ring::before {
+	content: '';
+	position: absolute;
+	inset: 5rpx;
+	border-radius: 26rpx;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(245, 248, 252, 0.78) 100%);
 }
 
-.question-bank-page__body {
-	flex: 1;
+.question-bank-page__cover-ring--pulse::after,
+.question-bank-page__cover-ring--done::after {
+	content: '';
+	position: absolute;
+	inset: -10rpx;
+	border-radius: 40rpx;
+	border: 2rpx solid rgba(122, 136, 159, 0.18);
+	opacity: 0;
+}
+
+.question-bank-page__cover-ring--pulse::after {
+	animation: question-bank-cover-pulse 2.2s ease-out infinite;
+}
+
+.question-bank-page__cover-ring--done::after {
+	border-color: rgba(142, 184, 154, 0.22);
+	animation: question-bank-cover-pulse 2.8s ease-out infinite;
+}
+
+.question-bank-page__cover-shell {
+	position: relative;
+	z-index: 1;
+	width: 100%;
+	height: 100%;
+	border-radius: 22rpx;
+	overflow: hidden;
+	background: rgba(255, 255, 255, 0.94);
+	box-shadow: inset 0 0 0 2rpx rgba(255, 255, 255, 0.5);
+}
+
+.question-bank-page__cover {
+	width: 100%;
+	height: 100%;
+	border-radius: 22rpx;
+	background: linear-gradient(145deg, #eef3ff 0%, #dde7fb 100%);
+	display: block;
+	overflow: hidden;
+}
+
+.question-bank-page__cover--fallback {
+	height: 100%;
+	padding: 18rpx;
+	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-	min-width: 0;
+	box-shadow: inset 0 0 0 2rpx rgba(84, 94, 118, 0.08);
 }
 
-.question-bank-page__head {
+.question-bank-page__cover-initial {
+	font-size: 46rpx;
+	line-height: 1;
+	font-family: $heading-font-family;
+	font-weight: 700;
+	color: #58657b;
+}
+
+.question-bank-page__cover-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 8rpx;
+}
+
+.question-bank-page__cover-dot {
+	height: 16rpx;
+	border-radius: 6rpx;
+	background: rgba(84, 94, 118, 0.16);
+}
+
+.question-bank-page__cover-progress {
+	font-size: 22rpx;
+	line-height: 1;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	color: #526077;
+}
+
+.question-bank-page__card-body {
+	flex: 1;
+	min-width: 0;
 	display: flex;
-	align-items: flex-start;
+	flex-direction: column;
+}
+
+.question-bank-page__card-head {
+	display: flex;
+	align-items: center;
 	justify-content: space-between;
 	gap: 12rpx;
 }
 
-.question-bank-page__head-copy {
+.question-bank-page__title-wrap {
 	flex: 1;
 	min-width: 0;
 }
 
-.question-bank-page__name {
+.question-bank-page__card-title {
 	display: block;
-	font-size: 30rpx;
-	line-height: 1.34;
+	font-size: 28rpx;
+	line-height: 1.3;
 	font-weight: 700;
-	color: #1f2533;
+	color: #2c3441;
+}
+
+.question-bank-page__card-subtitle {
+	display: block;
+	margin-top: 6rpx;
+	font-size: 20rpx;
+	line-height: 1.45;
+	color: #7d8794;
+}
+
+.question-bank-page__stage-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 40rpx;
+	padding: 0 16rpx;
+	border-radius: 999rpx;
+	font-size: 20rpx;
+	line-height: 1;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.question-bank-page__stage-badge--active {
+	background: rgba(215, 226, 255, 0.8);
+	color: #516079;
+}
+
+.question-bank-page__stage-badge--done {
+	background: rgba(221, 233, 222, 0.88);
+	color: #557062;
+}
+
+.question-bank-page__stage-badge--idle {
+	background: rgba(229, 234, 237, 0.9);
+	color: #707a84;
 }
 
 .question-bank-page__meta-row {
 	display: flex;
-	align-items: center;
+	flex-wrap: wrap;
 	gap: 10rpx;
-	margin-top: 6rpx;
+	margin-top: 12rpx;
 }
 
-.question-bank-page__stars {
+.question-bank-page__meta-pill {
 	display: inline-flex;
 	align-items: center;
-	gap: 2rpx;
-}
-
-.question-bank-page__hint {
+	justify-content: center;
+	min-height: 40rpx;
+	padding: 0 14rpx;
+	border-radius: 999rpx;
+	background: #f3f6f9;
 	font-size: 20rpx;
-	color: #7f8797;
-}
-
-.question-bank-page__count {
-	display: block;
-	margin-top: 10rpx;
-	font-size: 24rpx;
-	color: #535c6f;
-}
-
-.question-bank-page__badge {
-	flex-shrink: 0;
-	padding: 6rpx 12rpx;
-	border-radius: 10rpx;
-	background: #5b6170;
-	font-size: 18rpx;
 	line-height: 1;
-	font-weight: 600;
-	color: #ffffff;
+	color: #707987;
 }
 
-.question-bank-page__more {
-	flex-shrink: 0;
+.question-bank-page__meta-pill--simple {
+	background: rgba(221, 233, 222, 0.92);
+	color: #587062;
+}
+
+.question-bank-page__meta-pill--medium {
+	background: rgba(215, 226, 255, 0.86);
+	color: #516079;
+}
+
+.question-bank-page__meta-pill--hard {
+	background: rgba(242, 231, 218, 0.94);
+	color: #916d3f;
+}
+
+.question-bank-page__meta-pill--sprint {
+	background: rgba(244, 226, 225, 0.96);
+	color: #a35c59;
+}
+
+.question-bank-page__info-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 14rpx;
+	margin-top: 14rpx;
+}
+
+.question-bank-page__info-text {
+	font-size: 21rpx;
+	line-height: 1.5;
+	color: #7d8694;
+}
+
+.question-bank-page__empty {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	gap: 4rpx;
-	padding-top: 6rpx;
-	width: 20rpx;
+	align-items: flex-start;
 }
 
-.question-bank-page__more-dot {
-	width: 4rpx;
-	height: 4rpx;
-	border-radius: 50%;
-	background: #7c8496;
+.question-bank-page__empty-ornament {
+	position: relative;
+	width: 120rpx;
+	height: 120rpx;
+	margin-bottom: 12rpx;
 }
 
-.question-bank-page__progress-row {
-	display: flex;
-	align-items: center;
-	gap: 12rpx;
-	margin-top: 22rpx;
-}
-
-.question-bank-page__progress-track {
-	flex: 1;
-	height: 8rpx;
-	border-radius: 999rpx;
-	background: #eceff6;
-	overflow: hidden;
-}
-
-.question-bank-page__progress-value {
+.question-bank-page__empty-ring {
+	width: 100%;
 	height: 100%;
-	border-radius: inherit;
-	background: #5d6c89;
+	border-radius: 50%;
+	border: 3rpx solid rgba(84, 94, 118, 0.14);
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(237, 242, 249, 0.82) 100%);
 }
 
-.question-bank-page__progress-text {
-	flex-shrink: 0;
-	font-size: 20rpx;
+.question-bank-page__empty-dot {
+	position: absolute;
+	right: 12rpx;
+	top: 12rpx;
+	width: 22rpx;
+	height: 22rpx;
+	border-radius: 50%;
+	background: rgba(84, 94, 118, 0.2);
+}
+
+.question-bank-page__empty-actions {
+	display: flex;
+	gap: 16rpx;
+	margin-top: 26rpx;
+}
+
+.question-bank-page__primary-button,
+.question-bank-page__ghost-button {
+	margin: 0;
+	padding: 0 28rpx;
+	height: 78rpx;
+	line-height: 78rpx;
+	border-radius: 999rpx;
+	font-size: 24rpx;
 	font-weight: 600;
-	color: #7a8293;
+}
+
+.question-bank-page__primary-button::after,
+.question-bank-page__ghost-button::after {
+	border: 0;
+}
+
+.question-bank-page__primary-button {
+	background: linear-gradient(135deg, #545e76 0%, #7f8ca7 100%);
+	color: #ffffff;
+	box-shadow: 0 14rpx 28rpx rgba(84, 94, 118, 0.2);
+}
+
+.question-bank-page__ghost-button {
+	background: #eef2f6;
+	color: #5b667c;
 }
 
 .question-bank-page__add-card {
-	height: 128rpx;
-	border: 2rpx dashed #dfe3ec;
-	border-radius: 18rpx;
-	background: rgba(255, 255, 255, 0.5);
 	display: flex;
-	flex-direction: column;
 	align-items: center;
-	justify-content: center;
-	gap: 8rpx;
+	gap: 20rpx;
+	margin-top: 24rpx;
+	padding: 26rpx 24rpx;
+	border-radius: 28rpx;
+	background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(241, 245, 251, 0.92) 100%);
+	box-shadow: 0 16rpx 32rpx rgba(43, 52, 55, 0.05);
 }
 
-.question-bank-page__add-circle {
+.question-bank-page__add-mark {
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 24rpx;
+	background: rgba(84, 94, 118, 0.1);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 34rpx;
-	height: 34rpx;
-	border: 3rpx solid #737b89;
-	border-radius: 50%;
-	font-size: 28rpx;
+	font-size: 40rpx;
 	line-height: 1;
-	font-weight: 400;
-	color: #737b89;
+	color: #546078;
+	flex-shrink: 0;
 }
 
-.question-bank-page__add-text {
+.question-bank-page__add-copy {
+	flex: 1;
+	min-width: 0;
+}
+
+.question-bank-page__add-title {
+	display: block;
+	font-size: 28rpx;
+	line-height: 1.2;
+	font-weight: 700;
+	color: #2f3744;
+}
+
+.question-bank-page__add-desc {
+	display: block;
+	margin-top: 10rpx;
 	font-size: 22rpx;
-	color: #5f6675;
+	line-height: 1.6;
+	color: #7a8391;
+}
+
+@keyframes question-bank-cover-pulse {
+	0% {
+		transform: scale(0.94);
+		opacity: 0;
+	}
+	20% {
+		opacity: 0.42;
+	}
+	100% {
+		transform: scale(1.08);
+		opacity: 0;
+	}
 }
 </style>
