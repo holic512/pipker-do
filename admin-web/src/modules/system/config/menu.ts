@@ -119,6 +119,13 @@ export function buildAdminMenus(projectCode: string | null, currentRoles: string
                 route: `/project/${currentProjectCode}/question-bank-categories`,
                 icon: Document,
                 projectScoped: true
+              } satisfies MenuItem,
+              {
+                key: 'project-kyzz-user-question-banks',
+                label: '用户题库选择',
+                route: `/project/${currentProjectCode}/user-question-banks`,
+                icon: Document,
+                projectScoped: true
               } satisfies MenuItem
             ]
           : [])

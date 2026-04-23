@@ -65,6 +65,11 @@ const router = createRouter({
           path: '/project/:projectCode/question-bank-categories',
           name: 'project-question-bank-categories',
           component: () => import('@/modules/kyzz/pages/QuestionBankCategoryManagementPage.vue')
+        },
+        {
+          path: '/project/:projectCode/user-question-banks',
+          name: 'project-user-question-banks',
+          component: () => import('@/modules/kyzz/pages/UserQuestionBankManagementPage.vue')
         }
       ]
     },

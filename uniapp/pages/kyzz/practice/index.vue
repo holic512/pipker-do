@@ -51,7 +51,44 @@
 					@open-wrong-book="goWrongBook"
 				/>
 
+				<practice-comment-composer
+					v-if="reviewState.result"
+					v-model="commentState.composerContent"
+					:submitting="commentState.submitting"
+					@submit="handleSubmitComment"
+				/>
+
 				<practice-footer-actions
+					v-if="reviewState.result"
+					:review-result="reviewState.result"
+					:awaiting-self-judgement="awaitingSelfJudgement"
+					:can-submit="canSubmit"
+					:submitting="uiState.submitting"
+					:submit-button-text="submitButtonText"
+					:can-go-previous="canGoPrevious"
+					:can-go-next="canGoNext"
+					:next-button-text="nextButtonText"
+					@submit-review="handleReview"
+					@judge-correct="handleSelfJudgement(true)"
+					@judge-wrong="handleSelfJudgement(false)"
+					@previous-question="handlePreviousQuestion"
+					@next-question="handleNextQuestion"
+				/>
+
+				<practice-comment-list
+					v-if="reviewState.result"
+					:records="commentState.records"
+					:total="commentState.total"
+					:loading="commentState.loading"
+					:loading-more="commentState.loadingMore"
+					:has-more="commentState.hasMore"
+					:error-message="commentState.errorMessage"
+					@load-more="handleLoadMoreComments"
+					@retry="handleRetryComments"
+				/>
+
+				<practice-footer-actions
+					v-if="!reviewState.result"
 					:review-result="reviewState.result"
 					:awaiting-self-judgement="awaitingSelfJudgement"
 					:can-submit="canSubmit"
@@ -69,6 +106,14 @@
 
 				<view class="practice-page__bottom-space"></view>
 			</view>
+
+			<button
+				v-if="reviewState.result"
+				class="practice-page__scroll-top"
+				@tap="scrollToTop"
+			>
+				<uni-icons type="top" size="18" color="#4f6078" />
+			</button>
 
 			<uni-popup
 				ref="switchPopup"
@@ -95,14 +140,19 @@ import PageShell from '@/components/page-shell/page-shell.vue'
 import PracticeStateNotice from '@/components/kyzz/practice/PracticeStateNotice.vue'
 import PracticeQuestionPanel from '@/components/kyzz/practice/PracticeQuestionPanel.vue'
 import PracticeReviewPanel from '@/components/kyzz/practice/PracticeReviewPanel.vue'
+import PracticeCommentComposer from '@/components/kyzz/practice/PracticeCommentComposer.vue'
+import PracticeCommentList from '@/components/kyzz/practice/PracticeCommentList.vue'
 import PracticeFooterActions from '@/components/kyzz/practice/PracticeFooterActions.vue'
 import PracticeBankSwitcher from '@/components/kyzz/practice/PracticeBankSwitcher.vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getPracticeSession, reviewPracticeQuestion, selfJudgePracticeQuestion } from '@/pages/kyzz/api/practice'
+import { createPracticeQuestionComment, getPracticeQuestionComments } from '@/pages/kyzz/api/comment'
 import { consumePracticeLaunchTarget } from '@/pages/kyzz/practice/navigation'
 import type {
 	KyzzPracticeAnswerDraftState,
 	KyzzPracticeBankViewRecord,
+	KyzzPracticeCommentState,
+	KyzzPracticeCommentCreateRequest,
 	KyzzPracticeNoticeViewModel,
 	KyzzPracticeReviewRequest,
 	KyzzPracticeReviewState,
@@ -118,9 +168,12 @@ import {
 	buildNoBankNotice,
 	buildNoQuestionNotice,
 	createEmptyPracticeAnswerDraft,
+	createEmptyPracticeCommentState,
 	createEmptyPracticeReviewState,
 	createEmptyPracticeSession,
 	createEmptyPracticeUiState,
+	normalizePracticeCommentItem,
+	normalizePracticeCommentPage,
 	normalizePracticeReviewResult,
 	normalizePracticeSession,
 	resolvePracticeEmptyState
@@ -136,6 +189,7 @@ interface PracticePageState {
 	sessionState: KyzzPracticeSessionState
 	answerDraft: KyzzPracticeAnswerDraftState
 	reviewState: KyzzPracticeReviewState
+	commentState: KyzzPracticeCommentState
 	uiState: KyzzPracticeUiState
 	routeQuery: KyzzPracticeSessionQuery
 	switchPopupVisible: boolean
@@ -208,6 +262,8 @@ export default defineComponent({
 		PracticeStateNotice,
 		PracticeQuestionPanel,
 		PracticeReviewPanel,
+		PracticeCommentComposer,
+		PracticeCommentList,
 		PracticeFooterActions,
 		PracticeBankSwitcher
 	},
@@ -216,6 +272,7 @@ export default defineComponent({
 			sessionState: createEmptyPracticeSession(),
 			answerDraft: createEmptyPracticeAnswerDraft(),
 			reviewState: createEmptyPracticeReviewState(),
+			commentState: createEmptyPracticeCommentState(),
 			uiState: createEmptyPracticeUiState(),
 			routeQuery: {
 				bankId: null,
@@ -389,6 +446,11 @@ export default defineComponent({
 					questionId: this.sessionState.question?.id ?? query.questionId ?? null,
 					freshAttempt: null
 				}
+				if (this.reviewState.result && this.sessionState.question) {
+					await this.loadComments({ reset: true, questionId: this.sessionState.question.id, silent: true })
+				} else {
+					this.resetComments()
+				}
 				this.uiState.emptyState = null
 				this.uiState.loadedOnce = true
 				uni.pageScrollTo({
@@ -399,6 +461,7 @@ export default defineComponent({
 				this.sessionState = createEmptyPracticeSession()
 				this.answerDraft = createEmptyPracticeAnswerDraft()
 				this.reviewState = createEmptyPracticeReviewState()
+				this.resetComments()
 				this.uiState.loadedOnce = true
 				this.uiState.emptyState = resolvePracticeEmptyState(error)
 				if (!this.uiState.emptyState) {
@@ -454,6 +517,7 @@ export default defineComponent({
 				const result = await reviewPracticeQuestion(this.question.id, payload)
 				this.reviewState.result = normalizePracticeReviewResult(result)
 				this.replaceBankRecord(this.reviewState.result.updatedBank)
+				await this.loadComments({ reset: true, questionId: this.question.id, silent: true })
 			} catch (error) {
 				uni.showToast({
 					title: resolveErrorMessage(error, '查看答案失败'),
@@ -478,6 +542,7 @@ export default defineComponent({
 				const result = await selfJudgePracticeQuestion(this.question.id, payload)
 				this.reviewState.result = normalizePracticeReviewResult(result)
 				this.replaceBankRecord(this.reviewState.result.updatedBank)
+				await this.loadComments({ reset: true, questionId: this.question.id, silent: true })
 			} catch (error) {
 				uni.showToast({
 					title: resolveErrorMessage(error, '自判结果提交失败'),
@@ -495,6 +560,117 @@ export default defineComponent({
 			this.sessionState.switchableBanks = this.sessionState.switchableBanks.map((item) => {
 				return item.bankId === updatedBank.bankId ? updatedBank : item
 			})
+		},
+		resetComments(questionId: number | null = null): void {
+			const nextState = createEmptyPracticeCommentState()
+			nextState.questionId = questionId
+			this.commentState = nextState
+		},
+		async loadComments(options: { reset: boolean; questionId?: number; silent?: boolean }): Promise<void> {
+			const questionId = options.questionId ?? this.sessionState.question?.id ?? null
+			if (!questionId || !this.reviewState.result) {
+				this.resetComments()
+				return
+			}
+			if (options.reset) {
+				const nextState = createEmptyPracticeCommentState()
+				nextState.questionId = questionId
+				nextState.loading = true
+				nextState.composerContent = this.commentState.composerContent
+				this.commentState = nextState
+			} else {
+				if (this.commentState.loading || this.commentState.loadingMore || !this.commentState.hasMore) {
+					return
+				}
+				this.commentState.loadingMore = true
+				this.commentState.errorMessage = ''
+			}
+			const targetPageNo = options.reset ? 1 : this.commentState.pageNo + 1
+			try {
+				const result = normalizePracticeCommentPage(await getPracticeQuestionComments(questionId, {
+					pageNo: targetPageNo,
+					pageSize: this.commentState.pageSize
+				}))
+				this.commentState = {
+					...this.commentState,
+					questionId,
+					records: options.reset ? result.records : this.commentState.records.concat(result.records),
+					pageNo: Number(result.pageNo || targetPageNo),
+					pageSize: Number(result.pageSize || this.commentState.pageSize),
+					total: Number(result.total || 0),
+					hasMore: Boolean(result.hasMore),
+					loading: false,
+					loadingMore: false,
+					initialized: true,
+					errorMessage: ''
+				}
+			} catch (error) {
+				this.commentState.loading = false
+				this.commentState.loadingMore = false
+				this.commentState.initialized = true
+				this.commentState.errorMessage = resolveErrorMessage(error, '评论加载失败')
+				if (!options.silent) {
+					uni.showToast({
+						title: this.commentState.errorMessage,
+						icon: 'none'
+					})
+				}
+			}
+		},
+		async handleLoadMoreComments(): Promise<void> {
+			if (!this.reviewState.result || !this.commentState.hasMore) {
+				return
+			}
+			await this.loadComments({ reset: false, silent: true })
+		},
+		async handleRetryComments(): Promise<void> {
+			if (!this.reviewState.result || !this.sessionState.question) {
+				return
+			}
+			const shouldReset = !this.commentState.records.length
+			await this.loadComments({
+				reset: shouldReset,
+				questionId: this.sessionState.question.id,
+				silent: false
+			})
+		},
+		async handleSubmitComment(): Promise<void> {
+			if (!this.reviewState.result || !this.sessionState.question || this.commentState.submitting) {
+				return
+			}
+			const content = this.commentState.composerContent.trim()
+			if (!content) {
+				return
+			}
+			this.commentState.submitting = true
+			try {
+				const payload: KyzzPracticeCommentCreateRequest = {
+					content
+				}
+				const createdComment = normalizePracticeCommentItem(await createPracticeQuestionComment(
+					this.sessionState.question.id,
+					payload
+				))
+				this.commentState = {
+					...this.commentState,
+					questionId: this.sessionState.question.id,
+					records: [createdComment, ...this.commentState.records],
+					total: this.commentState.total + 1,
+					initialized: true,
+					composerContent: '',
+					submitting: false
+				}
+				uni.showToast({
+					title: '评论已发布',
+					icon: 'none'
+				})
+			} catch (error) {
+				this.commentState.submitting = false
+				uni.showToast({
+					title: resolveErrorMessage(error, '评论发布失败'),
+					icon: 'none'
+				})
+			}
 		},
 		async handleNextQuestion(): Promise<void> {
 			if (!this.reviewState.result || !this.currentBank || !this.reviewState.result.nextQuestionId) {
@@ -596,6 +772,12 @@ export default defineComponent({
 			uni.navigateTo({
 				url: '/pages/kyzz/wrong-book/index'
 			})
+		},
+		scrollToTop(): void {
+			uni.pageScrollTo({
+				scrollTop: 0,
+				duration: 280
+			})
 		}
 	}
 })
@@ -658,6 +840,29 @@ export default defineComponent({
 
 .practice-page__bottom-space {
 	height: 20rpx;
+}
+
+.practice-page__scroll-top {
+	position: fixed;
+	right: 28rpx;
+	bottom: calc(env(safe-area-inset-bottom) + 220rpx);
+	z-index: 20;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 84rpx;
+	height: 84rpx;
+	margin: 0;
+	padding: 0;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.94);
+	box-shadow:
+		0 16rpx 32rpx rgba(67, 79, 100, 0.14),
+		inset 0 0 0 1rpx rgba(212, 220, 232, 0.9);
+}
+
+.practice-page__scroll-top::after {
+	border: 0;
 }
 
 .practice-page .uni-popup {

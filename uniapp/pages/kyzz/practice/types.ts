@@ -154,6 +154,56 @@ export interface KyzzPracticeReviewState {
 	result: KyzzPracticeReviewViewResult | null
 }
 
+export interface KyzzPracticeCommentAuthor {
+	id: number
+	nickname: string
+	avatarUrl: string | null
+}
+
+export interface KyzzPracticeCommentItem {
+	commentId: number
+	questionId: number
+	content: string
+	createdAt: string | null
+	createdAtLabel?: string
+	likeCount: number
+	replyCount: number
+	author: KyzzPracticeCommentAuthor
+	isMine: boolean
+}
+
+export interface KyzzPracticeCommentPageResponse {
+	records: KyzzPracticeCommentItem[]
+	pageNo: number | string | null
+	pageSize: number | string | null
+	hasMore: boolean
+	total: number | string | null
+}
+
+export interface KyzzPracticeCommentQuery {
+	pageNo: number
+	pageSize: number
+}
+
+export interface KyzzPracticeCommentCreateRequest {
+	content: string
+}
+
+export interface KyzzPracticeCommentState {
+	questionId: number | null
+	records: KyzzPracticeCommentItem[]
+	pageNo: number
+	pageSize: number
+	total: number
+	hasMore: boolean
+	loading: boolean
+	loadingMore: boolean
+	submitting: boolean
+	initialized: boolean
+	errorMessage: string
+	composerContent: string
+}
+
 export interface KyzzPracticeUiState {
 	loading: boolean
 	loadedOnce: boolean

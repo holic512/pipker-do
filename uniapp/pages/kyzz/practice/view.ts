@@ -2,6 +2,9 @@ import type {
 	KyzzPracticeAnswerDraftState,
 	KyzzPracticeBankRecordResponse,
 	KyzzPracticeBankViewRecord,
+	KyzzPracticeCommentItem,
+	KyzzPracticeCommentPageResponse,
+	KyzzPracticeCommentState,
 	KyzzPracticeDashboardResponse,
 	KyzzPracticeDashboardState,
 	KyzzPracticeEmptyState,
@@ -73,6 +76,23 @@ export function createEmptyPracticeReviewState(): KyzzPracticeReviewState {
 	}
 }
 
+export function createEmptyPracticeCommentState(): KyzzPracticeCommentState {
+	return {
+		questionId: null,
+		records: [],
+		pageNo: 0,
+		pageSize: 10,
+		total: 0,
+		hasMore: false,
+		loading: false,
+		loadingMore: false,
+		submitting: false,
+		initialized: false,
+		errorMessage: '',
+		composerContent: ''
+	}
+}
+
 export function createEmptyPracticeUiState(): KyzzPracticeUiState {
 	return {
 		loading: false,
@@ -137,6 +157,36 @@ export function normalizePracticeReviewResult(result: KyzzPracticeReviewResponse
 	}
 }
 
+export function normalizePracticeCommentItem(item: KyzzPracticeCommentItem): KyzzPracticeCommentItem {
+	return {
+		...item,
+		commentId: toNumber(item.commentId),
+		questionId: toNumber(item.questionId),
+		likeCount: toNumber(item.likeCount),
+		replyCount: toNumber(item.replyCount),
+		author: {
+			id: toNumber(item?.author?.id),
+			nickname: resolveCommentAuthorName(item?.author?.nickname),
+			avatarUrl: item?.author?.avatarUrl || null
+		},
+		isMine: Boolean(item.isMine),
+		createdAt: item.createdAt || null,
+		createdAtLabel: formatCommentTime(item.createdAt || null)
+	}
+}
+
+export function normalizePracticeCommentPage(result: KyzzPracticeCommentPageResponse): KyzzPracticeCommentPageResponse {
+	return {
+		records: Array.isArray(result?.records)
+			? result.records.map((item) => normalizePracticeCommentItem(item))
+			: [],
+		pageNo: toNumber(result?.pageNo),
+		pageSize: toNumber(result?.pageSize, 10),
+		hasMore: Boolean(result?.hasMore),
+		total: toNumber(result?.total)
+	}
+}
+
 export function difficultyLabel(level: number): string {
 	return DIFFICULTY_LABEL_MAP[level] || `L${level || 0}`
 }
@@ -181,6 +231,45 @@ export function formatLastPractice(value: string | null): string {
 		return `${diffDays} 天前`
 	}
 	return `${practiceDate.getFullYear()}-${pad(practiceDate.getMonth() + 1)}-${pad(practiceDate.getDate())}`
+}
+
+export function resolveCommentAuthorName(value: string | null | undefined): string {
+	if (!value || !value.trim()) {
+		return '同学'
+	}
+	return value.trim()
+}
+
+export function buildCommentAuthorInitial(name: string): string {
+	return resolveCommentAuthorName(name).slice(0, 1).toUpperCase()
+}
+
+export function formatCommentTime(value: string | null): string {
+	if (!value) {
+		return '刚刚'
+	}
+	const normalized = value.replace(/-/g, '/')
+	const createdAt = new Date(normalized)
+	if (Number.isNaN(createdAt.getTime())) {
+		return value
+	}
+	const diff = Date.now() - createdAt.getTime()
+	const minute = 60 * 1000
+	const hour = 60 * minute
+	const day = 24 * hour
+	if (diff < minute) {
+		return '刚刚'
+	}
+	if (diff < hour) {
+		return `${Math.max(1, Math.floor(diff / minute))} 分钟前`
+	}
+	if (diff < day) {
+		return `${Math.max(1, Math.floor(diff / hour))} 小时前`
+	}
+	if (diff < 7 * day) {
+		return `${Math.max(1, Math.floor(diff / day))} 天前`
+	}
+	return `${createdAt.getFullYear()}-${pad(createdAt.getMonth() + 1)}-${pad(createdAt.getDate())}`
 }
 
 export function isPracticeBankCompleted(bank: KyzzPracticeBankViewRecord | null): boolean {

@@ -263,3 +263,85 @@ export interface KyzzQuestionAdminDashboard {
   categories: KyzzCategoryOption[]
   tags: KyzzQuestionTagOption[]
 }
+
+export interface KyzzUserQuestionBankAdminStats {
+  totalUsers: number
+  selectedUsers: number
+  unselectedUsers: number
+  totalSelections: number
+}
+
+export interface KyzzUserQuestionBankAdminPagination {
+  pageNo: number
+  pageSize: number
+  total: number
+  totalPages: number
+}
+
+export interface KyzzUserQuestionBankAdminUserItem {
+  userId: number
+  nickname: string
+  username: string | null
+  phone: string | null
+  status: number
+  selectedBankCount: number
+  lastPracticeAt: string | null
+  updatedAt: string | null
+}
+
+export interface KyzzUserQuestionBankAdminDashboard {
+  stats: KyzzUserQuestionBankAdminStats
+  records: KyzzUserQuestionBankAdminUserItem[]
+  pagination: KyzzUserQuestionBankAdminPagination
+}
+
+export interface KyzzUserQuestionBankAdminSummary {
+  selectedBankCount: number
+  inProgressBankCount: number
+  completedBankCount: number
+}
+
+export interface KyzzUserQuestionBankAdminSelectedBank {
+  questionBankId: number
+  bankCode: string
+  bankName: string
+  categoryName: string | null
+  difficultyLevel: number
+  questionCount: number
+  currentProgress: number
+  studiedCount: number
+  correctCount: number
+  wrongCount: number
+  lastPracticeAt: string | null
+  joinSource: string | null
+  joinedAt: string | null
+  status: number
+}
+
+export interface KyzzUserQuestionBankAdminBankOption {
+  questionBankId: number
+  bankCode: string
+  bankName: string
+  categoryName: string | null
+  difficultyLevel: number
+  questionCount: number
+  sortNo: number
+  selected: boolean
+}
+
+export interface KyzzUserQuestionBankAdminUserDetail {
+  userId: number
+  nickname: string
+  username: string | null
+  phone: string | null
+  status: number
+  lastLoginAt: string | null
+  summary: KyzzUserQuestionBankAdminSummary
+  selectedBanks: KyzzUserQuestionBankAdminSelectedBank[]
+  availableBanks: KyzzUserQuestionBankAdminBankOption[]
+}
+
+export interface KyzzUserQuestionBankSelectionUpdateResponse {
+  selected: boolean
+  record: KyzzUserQuestionBankAdminSelectedBank | null
+}
