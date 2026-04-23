@@ -65,30 +65,31 @@
         </view>
       </view>
 
-      <view v-if="dashboard.records.length" class="study-page__queue">
-        <view class="study-page__queue-head">
-          <text class="study-page__queue-title">继续刷题</text>
-          <text class="study-page__queue-desc">{{ dashboard.recommendedReason || '优先回到最近未完成的题库。' }}</text>
+      <view class="study-page__shortcut-shell">
+        <view class="study-page__shortcut-head">
+          <text class="study-page__shortcut-title">快捷入口</text>
+          <text class="study-page__shortcut-desc">常用功能收在这里，想回看、对比、整理都能直接过去。</text>
         </view>
 
-        <view
-            v-for="item in previewBanks"
-            :key="item.bankId"
-            class="study-page__queue-item"
-            @tap="handleBankTap(item.bankId)"
-        >
-          <view class="study-page__queue-copy">
-            <text class="study-page__queue-name">{{ item.bankName }}</text>
-            <text class="study-page__queue-sub">{{ item.resumeLabel }} · {{ item.questionCount }} 题</text>
-          </view>
-          <view class="study-page__queue-side">
-            <text class="study-page__queue-progress">{{ formatProgress(item.currentProgress) }}</text>
-            <text class="study-page__queue-date">{{ formatLastPractice(item.lastPracticeAt) }}</text>
+        <view class="study-page__shortcut-grid">
+          <view
+              v-for="item in shortcutItems"
+              :key="item.key"
+              class="study-page__shortcut-card"
+              @tap="openShortcut(item.pagePath)"
+          >
+            <view class="study-page__shortcut-icon-shell" :style="{ background: item.iconShellBackground, boxShadow: item.iconShadow }">
+              <view class="study-page__shortcut-icon-core" :style="{ background: item.iconCoreBackground }">
+                <uni-icons :type="item.icon" size="24" :color="item.iconColor" />
+              </view>
+            </view>
+            <text class="study-page__shortcut-card-title">{{ item.title }}</text>
+            <text class="study-page__shortcut-card-desc">{{ item.description }}</text>
           </view>
         </view>
       </view>
 
-      <view v-else-if="loadedOnce && !loading" class="study-page__empty">
+      <view v-if="loadedOnce && !loading && !dashboard.records.length" class="study-page__empty">
         <text class="study-page__empty-title">先挑一套题库开始刷题</text>
         <text class="study-page__empty-desc">加入题库后，学习页会自动帮你记住上次刷到哪里，下次直接续上。</text>
         <button class="study-page__empty-button" @tap="goPublicBanks">去添加题库</button>
@@ -105,7 +106,19 @@ import { bootstrapAuth } from '@/shared/session/session'
 import { getPracticeDashboard } from '@/pages/kyzz/api/practice'
 import { openPracticeTab } from '@/pages/kyzz/practice/navigation'
 import type { KyzzPracticeBankViewRecord, KyzzPracticeDashboardState } from '@/pages/kyzz/practice/types'
-import { createEmptyPracticeDashboard, difficultyLabel, formatLastPractice, formatProgress, normalizePracticeDashboard } from '@/pages/kyzz/practice/view'
+import { createEmptyPracticeDashboard, difficultyLabel, formatProgress, normalizePracticeDashboard } from '@/pages/kyzz/practice/view'
+
+interface StudyShortcutItem {
+  key: string
+  title: string
+  description: string
+  icon: string
+  iconColor: string
+  iconShellBackground: string
+  iconCoreBackground: string
+  iconShadow: string
+  pagePath: string
+}
 
 interface StudyPageState {
   loading: boolean
@@ -115,6 +128,7 @@ interface StudyPageState {
   displayedMotto: string
   isTyping: boolean
   typewriterTimer: number | null
+  shortcutItems: StudyShortcutItem[]
 }
 
 function resolveErrorMessage(error: unknown, fallback: string): string {
@@ -134,15 +148,58 @@ export default defineComponent({
       fullMotto: '“博观而约取，厚积而薄发”',
       displayedMotto: '',
       isTyping: false,
-      typewriterTimer: null
+      typewriterTimer: null,
+      shortcutItems: [
+        {
+          key: 'wrong-book',
+          title: '错题本',
+          description: '把答错的题集中起来，回头直接查漏补缺。',
+          icon: 'help',
+          iconColor: '#8e5551',
+          iconShellBackground: 'linear-gradient(180deg, rgba(255, 241, 239, 0.98) 0%, rgba(250, 225, 220, 0.96) 100%)',
+          iconCoreBackground: 'linear-gradient(135deg, rgba(255, 232, 228, 0.98) 0%, rgba(255, 247, 245, 0.98) 100%)',
+          iconShadow: '0 18rpx 30rpx rgba(196, 131, 123, 0.18)',
+          pagePath: '/pages/kyzz/wrong-book/index'
+        },
+        {
+          key: 'leaderboard',
+          title: '排行榜',
+          description: '看看竞赛榜单和自己的冲榜位置。',
+          icon: 'medal-filled',
+          iconColor: '#7b6241',
+          iconShellBackground: 'linear-gradient(180deg, rgba(255, 248, 232, 0.98) 0%, rgba(247, 233, 196, 0.96) 100%)',
+          iconCoreBackground: 'linear-gradient(135deg, rgba(255, 240, 203, 0.98) 0%, rgba(255, 251, 239, 0.98) 100%)',
+          iconShadow: '0 18rpx 30rpx rgba(196, 168, 104, 0.16)',
+          pagePath: '/pages/kyzz/leaderboard/index'
+        },
+        {
+          key: 'favorite',
+          title: '收藏',
+          description: '后面常看的内容，会慢慢沉到这里。',
+          icon: 'star-filled',
+          iconColor: '#946153',
+          iconShellBackground: 'linear-gradient(180deg, rgba(255, 244, 240, 0.98) 0%, rgba(248, 225, 215, 0.96) 100%)',
+          iconCoreBackground: 'linear-gradient(135deg, rgba(255, 235, 229, 0.98) 0%, rgba(255, 249, 246, 0.98) 100%)',
+          iconShadow: '0 18rpx 30rpx rgba(199, 146, 134, 0.16)',
+          pagePath: '/pages/kyzz/favorite/index'
+        },
+        {
+          key: 'note',
+          title: '笔记',
+          description: '重点摘记和易混点整理，后面都放这边。',
+          icon: 'compose',
+          iconColor: '#4e6b79',
+          iconShellBackground: 'linear-gradient(180deg, rgba(238, 247, 251, 0.98) 0%, rgba(214, 233, 241, 0.96) 100%)',
+          iconCoreBackground: 'linear-gradient(135deg, rgba(226, 240, 246, 0.98) 0%, rgba(248, 252, 253, 0.98) 100%)',
+          iconShadow: '0 18rpx 30rpx rgba(125, 161, 177, 0.16)',
+          pagePath: '/pages/kyzz/note/index'
+        }
+      ]
     }
   },
   computed: {
     recommendedBank(): KyzzPracticeBankViewRecord | null {
       return this.dashboard.records.find((item) => item.bankId === this.dashboard.recommendedBankId) || this.dashboard.records[0] || null
-    },
-    previewBanks(): KyzzPracticeBankViewRecord[] {
-      return this.dashboard.records.slice(0, 3)
     },
     heroTitle(): string {
       if (!this.recommendedBank) {
@@ -234,7 +291,6 @@ export default defineComponent({
       }
     },
     difficultyLabel,
-    formatLastPractice,
     formatProgress,
     handleStartPractice(): void {
       if (!this.recommendedBank) {
@@ -243,8 +299,10 @@ export default defineComponent({
       }
       openPracticeTab().catch(() => {})
     },
-    handleBankTap(bankId: number): void {
-      openPracticeTab({ bankId }).catch(() => {})
+    openShortcut(pagePath: string): void {
+      uni.navigateTo({
+        url: pagePath
+      })
     },
     goPublicBanks(): void {
       uni.navigateTo({
@@ -576,7 +634,7 @@ export default defineComponent({
   color: #ffffff;
 }
 
-.study-page__queue,
+.study-page__shortcut-shell,
 .study-page__empty {
   position: relative;
   z-index: 2;
@@ -587,74 +645,73 @@ export default defineComponent({
   box-shadow: 0 18rpx 36rpx rgba(43, 52, 55, 0.05);
 }
 
-.study-page__queue-head {
+.study-page__shortcut-head {
   display: flex;
   flex-direction: column;
 }
 
-.study-page__queue-title {
+.study-page__shortcut-title {
   font-size: 30rpx;
   line-height: 1.2;
   font-weight: 700;
   color: #2d3642;
 }
 
-.study-page__queue-desc {
+.study-page__shortcut-desc {
   margin-top: 10rpx;
   font-size: 22rpx;
   line-height: 1.6;
   color: #778293;
 }
 
-.study-page__queue-item {
-  display: flex;
-  align-items: center;
+.study-page__shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18rpx;
-  margin-top: 18rpx;
-  padding-top: 18rpx;
-  border-top: 1rpx solid rgba(225, 231, 239, 0.84);
+  margin-top: 22rpx;
 }
 
-.study-page__queue-copy {
-  flex: 1;
-  min-width: 0;
+.study-page__shortcut-card {
+  padding: 22rpx 20rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 249, 252, 0.96) 100%);
+  box-shadow: inset 0 0 0 1rpx rgba(227, 233, 242, 0.94);
 }
 
-.study-page__queue-name {
+.study-page__shortcut-icon-shell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 84rpx;
+  height: 84rpx;
+  border-radius: 24rpx;
+}
+
+.study-page__shortcut-icon-core {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54rpx;
+  height: 54rpx;
+  border-radius: 18rpx;
+  box-shadow: inset 0 0 0 1rpx rgba(255, 255, 255, 0.7);
+}
+
+.study-page__shortcut-card-title {
   display: block;
+  margin-top: 18rpx;
   font-size: 26rpx;
   line-height: 1.3;
   font-weight: 700;
-  color: #2e3643;
+  color: #2d3643;
 }
 
-.study-page__queue-sub {
+.study-page__shortcut-card-desc {
   display: block;
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  line-height: 1.5;
-  color: #7c8795;
-}
-
-.study-page__queue-side {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  flex-shrink: 0;
-}
-
-.study-page__queue-progress {
-  font-size: 22rpx;
-  line-height: 1;
-  font-weight: 700;
-  color: #55627a;
-}
-
-.study-page__queue-date {
-  margin-top: 8rpx;
-  font-size: 20rpx;
-  line-height: 1.2;
-  color: #8b94a1;
+  margin-top: 10rpx;
+  font-size: 21rpx;
+  line-height: 1.6;
+  color: #7c8797;
 }
 
 .study-page__empty-title {

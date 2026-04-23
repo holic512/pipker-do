@@ -89,7 +89,10 @@ public class KyzzPracticeUserService {
         );
     }
 
-    public KyzzPracticeSessionResponse getSession(Long userId, Long bankId, Long questionId) {
+    public KyzzPracticeSessionResponse getSession(Long userId,
+                                                  Long bankId,
+                                                  Long questionId,
+                                                  Boolean freshAttempt) {
         DashboardContext context = buildDashboardContext(userId);
         if (context.records().isEmpty()) {
             throw new BusinessException(ApiResponseCode.NOT_FOUND, "还没有可刷题库，先去添加一套题库吧");
@@ -127,14 +130,16 @@ public class KyzzPracticeUserService {
                 toQuestionResponse(targetQuestion, optionMap.getOrDefault(targetQuestion.getId(), List.of())),
                 previousQuestion == null ? null : previousQuestion.getId(),
                 previousQuestion == null ? null : currentQuestionIndex - 1,
-                buildHistoricalReviewResult(
-                        activeBank,
-                        targetQuestion,
-                        questions,
-                        currentQuestionIndex,
-                        optionMap.getOrDefault(targetQuestion.getId(), List.of()),
-                        latestAnswerMap.get(targetQuestion.getId())
-                )
+                Boolean.TRUE.equals(freshAttempt)
+                        ? null
+                        : buildHistoricalReviewResult(
+                                activeBank,
+                                targetQuestion,
+                                questions,
+                                currentQuestionIndex,
+                                optionMap.getOrDefault(targetQuestion.getId(), List.of()),
+                                latestAnswerMap.get(targetQuestion.getId())
+                        )
         );
     }
 

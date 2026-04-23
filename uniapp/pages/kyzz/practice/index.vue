@@ -47,6 +47,8 @@
 					:awaiting-self-judgement="awaitingSelfJudgement"
 					:user-answer-display="userAnswerDisplay"
 					:standard-answer-display="standardAnswerDisplay"
+					:show-wrong-book-hint="showWrongBookHint"
+					@open-wrong-book="goWrongBook"
 				/>
 
 				<practice-footer-actions
@@ -127,6 +129,7 @@ import {
 interface PracticePageQuery {
 	bankId?: string
 	questionId?: string
+	freshAttempt?: string
 }
 
 interface PracticePageState {
@@ -158,6 +161,16 @@ function parseOptionalNumber(value: string | undefined): number | null {
 	return Number.isFinite(parsed) ? parsed : null
 }
 
+function parseOptionalBoolean(value: string | undefined): boolean | null {
+	if (value === 'true' || value === '1') {
+		return true
+	}
+	if (value === 'false' || value === '0') {
+		return false
+	}
+	return null
+}
+
 function showModal(options: { title: string; content: string; confirmText?: string; cancelText?: string }): Promise<boolean> {
 	return new Promise((resolve) => {
 		uni.showModal({
@@ -183,7 +196,8 @@ function hasRouteTarget(query: KyzzPracticeSessionQuery): boolean {
 function mergeSessionQuery(base: KyzzPracticeSessionQuery, patch: KyzzPracticeSessionQuery): KyzzPracticeSessionQuery {
 	return {
 		bankId: patch.bankId ?? base.bankId ?? null,
-		questionId: patch.questionId ?? base.questionId ?? null
+		questionId: patch.questionId ?? base.questionId ?? null,
+		freshAttempt: patch.freshAttempt ?? base.freshAttempt ?? null
 	}
 }
 
@@ -205,7 +219,8 @@ export default defineComponent({
 			uiState: createEmptyPracticeUiState(),
 			routeQuery: {
 				bankId: null,
-				questionId: null
+				questionId: null,
+				freshAttempt: null
 			},
 			switchPopupVisible: false
 		}
@@ -250,6 +265,9 @@ export default defineComponent({
 				return '再刷一遍'
 			}
 			return '下一题'
+		},
+		showWrongBookHint(): boolean {
+			return Boolean(this.reviewState.result && this.reviewState.result.isCorrect === false && !this.awaitingSelfJudgement)
 		},
 		userAnswerDisplay(): string {
 			if (!this.reviewState.result) {
@@ -317,7 +335,8 @@ export default defineComponent({
 	onLoad(query: PracticePageQuery) {
 		this.routeQuery = {
 			bankId: parseOptionalNumber(query.bankId),
-			questionId: parseOptionalNumber(query.questionId)
+			questionId: parseOptionalNumber(query.questionId),
+			freshAttempt: parseOptionalBoolean(query.freshAttempt)
 		}
 	},
 	onShow() {
@@ -367,7 +386,8 @@ export default defineComponent({
 					: createEmptyPracticeAnswerDraft()
 				this.routeQuery = {
 					bankId: this.sessionState.activeBank?.bankId ?? query.bankId ?? null,
-					questionId: this.sessionState.question?.id ?? query.questionId ?? null
+					questionId: this.sessionState.question?.id ?? query.questionId ?? null,
+					freshAttempt: null
 				}
 				this.uiState.emptyState = null
 				this.uiState.loadedOnce = true
@@ -570,6 +590,11 @@ export default defineComponent({
 		goPublicBanks(): void {
 			uni.navigateTo({
 				url: '/pages/kyzz/question-bank/public'
+			})
+		},
+		goWrongBook(): void {
+			uni.navigateTo({
+				url: '/pages/kyzz/wrong-book/index'
 			})
 		}
 	}

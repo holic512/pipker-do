@@ -102,11 +102,13 @@ export interface KyzzPracticeSessionState {
 export interface KyzzPracticeSessionQuery {
 	bankId?: number | null
 	questionId?: number | null
+	freshAttempt?: boolean | null
 }
 
 export interface KyzzPracticeLaunchTarget {
 	bankId?: number | null
 	questionId?: number | null
+	freshAttempt?: boolean | null
 }
 
 export interface KyzzPracticeReviewRequest {

@@ -32,6 +32,34 @@
 			}
 		},
 		{
+			"path": "pages/kyzz/wrong-book/index",
+			"style": {
+				"navigationBarTitleText": "错题本",
+				"navigationStyle": "default"
+			}
+		},
+		{
+			"path": "pages/kyzz/leaderboard/index",
+			"style": {
+				"navigationBarTitleText": "排行榜",
+				"navigationStyle": "default"
+			}
+		},
+		{
+			"path": "pages/kyzz/favorite/index",
+			"style": {
+				"navigationBarTitleText": "收藏",
+				"navigationStyle": "default"
+			}
+		},
+		{
+			"path": "pages/kyzz/note/index",
+			"style": {
+				"navigationBarTitleText": "笔记",
+				"navigationStyle": "default"
+			}
+		},
+		{
 			"path": "pages/common/mine/index",
 			"style": {
 				"navigationBarTitleText": "我的"

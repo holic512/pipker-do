@@ -1,0 +1,590 @@
+<template>
+	<view class="wrong-book-page">
+		<view class="wrong-book-page__summary">
+			<view class="wrong-book-page__summary-card wrong-book-page__summary-card--active">
+				<text class="wrong-book-page__summary-label">待巩固</text>
+				<text class="wrong-book-page__summary-value">{{ dashboard.summary.activeCount }}</text>
+				<text class="wrong-book-page__summary-desc">还需要回头再练</text>
+			</view>
+			<view class="wrong-book-page__summary-card wrong-book-page__summary-card--mastered">
+				<text class="wrong-book-page__summary-label">已掌握</text>
+				<text class="wrong-book-page__summary-value">{{ dashboard.summary.masteredCount }}</text>
+				<text class="wrong-book-page__summary-desc">重练后已通过</text>
+			</view>
+			<view class="wrong-book-page__summary-card wrong-book-page__summary-card--times">
+				<text class="wrong-book-page__summary-label">累计错题次数</text>
+				<text class="wrong-book-page__summary-value">{{ dashboard.summary.totalWrongTimes }}</text>
+				<text class="wrong-book-page__summary-desc">帮助你找准薄弱点</text>
+			</view>
+		</view>
+
+		<scroll-view class="wrong-book-page__tabs" scroll-x show-scrollbar="false">
+			<view class="wrong-book-page__tabs-track">
+				<view
+					v-for="tab in statusTabs"
+					:key="tab.status"
+					class="wrong-book-page__tab"
+					:class="{ 'is-active': currentStatus === tab.status }"
+					@tap="handleStatusChange(tab.status)"
+				>
+					<text class="wrong-book-page__tab-text">{{ tab.label }}</text>
+					<text class="wrong-book-page__tab-count">{{ tab.count }}</text>
+				</view>
+			</view>
+		</scroll-view>
+
+		<view class="wrong-book-page__search-shell">
+			<uni-search-bar
+				v-model="keywordDraft"
+				placeholder="搜索题干或题库名"
+				cancel-button="none"
+				clear-button="auto"
+				radius="18"
+				bg-color="#f4f7fb"
+				@confirm="handleSearchConfirm"
+				@clear="handleSearchClear"
+			/>
+		</view>
+
+		<view v-if="loading && !loadedOnce" class="wrong-book-page__state-card">
+			<text class="wrong-book-page__state-title">正在整理你的错题本...</text>
+			<text class="wrong-book-page__state-desc">会优先把待巩固的题目排在前面。</text>
+		</view>
+
+		<view v-else-if="dashboard.records.length" class="wrong-book-page__list">
+			<view
+				v-for="item in dashboard.records"
+				:key="item.questionId"
+				class="wrong-book-page__card"
+			>
+				<view class="wrong-book-page__card-head">
+					<view class="wrong-book-page__card-tags">
+						<text class="wrong-book-page__tag">{{ questionTypeLabel(item.questionType) }}</text>
+						<text class="wrong-book-page__tag" :class="difficultyTagClass(item.difficultyLevel)">{{ difficultyLabel(item.difficultyLevel) }}</text>
+					</view>
+					<text
+						class="wrong-book-page__status"
+						:class="item.isMastered ? 'is-mastered' : 'is-active'"
+					>
+						{{ item.isMastered ? '已掌握' : '待巩固' }}
+					</text>
+				</view>
+
+				<text class="wrong-book-page__stem">{{ item.stem }}</text>
+				<text class="wrong-book-page__bank">题库：{{ item.bankName }}</text>
+
+				<view class="wrong-book-page__meta-list">
+					<text class="wrong-book-page__meta-item">最近答错：{{ formatWrongQuestionTime(item.lastWrongAt) }}</text>
+					<text class="wrong-book-page__meta-item">累计错 {{ item.wrongCount }} 次</text>
+					<text v-if="item.isMastered && item.masteredAt" class="wrong-book-page__meta-item">掌握于：{{ formatWrongQuestionTime(item.masteredAt) }}</text>
+				</view>
+
+				<view class="wrong-book-page__card-foot">
+					<text class="wrong-book-page__foot-tip">
+						{{ item.isMastered ? '可以再刷一遍，确认这题已经真正稳住。' : '建议趁记忆还在，重新做一遍这题。' }}
+					</text>
+					<button class="wrong-book-page__retry-button" @tap="handleRetry(item)">再练这题</button>
+				</view>
+			</view>
+		</view>
+
+		<view v-else class="wrong-book-page__empty">
+			<view class="wrong-book-page__empty-icon-shell">
+				<view class="wrong-book-page__empty-icon-core">
+					<uni-icons :type="emptyStateIcon" size="32" color="#617089" />
+				</view>
+			</view>
+			<text class="wrong-book-page__empty-title">{{ emptyStateTitle }}</text>
+			<text class="wrong-book-page__empty-desc">{{ emptyStateDescription }}</text>
+			<button class="wrong-book-page__empty-button" @tap="handleEmptyAction">{{ emptyStateActionText }}</button>
+		</view>
+	</view>
+</template>
+
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { bootstrapAuth } from '@/shared/session/session'
+import { getWrongQuestions } from '@/pages/kyzz/api/wrong-book'
+import { openPracticeTab } from '@/pages/kyzz/practice/navigation'
+import { difficultyLabel, difficultyTagClass, questionTypeLabel } from '@/pages/kyzz/practice/view'
+import type {
+	KyzzWrongQuestionDashboardState,
+	KyzzWrongQuestionStatus,
+	KyzzWrongQuestionViewRecord,
+	SearchConfirmEvent
+} from '@/pages/kyzz/wrong-book/types'
+import {
+	createEmptyWrongQuestionDashboard,
+	formatWrongQuestionTime,
+	normalizeWrongQuestionDashboard
+} from '@/pages/kyzz/wrong-book/view'
+
+// AI 索引: KYZZ 小程序错题本页面。
+
+interface WrongBookPageState {
+	loading: boolean
+	loadedOnce: boolean
+	currentStatus: KyzzWrongQuestionStatus
+	keyword: string
+	keywordDraft: string
+	dashboard: KyzzWrongQuestionDashboardState
+}
+
+function resolveErrorMessage(error: unknown, fallback: string): string {
+	if (error instanceof Error && error.message) {
+		return error.message
+	}
+	return fallback
+}
+
+export default defineComponent({
+	name: 'KyzzWrongBookPage',
+	data(): WrongBookPageState {
+		return {
+			loading: false,
+			loadedOnce: false,
+			currentStatus: 'all',
+			keyword: '',
+			keywordDraft: '',
+			dashboard: createEmptyWrongQuestionDashboard()
+		}
+	},
+	computed: {
+		statusTabs(): Array<{ status: KyzzWrongQuestionStatus; label: string; count: number }> {
+			return [
+				{ status: 'all', label: '全部', count: this.dashboard.summary.totalCount },
+				{ status: 'active', label: '待巩固', count: this.dashboard.summary.activeCount },
+				{ status: 'mastered', label: '已掌握', count: this.dashboard.summary.masteredCount }
+			]
+		},
+		emptyStateKind(): 'never' | 'mastered' | 'filtered' {
+			if (this.dashboard.summary.totalCount <= 0) {
+				return 'never'
+			}
+			if (this.currentStatus === 'active' && !this.keyword.trim() && this.dashboard.summary.activeCount <= 0) {
+				return 'mastered'
+			}
+			return 'filtered'
+		},
+		emptyStateIcon(): string {
+			if (this.emptyStateKind === 'never') {
+				return 'checkbox-filled'
+			}
+			if (this.emptyStateKind === 'mastered') {
+				return 'medal'
+			}
+			return 'help'
+		},
+		emptyStateTitle(): string {
+			if (this.emptyStateKind === 'never') {
+				return '还没有产生错题'
+			}
+			if (this.emptyStateKind === 'mastered') {
+				return '当前没有待巩固的错题'
+			}
+			return '当前筛选下没有结果'
+		},
+		emptyStateDescription(): string {
+			if (this.emptyStateKind === 'never') {
+				return '先去刷题，答错的题会自动收进这里，后面就能集中回顾。'
+			}
+			if (this.emptyStateKind === 'mastered') {
+				return '这一批错题已经都练回来了，可以去做新题，或者切换到“已掌握”再过一遍。'
+			}
+			return '试试切换筛选，或者换个关键词重新搜一下。'
+		},
+		emptyStateActionText(): string {
+			if (this.emptyStateKind === 'filtered') {
+				return '清空筛选'
+			}
+			return '去刷题'
+		}
+	},
+	onShow() {
+		this.bootstrapAndLoad()
+	},
+	methods: {
+		difficultyLabel,
+		difficultyTagClass,
+		questionTypeLabel,
+		formatWrongQuestionTime,
+		async bootstrapAndLoad(): Promise<void> {
+			try {
+				await bootstrapAuth({ silent: true })
+				await this.loadWrongQuestions()
+			} catch (error) {
+				uni.showToast({
+					title: resolveErrorMessage(error, '错题本加载失败'),
+					icon: 'none'
+				})
+			}
+		},
+		async loadWrongQuestions(): Promise<void> {
+			if (this.loading) {
+				return
+			}
+			this.loading = true
+			try {
+				const result = await getWrongQuestions({
+					status: this.currentStatus,
+					keyword: this.keyword.trim() || undefined
+				})
+				this.dashboard = normalizeWrongQuestionDashboard(result)
+				this.loadedOnce = true
+			} catch (error) {
+				this.loadedOnce = true
+				uni.showToast({
+					title: resolveErrorMessage(error, '错题本加载失败'),
+					icon: 'none'
+				})
+			} finally {
+				this.loading = false
+			}
+		},
+		handleStatusChange(status: KyzzWrongQuestionStatus): void {
+			if (this.currentStatus === status) {
+				return
+			}
+			this.currentStatus = status
+			this.loadWrongQuestions().catch(() => {})
+		},
+		handleSearchConfirm(event: SearchConfirmEvent): void {
+			const value = (event?.value || this.keywordDraft || '').trim()
+			this.keyword = value
+			this.keywordDraft = value
+			this.loadWrongQuestions().catch(() => {})
+		},
+		handleSearchClear(): void {
+			if (!this.keyword && !this.keywordDraft) {
+				return
+			}
+			this.keyword = ''
+			this.keywordDraft = ''
+			this.loadWrongQuestions().catch(() => {})
+		},
+		handleRetry(record: KyzzWrongQuestionViewRecord): void {
+			openPracticeTab({
+				bankId: record.bankId,
+				questionId: record.questionId,
+				freshAttempt: true
+			}).catch(() => {
+				uni.showToast({
+					title: '跳转刷题失败',
+					icon: 'none'
+				})
+			})
+		},
+		handleEmptyAction(): void {
+			if (this.emptyStateKind === 'filtered') {
+				this.currentStatus = 'all'
+				this.keyword = ''
+				this.keywordDraft = ''
+				this.loadWrongQuestions().catch(() => {})
+				return
+			}
+			uni.switchTab({
+				url: '/pages/kyzz/practice/index'
+			})
+		}
+	}
+})
+</script>
+
+<style lang="scss">
+@import '@/uni.scss';
+
+.wrong-book-page {
+	min-height: 100vh;
+	padding: 28rpx 24rpx calc(env(safe-area-inset-bottom) + 48rpx);
+	box-sizing: border-box;
+	background:
+		radial-gradient(circle at top, rgba(255, 255, 255, 0.99) 0%, rgba(243, 247, 252, 0.97) 46%, rgba(233, 239, 247, 0.95) 100%);
+}
+
+.wrong-book-page__summary {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 16rpx;
+}
+
+.wrong-book-page__summary-card {
+	padding: 24rpx 20rpx;
+	border-radius: 26rpx;
+	background: rgba(255, 255, 255, 0.9);
+	box-shadow: 0 18rpx 34rpx rgba(43, 52, 55, 0.05);
+}
+
+.wrong-book-page__summary-card--active {
+	background: linear-gradient(180deg, rgba(255, 244, 242, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
+}
+
+.wrong-book-page__summary-card--mastered {
+	background: linear-gradient(180deg, rgba(239, 248, 243, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
+}
+
+.wrong-book-page__summary-card--times {
+	background: linear-gradient(180deg, rgba(240, 245, 252, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
+}
+
+.wrong-book-page__summary-label {
+	display: block;
+	font-size: 22rpx;
+	line-height: 1.4;
+	color: #68758b;
+}
+
+.wrong-book-page__summary-value {
+	display: block;
+	margin-top: 12rpx;
+	font-size: 40rpx;
+	line-height: 1;
+	font-weight: 700;
+	color: #283241;
+}
+
+.wrong-book-page__summary-desc {
+	display: block;
+	margin-top: 12rpx;
+	font-size: 20rpx;
+	line-height: 1.5;
+	color: #8a94a5;
+}
+
+.wrong-book-page__tabs {
+	margin-top: 24rpx;
+	white-space: nowrap;
+}
+
+.wrong-book-page__tabs-track {
+	display: inline-flex;
+	gap: 14rpx;
+	padding-right: 24rpx;
+}
+
+.wrong-book-page__tab {
+	display: inline-flex;
+	align-items: center;
+	gap: 10rpx;
+	padding: 18rpx 24rpx;
+	border-radius: 999rpx;
+	background: rgba(255, 255, 255, 0.86);
+	box-shadow: inset 0 0 0 1rpx rgba(221, 228, 238, 0.92);
+}
+
+.wrong-book-page__tab.is-active {
+	background: linear-gradient(135deg, #545e76 0%, #7f8ca7 100%);
+	box-shadow: 0 18rpx 32rpx rgba(84, 94, 118, 0.16);
+}
+
+.wrong-book-page__tab-text,
+.wrong-book-page__tab-count {
+	font-size: 24rpx;
+	line-height: 1;
+	font-weight: 600;
+	color: #556176;
+}
+
+.wrong-book-page__tab.is-active .wrong-book-page__tab-text,
+.wrong-book-page__tab.is-active .wrong-book-page__tab-count {
+	color: #ffffff;
+}
+
+.wrong-book-page__search-shell {
+	margin-top: 22rpx;
+}
+
+.wrong-book-page__state-card,
+.wrong-book-page__empty {
+	margin-top: 22rpx;
+	padding: 34rpx 28rpx;
+	border-radius: 30rpx;
+	background: rgba(255, 255, 255, 0.9);
+	box-shadow: 0 20rpx 38rpx rgba(43, 52, 55, 0.06);
+}
+
+.wrong-book-page__state-title,
+.wrong-book-page__empty-title {
+	display: block;
+	font-size: 32rpx;
+	line-height: 1.3;
+	font-weight: 700;
+	color: #2c3443;
+}
+
+.wrong-book-page__state-desc,
+.wrong-book-page__empty-desc {
+	display: block;
+	margin-top: 14rpx;
+	font-size: 24rpx;
+	line-height: 1.7;
+	color: #778395;
+}
+
+.wrong-book-page__list {
+	display: flex;
+	flex-direction: column;
+	gap: 18rpx;
+	margin-top: 22rpx;
+}
+
+.wrong-book-page__card {
+	padding: 28rpx 24rpx;
+	border-radius: 28rpx;
+	background: rgba(255, 255, 255, 0.92);
+	box-shadow: 0 20rpx 38rpx rgba(43, 52, 55, 0.05);
+}
+
+.wrong-book-page__card-head,
+.wrong-book-page__card-foot {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 18rpx;
+}
+
+.wrong-book-page__card-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10rpx;
+}
+
+.wrong-book-page__tag,
+.wrong-book-page__status {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 42rpx;
+	padding: 0 16rpx;
+	border-radius: 999rpx;
+	font-size: 20rpx;
+	line-height: 1;
+	font-weight: 600;
+}
+
+.wrong-book-page__tag {
+	background: rgba(242, 246, 251, 0.98);
+	color: #5d6779;
+}
+
+.wrong-book-page__tag.is-simple {
+	background: rgba(225, 236, 226, 0.98);
+	color: #466354;
+}
+
+.wrong-book-page__tag.is-medium {
+	background: rgba(235, 240, 247, 0.98);
+	color: #4f6078;
+}
+
+.wrong-book-page__tag.is-hard {
+	background: rgba(245, 235, 226, 0.98);
+	color: #8d5d47;
+}
+
+.wrong-book-page__tag.is-sprint {
+	background: rgba(247, 226, 224, 0.98);
+	color: #965251;
+}
+
+.wrong-book-page__status.is-active {
+	background: rgba(247, 226, 224, 0.98);
+	color: #964e4b;
+}
+
+.wrong-book-page__status.is-mastered {
+	background: rgba(225, 236, 226, 0.98);
+	color: #476453;
+}
+
+.wrong-book-page__stem {
+	display: block;
+	margin-top: 18rpx;
+	font-size: 28rpx;
+	line-height: 1.7;
+	font-weight: 600;
+	color: #27313f;
+}
+
+.wrong-book-page__bank {
+	display: block;
+	margin-top: 14rpx;
+	font-size: 22rpx;
+	line-height: 1.5;
+	color: #6c788c;
+}
+
+.wrong-book-page__meta-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+	margin-top: 16rpx;
+}
+
+.wrong-book-page__meta-item,
+.wrong-book-page__foot-tip {
+	font-size: 22rpx;
+	line-height: 1.6;
+	color: #7c8796;
+}
+
+.wrong-book-page__card-foot {
+	margin-top: 18rpx;
+	padding-top: 18rpx;
+	border-top: 1rpx solid rgba(224, 231, 239, 0.84);
+}
+
+.wrong-book-page__foot-tip {
+	flex: 1;
+	min-width: 0;
+}
+
+.wrong-book-page__retry-button,
+.wrong-book-page__empty-button {
+	margin: 0;
+	padding: 0 28rpx;
+	height: 74rpx;
+	line-height: 74rpx;
+	border-radius: 24rpx;
+	background: linear-gradient(135deg, #545e76 0%, #7f8ca7 100%);
+	color: #ffffff;
+	font-size: 24rpx;
+	font-weight: 600;
+	box-shadow: 0 16rpx 30rpx rgba(84, 94, 118, 0.18);
+}
+
+.wrong-book-page__retry-button::after,
+.wrong-book-page__empty-button::after {
+	border: 0;
+}
+
+.wrong-book-page__empty {
+	text-align: center;
+}
+
+.wrong-book-page__empty-icon-shell {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 132rpx;
+	height: 132rpx;
+	border-radius: 36rpx;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(237, 242, 249, 0.96) 100%);
+	box-shadow:
+		0 24rpx 44rpx rgba(84, 94, 118, 0.08),
+		inset 0 0 0 1rpx rgba(222, 229, 239, 0.88);
+}
+
+.wrong-book-page__empty-icon-core {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 86rpx;
+	height: 86rpx;
+	border-radius: 28rpx;
+	background: linear-gradient(135deg, rgba(222, 231, 245, 0.98) 0%, rgba(246, 249, 253, 0.98) 100%);
+}
+
+.wrong-book-page__empty-button {
+	margin-top: 24rpx;
+}
+</style>

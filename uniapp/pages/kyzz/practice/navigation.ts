@@ -10,10 +10,24 @@ function normalizeOptionalNumber(value: unknown): number | null {
 	return Number.isFinite(parsed) ? parsed : null
 }
 
+function normalizeOptionalBoolean(value: unknown): boolean | null {
+	if (value === true || value === false) {
+		return value
+	}
+	if (value === 'true' || value === '1' || value === 1) {
+		return true
+	}
+	if (value === 'false' || value === '0' || value === 0) {
+		return false
+	}
+	return null
+}
+
 export function persistPracticeLaunchTarget(target: KyzzPracticeLaunchTarget = {}): void {
 	const normalizedTarget: KyzzPracticeLaunchTarget = {
 		bankId: normalizeOptionalNumber(target.bankId),
-		questionId: normalizeOptionalNumber(target.questionId)
+		questionId: normalizeOptionalNumber(target.questionId),
+		freshAttempt: normalizeOptionalBoolean(target.freshAttempt)
 	}
 	if (normalizedTarget.bankId === null && normalizedTarget.questionId === null) {
 		uni.removeStorageSync(PRACTICE_LAUNCH_TARGET_KEY)
@@ -30,7 +44,8 @@ export function consumePracticeLaunchTarget(): KyzzPracticeLaunchTarget {
 	}
 	return {
 		bankId: normalizeOptionalNumber((cachedTarget as KyzzPracticeLaunchTarget).bankId),
-		questionId: normalizeOptionalNumber((cachedTarget as KyzzPracticeLaunchTarget).questionId)
+		questionId: normalizeOptionalNumber((cachedTarget as KyzzPracticeLaunchTarget).questionId),
+		freshAttempt: normalizeOptionalBoolean((cachedTarget as KyzzPracticeLaunchTarget).freshAttempt)
 	}
 }
 

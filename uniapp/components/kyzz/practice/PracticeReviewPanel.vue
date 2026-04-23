@@ -22,6 +22,14 @@
 			<text class="practice-review-panel__label">解析</text>
 			<text class="practice-review-panel__value">{{ reviewResult.analysis }}</text>
 		</view>
+
+		<view v-if="showWrongBookHint" class="practice-review-panel__wrong-book">
+			<view class="practice-review-panel__wrong-book-copy">
+				<text class="practice-review-panel__wrong-book-title">已收进错题本</text>
+				<text class="practice-review-panel__wrong-book-desc">之后可以回到错题本集中巩固，重新过一遍薄弱题。</text>
+			</view>
+			<button class="practice-review-panel__wrong-book-button" @tap="$emit('open-wrong-book')">查看错题本</button>
+		</view>
 	</view>
 </template>
 
@@ -49,8 +57,13 @@ export default defineComponent({
 		standardAnswerDisplay: {
 			type: String,
 			default: ''
+		},
+		showWrongBookHint: {
+			type: Boolean,
+			default: false
 		}
-	}
+	},
+	emits: ['open-wrong-book']
 })
 </script>
 
@@ -125,5 +138,54 @@ export default defineComponent({
 	line-height: 1.8;
 	color: #283240;
 	white-space: pre-line;
+}
+
+.practice-review-panel__wrong-book {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 18rpx;
+	margin-top: 22rpx;
+	padding: 22rpx 20rpx;
+	border-radius: 24rpx;
+	background: linear-gradient(135deg, rgba(252, 239, 237, 0.96) 0%, rgba(255, 247, 246, 0.98) 100%);
+}
+
+.practice-review-panel__wrong-book-copy {
+	flex: 1;
+	min-width: 0;
+}
+
+.practice-review-panel__wrong-book-title {
+	display: block;
+	font-size: 24rpx;
+	line-height: 1.3;
+	font-weight: 700;
+	color: #8f4d4b;
+}
+
+.practice-review-panel__wrong-book-desc {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 21rpx;
+	line-height: 1.6;
+	color: #9b6a68;
+}
+
+.practice-review-panel__wrong-book-button {
+	margin: 0;
+	padding: 0 24rpx;
+	height: 64rpx;
+	line-height: 64rpx;
+	border-radius: 20rpx;
+	background: rgba(255, 255, 255, 0.92);
+	color: #934b48;
+	font-size: 22rpx;
+	font-weight: 600;
+	box-shadow: inset 0 0 0 1rpx rgba(235, 205, 202, 0.96);
+}
+
+.practice-review-panel__wrong-book-button::after {
+	border: 0;
 }
 </style>
