@@ -13,10 +13,6 @@
 			</view>
 		</view>
 
-		<view class="practice-question-panel__summary-sub">
-			<text class="practice-question-panel__summary-progress">{{ formatProgress(currentBank.currentProgress) }}</text>
-		</view>
-
 		<view class="practice-question-panel__meta-row">
 			<text class="practice-question-panel__meta-badge">{{ questionTypeLabel(question.questionType) }}</text>
 			<text class="practice-question-panel__meta-badge" :class="difficultyTagClass(question.difficultyLevel)">{{ difficultyLabel(question.difficultyLevel) }}</text>
@@ -64,7 +60,7 @@ import type {
 	KyzzPracticeReviewViewResult,
 	KyzzPracticeSessionProgress
 } from '@/pages/kyzz/practice/types'
-import { difficultyLabel, difficultyTagClass, formatProgress, questionTypeLabel } from '@/pages/kyzz/practice/view'
+import { difficultyLabel, difficultyTagClass, questionTypeLabel } from '@/pages/kyzz/practice/view'
 
 // AI 索引: KYZZ 刷题页题面组件。
 
@@ -100,7 +96,6 @@ export default defineComponent({
 	methods: {
 		difficultyLabel,
 		difficultyTagClass,
-		formatProgress,
 		questionTypeLabel,
 		optionCardClass(optionKey: string): string {
 			const selected = this.selectedOptionKeys.includes(optionKey)
@@ -187,20 +182,6 @@ export default defineComponent({
 	line-height: 1;
 	font-weight: 600;
 	color: #4a566c;
-}
-
-.practice-question-panel__summary-sub {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	margin-top: 16rpx;
-}
-
-.practice-question-panel__summary-progress {
-	font-size: 24rpx;
-	line-height: 1;
-	font-weight: 700;
-	color: #415069;
 }
 
 .practice-question-panel__meta-row {
