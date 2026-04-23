@@ -1,42 +1,888 @@
 <template>
-	<feature-placeholder-page
-		title="排行榜"
-		description="竞赛榜单会放在这里，后续会展示每日表现、连续上榜和冲榜提醒。"
-		tip="这次先把入口和页面骨架准备好，保证你可以直接跳过来。"
-		icon="medal-filled"
-		icon-color="#6a5f45"
-		icon-shell-background="linear-gradient(180deg, rgba(255, 249, 234, 0.98) 0%, rgba(246, 234, 203, 0.96) 100%)"
-		icon-core-background="linear-gradient(135deg, rgba(255, 238, 196, 0.98) 0%, rgba(255, 250, 236, 0.98) 100%)"
-		@primary="goStudy"
-		@secondary="goBack"
-	/>
+	<view class="leaderboard-page" @tap="handlePageTap">
+		<view class="leaderboard-page__scope-tabs">
+			<view
+				v-for="tab in scopeTabs"
+				:key="tab.scope"
+				class="leaderboard-page__scope-tab"
+				:class="{ 'is-active': currentScope === tab.scope }"
+				@tap="handleScopeChange(tab.scope)"
+			>
+				<view class="leaderboard-page__scope-icon-shell" :style="{ background: tab.iconShellBackground }">
+					<uni-icons :type="tab.icon" size="18" :color="tab.iconColor" />
+				</view>
+				<text class="leaderboard-page__scope-label">{{ tab.label }}</text>
+			</view>
+		</view>
+
+		<view class="leaderboard-page__my-card">
+			<view class="leaderboard-page__my-head">
+				<view class="leaderboard-page__my-title">
+					<uni-icons type="staff-filled" size="18" color="#6b5d40" />
+					<text class="leaderboard-page__my-title-text">我的排名焦点</text>
+				</view>
+				<view class="leaderboard-page__my-head-actions">
+					<text class="leaderboard-page__my-range">{{ scopeLabel(currentScope) }}</text>
+					<view class="leaderboard-page__rule-trigger" @tap.stop="toggleRulePopover">
+						<text class="leaderboard-page__rule-trigger-text">!</text>
+					</view>
+				</view>
+			</view>
+
+			<view v-if="showRulePopover" class="leaderboard-page__rule-popover" @tap.stop>
+				<view class="leaderboard-page__rule-popover-arrow"></view>
+				<view class="leaderboard-page__rule-popover-row">
+					<text class="leaderboard-page__rule-popover-label">区间时间</text>
+					<text class="leaderboard-page__rule-popover-value">
+						{{ dashboard.summary.periodLabel || scopeLabel(currentScope) }} · {{ formatRuleTime(dashboard.summary.generatedAt) }}
+					</text>
+				</view>
+				<view class="leaderboard-page__rule-popover-row">
+					<text class="leaderboard-page__rule-popover-label">排序规则</text>
+					<text class="leaderboard-page__rule-popover-value">{{ dashboard.summary.ruleDescription }}</text>
+				</view>
+			</view>
+
+			<view v-if="dashboard.myRecord" class="leaderboard-page__my-main">
+				<view class="leaderboard-page__my-rank-shell">
+					<text class="leaderboard-page__my-rank-label">当前名次</text>
+					<text class="leaderboard-page__my-rank-value">#{{ dashboard.myRecord.rankNo }}</text>
+					<text class="leaderboard-page__my-last">{{ formatLeaderboardTime(dashboard.myRecord.lastPracticeAt) }}</text>
+				</view>
+				<view class="leaderboard-page__my-metrics">
+					<view class="leaderboard-page__metric-pill">
+						<uni-icons type="compose" size="14" color="#61779d" />
+						<text class="leaderboard-page__metric-text">做题 {{ dashboard.myRecord.studyCount }}</text>
+					</view>
+					<view class="leaderboard-page__metric-pill">
+						<uni-icons type="checkbox-filled" size="14" color="#5e8d69" />
+						<text class="leaderboard-page__metric-text">答对 {{ dashboard.myRecord.correctCount }}</text>
+					</view>
+					<view class="leaderboard-page__metric-pill">
+						<uni-icons type="star-filled" size="14" color="#bd8a4c" />
+						<text class="leaderboard-page__metric-text">正确率 {{ formatAccuracyRate(dashboard.myRecord.accuracyRate) }}</text>
+					</view>
+				</view>
+			</view>
+
+			<view v-else class="leaderboard-page__my-empty">
+				<text class="leaderboard-page__my-empty-title">本周期还未上榜</text>
+				<text class="leaderboard-page__my-empty-desc">先做几道题就会进入榜单，焦点卡会第一时间显示你的排名变化。</text>
+				<button class="leaderboard-page__my-empty-action" @tap="goPractice">去刷题冲榜</button>
+			</view>
+		</view>
+
+		<view v-if="refreshing" class="leaderboard-page__refreshing">
+			<uni-icons type="refresh" size="15" color="#73829a" />
+			<text class="leaderboard-page__refreshing-text">正在刷新榜单数据...</text>
+		</view>
+
+		<view v-if="loading && !loadedOnce" class="leaderboard-page__state-card">
+			<text class="leaderboard-page__state-title">正在统计最新排行...</text>
+			<text class="leaderboard-page__state-desc">会按做题量、正确率与活跃时间生成榜单。</text>
+		</view>
+
+		<view v-else-if="loadErrorMessage && !hasDisplayData" class="leaderboard-page__state-card leaderboard-page__state-card--error">
+			<text class="leaderboard-page__state-title">排行榜加载失败</text>
+			<text class="leaderboard-page__state-desc">{{ loadErrorMessage }}</text>
+			<button class="leaderboard-page__retry-btn" @tap="retryLoad">重试加载</button>
+		</view>
+
+		<template v-else>
+			<view v-if="topThreeRecords.length" class="leaderboard-page__top3">
+				<view class="leaderboard-page__section-head">
+					<text class="leaderboard-page__section-title">TOP 3 冲榜区</text>
+					<text class="leaderboard-page__section-meta">信息实时聚合，排名规则一致公开</text>
+				</view>
+				<view class="leaderboard-page__top3-list">
+					<view
+						v-for="item in topThreeRecords"
+						:key="`top-${item.userId}`"
+						class="leaderboard-page__top3-card"
+						:class="{ 'is-me': item.isMe }"
+					>
+						<view class="leaderboard-page__top3-rank">
+							<uni-icons type="medal-filled" size="22" :color="rankIconColor(item.rankNo)" />
+							<text class="leaderboard-page__top3-rank-no">#{{ item.rankNo }}</text>
+						</view>
+						<view class="leaderboard-page__top3-user">
+							<image v-if="item.avatarUrl" class="leaderboard-page__avatar" :src="item.avatarUrl" mode="aspectFill" />
+							<view v-else class="leaderboard-page__avatar leaderboard-page__avatar--fallback">
+								<text class="leaderboard-page__avatar-text">{{ avatarInitial(item.nickname) }}</text>
+							</view>
+							<text class="leaderboard-page__top3-name">{{ item.nickname }}</text>
+						</view>
+						<text class="leaderboard-page__top3-score">{{ item.studyCount }} 题 · {{ formatAccuracyRate(item.accuracyRate) }}</text>
+					</view>
+				</view>
+			</view>
+
+			<view v-if="dashboard.records.length" class="leaderboard-page__full-list">
+				<view class="leaderboard-page__section-head">
+					<text class="leaderboard-page__section-title">完整榜单</text>
+					<text class="leaderboard-page__section-meta">名次、做题数、答对数、正确率全部公开</text>
+				</view>
+				<view
+					v-for="item in dashboard.records"
+					:key="item.userId"
+					class="leaderboard-page__row"
+					:class="{ 'is-me': item.isMe }"
+				>
+					<view class="leaderboard-page__row-rank" :class="rankClass(item.rankNo)">
+						<text class="leaderboard-page__row-rank-no">#{{ item.rankNo }}</text>
+					</view>
+					<view class="leaderboard-page__row-main">
+						<view class="leaderboard-page__row-user">
+							<image v-if="item.avatarUrl" class="leaderboard-page__avatar leaderboard-page__avatar--small" :src="item.avatarUrl" mode="aspectFill" />
+							<view v-else class="leaderboard-page__avatar leaderboard-page__avatar--small leaderboard-page__avatar--fallback">
+								<text class="leaderboard-page__avatar-text">{{ avatarInitial(item.nickname) }}</text>
+							</view>
+							<view class="leaderboard-page__row-user-copy">
+								<text class="leaderboard-page__row-name">{{ item.nickname }}</text>
+							</view>
+							<view v-if="item.isMe" class="leaderboard-page__me-badge">我</view>
+						</view>
+						<view class="leaderboard-page__row-metrics">
+							<view class="leaderboard-page__metric-pill">
+								<uni-icons type="compose" size="13" color="#60779f" />
+								<text class="leaderboard-page__metric-text">做题 {{ item.studyCount }}</text>
+							</view>
+							<view class="leaderboard-page__metric-pill">
+								<uni-icons type="checkbox-filled" size="13" color="#5f8a6b" />
+								<text class="leaderboard-page__metric-text">答对 {{ item.correctCount }}</text>
+							</view>
+							<view class="leaderboard-page__metric-pill">
+								<uni-icons type="star-filled" size="13" color="#b98547" />
+								<text class="leaderboard-page__metric-text">正确率 {{ formatAccuracyRate(item.accuracyRate) }}</text>
+							</view>
+						</view>
+					</view>
+				</view>
+			</view>
+
+			<view v-else class="leaderboard-page__state-card">
+				<text class="leaderboard-page__state-title">当前区间还没有上榜数据</text>
+				<text class="leaderboard-page__state-desc">先做题后会自动进入该区间排行榜，并在上方焦点卡同步你的名次。</text>
+				<button class="leaderboard-page__retry-btn" @tap="goPractice">去刷题</button>
+			</view>
+		</template>
+	</view>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import FeaturePlaceholderPage from '@/components/kyzz/FeaturePlaceholderPage.vue'
+import { bootstrapAuth } from '@/shared/session/session'
+import { getLeaderboard } from '@/pages/kyzz/api/leaderboard'
+import type {
+	KyzzLeaderboardDashboardState,
+	KyzzLeaderboardRecordState,
+	KyzzLeaderboardScope
+} from '@/pages/kyzz/leaderboard/types'
+import {
+	createEmptyLeaderboardState,
+	formatAccuracyRate,
+	formatLeaderboardTime,
+	normalizeLeaderboardDashboard
+} from '@/pages/kyzz/leaderboard/view'
 
-// AI 索引: KYZZ 小程序排行榜占位页。
+// AI 索引: KYZZ 小程序排行榜正式页。
+
+interface LeaderboardScopeTab {
+	scope: KyzzLeaderboardScope
+	label: string
+	icon: string
+	iconColor: string
+	iconShellBackground: string
+}
+
+interface LoadOptions {
+	forceLoading?: boolean
+}
+
+interface LeaderboardPageState {
+	loading: boolean
+	refreshing: boolean
+	loadedOnce: boolean
+	loadErrorMessage: string
+	showRulePopover: boolean
+	currentScope: KyzzLeaderboardScope
+	requestToken: number
+	dashboard: KyzzLeaderboardDashboardState
+	scopeTabs: LeaderboardScopeTab[]
+}
+
+function resolveErrorMessage(error: unknown, fallback: string): string {
+	if (error instanceof Error && error.message) {
+		return error.message
+	}
+	return fallback
+}
 
 export default defineComponent({
 	name: 'KyzzLeaderboardPage',
-	components: {
-		FeaturePlaceholderPage
+	data(): LeaderboardPageState {
+		return {
+			loading: false,
+			refreshing: false,
+			loadedOnce: false,
+			loadErrorMessage: '',
+			showRulePopover: false,
+			currentScope: 'daily',
+			requestToken: 0,
+			dashboard: createEmptyLeaderboardState('daily'),
+			scopeTabs: [
+				{
+					scope: 'daily',
+					label: '日榜',
+					icon: 'calendar-filled',
+					iconColor: '#6880a8',
+					iconShellBackground: 'linear-gradient(135deg, rgba(217, 230, 255, 0.95) 0%, rgba(236, 243, 255, 0.95) 100%)'
+				},
+				{
+					scope: 'weekly',
+					label: '周榜',
+					icon: 'fire-filled',
+					iconColor: '#bf7652',
+					iconShellBackground: 'linear-gradient(135deg, rgba(255, 227, 208, 0.95) 0%, rgba(255, 240, 225, 0.95) 100%)'
+				},
+				{
+					scope: 'total',
+					label: '总榜',
+					icon: 'medal-filled',
+					iconColor: '#8a6f3c',
+					iconShellBackground: 'linear-gradient(135deg, rgba(255, 238, 198, 0.95) 0%, rgba(255, 247, 223, 0.95) 100%)'
+				}
+			]
+		}
+	},
+	computed: {
+		topThreeRecords(): KyzzLeaderboardRecordState[] {
+			return this.dashboard.records.slice(0, 3)
+		},
+		hasDisplayData(): boolean {
+			return this.dashboard.records.length > 0 || Boolean(this.dashboard.myRecord)
+		}
+	},
+	onShow() {
+		this.loadLeaderboard({ forceLoading: true })
 	},
 	methods: {
-		goStudy(): void {
-			uni.switchTab({
-				url: '/pages/kyzz/study/index'
-			})
+		formatAccuracyRate,
+		formatLeaderboardTime,
+		scopeLabel(scope: KyzzLeaderboardScope): string {
+			if (scope === 'weekly') {
+				return '周榜'
+			}
+			if (scope === 'total') {
+				return '总榜'
+			}
+			return '日榜'
 		},
-		goBack(): void {
-			const currentPages = getCurrentPages()
-			if (currentPages.length > 1) {
-				uni.navigateBack()
+		rankIconColor(rankNo: number): string {
+			if (rankNo === 1) {
+				return '#e7ad2f'
+			}
+			if (rankNo === 2) {
+				return '#9ca6b6'
+			}
+			if (rankNo === 3) {
+				return '#b47a52'
+			}
+			return '#76849d'
+		},
+		rankClass(rankNo: number): string {
+			if (rankNo === 1) {
+				return 'is-rank-1'
+			}
+			if (rankNo === 2) {
+				return 'is-rank-2'
+			}
+			if (rankNo === 3) {
+				return 'is-rank-3'
+			}
+			return 'is-rank-normal'
+		},
+		formatRuleTime(value: string | null): string {
+			if (!value) {
+				return '暂无'
+			}
+			const normalized = value.replace(/-/g, '/')
+			const targetDate = new Date(normalized)
+			if (Number.isNaN(targetDate.getTime())) {
+				return value.slice(0, 16).replace('T', ' ')
+			}
+			const year = targetDate.getFullYear()
+			const month = String(targetDate.getMonth() + 1).padStart(2, '0')
+			const day = String(targetDate.getDate()).padStart(2, '0')
+			const hour = String(targetDate.getHours()).padStart(2, '0')
+			const minute = String(targetDate.getMinutes()).padStart(2, '0')
+			return `${year}-${month}-${day} ${hour}:${minute}`
+		},
+		toggleRulePopover(): void {
+			this.showRulePopover = !this.showRulePopover
+		},
+		handlePageTap(): void {
+			if (this.showRulePopover) {
+				this.showRulePopover = false
+			}
+		},
+		avatarInitial(name: string): string {
+			if (!name) {
+				return '学'
+			}
+			return name.trim().slice(0, 1).toUpperCase()
+		},
+		async handleScopeChange(scope: KyzzLeaderboardScope): Promise<void> {
+			if (scope === this.currentScope) {
 				return
 			}
-			this.goStudy()
+			this.currentScope = scope
+			this.showRulePopover = false
+			this.dashboard = createEmptyLeaderboardState(scope)
+			this.loadedOnce = false
+			await this.loadLeaderboard({ forceLoading: true })
+		},
+		async loadLeaderboard(options: LoadOptions = {}): Promise<void> {
+			const token = ++this.requestToken
+			const hadData = this.hasDisplayData
+			this.loadErrorMessage = ''
+			if (!this.loadedOnce || options.forceLoading) {
+				this.loading = true
+			} else {
+				this.refreshing = true
+			}
+			try {
+				await bootstrapAuth({ silent: true })
+				const result = await getLeaderboard({
+					scope: this.currentScope,
+					limit: 50
+				})
+				if (token !== this.requestToken) {
+					return
+				}
+				this.dashboard = normalizeLeaderboardDashboard(result, this.currentScope)
+				this.loadedOnce = true
+			} catch (error) {
+				if (token !== this.requestToken) {
+					return
+				}
+				this.loadedOnce = true
+				this.loadErrorMessage = resolveErrorMessage(error, '排行榜加载失败')
+				if (hadData) {
+					uni.showToast({
+						title: this.loadErrorMessage,
+						icon: 'none'
+					})
+				}
+			} finally {
+				if (token === this.requestToken) {
+					this.loading = false
+					this.refreshing = false
+				}
+			}
+		},
+		retryLoad(): void {
+			this.showRulePopover = false
+			this.loadLeaderboard({ forceLoading: true })
+		},
+		goPractice(): void {
+			this.showRulePopover = false
+			uni.switchTab({
+				url: '/pages/kyzz/practice/index'
+			})
 		}
 	}
 })
 </script>
+
+<style lang="scss" scoped>
+.leaderboard-page {
+	min-height: 100vh;
+	padding: 24rpx 24rpx calc(env(safe-area-inset-bottom) + 32rpx);
+	box-sizing: border-box;
+	background:
+		radial-gradient(circle at 12% 0%, rgba(235, 242, 255, 0.94) 0%, rgba(246, 249, 253, 0.98) 38%, rgba(239, 244, 250, 0.98) 100%);
+}
+
+.leaderboard-page__scope-tabs {
+	display: flex;
+	gap: 14rpx;
+}
+
+.leaderboard-page__scope-tab {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10rpx;
+	height: 76rpx;
+	border-radius: 22rpx;
+	background: rgba(255, 255, 255, 0.86);
+	box-shadow: inset 0 0 0 1rpx rgba(217, 224, 236, 0.88);
+	transition: all 0.2s ease;
+}
+
+.leaderboard-page__scope-tab.is-active {
+	background: rgba(255, 255, 255, 0.96);
+	box-shadow:
+		0 14rpx 24rpx rgba(78, 92, 120, 0.09),
+		inset 0 0 0 1rpx rgba(182, 196, 220, 0.92);
+}
+
+.leaderboard-page__scope-icon-shell {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 38rpx;
+	height: 38rpx;
+	border-radius: 12rpx;
+}
+
+.leaderboard-page__scope-label {
+	font-size: 24rpx;
+	color: #4b5a71;
+	font-weight: 600;
+}
+
+.leaderboard-page__my-card,
+.leaderboard-page__top3,
+.leaderboard-page__full-list,
+.leaderboard-page__state-card {
+	margin-top: 20rpx;
+	border-radius: 26rpx;
+	background: rgba(255, 255, 255, 0.94);
+	box-shadow: 0 18rpx 34rpx rgba(43, 52, 67, 0.07);
+}
+
+.leaderboard-page__my-card {
+	position: relative;
+	padding: 24rpx;
+	background:
+		linear-gradient(135deg, rgba(255, 247, 230, 0.96) 0%, rgba(255, 253, 243, 0.95) 100%);
+}
+
+.leaderboard-page__my-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.leaderboard-page__my-head-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 10rpx;
+}
+
+.leaderboard-page__my-title {
+	display: inline-flex;
+	align-items: center;
+	gap: 8rpx;
+}
+
+.leaderboard-page__my-title-text {
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #56462f;
+}
+
+.leaderboard-page__my-range {
+	font-size: 22rpx;
+	color: #8d764f;
+	background: rgba(255, 255, 255, 0.8);
+	padding: 6rpx 12rpx;
+	border-radius: 999rpx;
+}
+
+.leaderboard-page__rule-trigger {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 44rpx;
+	height: 44rpx;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.88);
+	box-shadow: inset 0 0 0 1rpx rgba(211, 187, 141, 0.82);
+}
+
+.leaderboard-page__rule-trigger-text {
+	font-size: 28rpx;
+	line-height: 1;
+	font-weight: 700;
+	color: #7a6340;
+}
+
+.leaderboard-page__rule-popover {
+	position: absolute;
+	top: 84rpx;
+	right: 24rpx;
+	z-index: 10;
+	width: 470rpx;
+	max-width: calc(100% - 48rpx);
+	padding: 18rpx;
+	border-radius: 18rpx;
+	background: rgba(255, 255, 255, 0.97);
+	box-shadow: 0 14rpx 28rpx rgba(89, 73, 41, 0.16);
+}
+
+.leaderboard-page__rule-popover-arrow {
+	position: absolute;
+	top: -10rpx;
+	right: 28rpx;
+	width: 20rpx;
+	height: 20rpx;
+	background: rgba(255, 255, 255, 0.97);
+	transform: rotate(45deg);
+}
+
+.leaderboard-page__rule-popover-row + .leaderboard-page__rule-popover-row {
+	margin-top: 10rpx;
+}
+
+.leaderboard-page__rule-popover-label {
+	display: block;
+	font-size: 20rpx;
+	color: #8a754f;
+}
+
+.leaderboard-page__rule-popover-value {
+	display: block;
+	margin-top: 6rpx;
+	font-size: 22rpx;
+	line-height: 1.6;
+	color: #5b4d38;
+}
+
+.leaderboard-page__my-main {
+	margin-top: 16rpx;
+	display: flex;
+	gap: 14rpx;
+}
+
+.leaderboard-page__my-rank-shell {
+	flex: 0 0 220rpx;
+	padding: 14rpx 16rpx;
+	border-radius: 18rpx;
+	background: rgba(255, 255, 255, 0.88);
+	box-shadow: inset 0 0 0 1rpx rgba(227, 214, 183, 0.92);
+}
+
+.leaderboard-page__my-rank-label {
+	display: block;
+	font-size: 20rpx;
+	color: #8e7a54;
+}
+
+.leaderboard-page__my-rank-value {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 42rpx;
+	line-height: 1;
+	font-weight: 700;
+	color: #5c4a30;
+}
+
+.leaderboard-page__my-last {
+	display: block;
+	margin-top: 12rpx;
+	font-size: 20rpx;
+	color: #8d7e61;
+}
+
+.leaderboard-page__my-metrics {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 10rpx;
+}
+
+.leaderboard-page__metric-pill {
+	display: inline-flex;
+	align-items: center;
+	padding: 8rpx 12rpx;
+	gap: 8rpx;
+	border-radius: 999rpx;
+	background: rgba(255, 255, 255, 0.82);
+}
+
+.leaderboard-page__metric-text {
+	font-size: 21rpx;
+	color: #50607c;
+}
+
+.leaderboard-page__my-empty {
+	margin-top: 16rpx;
+	padding: 18rpx;
+	border-radius: 18rpx;
+	background: rgba(255, 255, 255, 0.88);
+}
+
+.leaderboard-page__my-empty-title {
+	display: block;
+	font-size: 26rpx;
+	color: #544a38;
+	font-weight: 700;
+}
+
+.leaderboard-page__my-empty-desc {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 22rpx;
+	line-height: 1.6;
+	color: #7e7058;
+}
+
+.leaderboard-page__my-empty-action,
+.leaderboard-page__retry-btn {
+	margin-top: 14rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	border-radius: 20rpx;
+	font-size: 24rpx;
+	font-weight: 600;
+}
+
+.leaderboard-page__my-empty-action::after,
+.leaderboard-page__retry-btn::after {
+	border: 0;
+}
+
+.leaderboard-page__my-empty-action {
+	background: linear-gradient(135deg, #6f728a 0%, #8d91ad 100%);
+	color: #ffffff;
+}
+
+.leaderboard-page__refreshing {
+	margin-top: 16rpx;
+	display: inline-flex;
+	align-items: center;
+	gap: 8rpx;
+	padding: 8rpx 14rpx;
+	border-radius: 999rpx;
+	background: rgba(232, 238, 247, 0.92);
+}
+
+.leaderboard-page__refreshing-text {
+	font-size: 20rpx;
+	color: #6e7d95;
+}
+
+.leaderboard-page__state-card {
+	padding: 28rpx 24rpx;
+}
+
+.leaderboard-page__state-card--error {
+	background: rgba(255, 243, 241, 0.95);
+}
+
+.leaderboard-page__state-title {
+	display: block;
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #3f4d66;
+}
+
+.leaderboard-page__state-desc {
+	display: block;
+	margin-top: 10rpx;
+	font-size: 22rpx;
+	line-height: 1.7;
+	color: #6d7890;
+}
+
+.leaderboard-page__section-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+}
+
+.leaderboard-page__section-title {
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #3b4860;
+}
+
+.leaderboard-page__section-meta {
+	font-size: 20rpx;
+	color: #8a95a9;
+}
+
+.leaderboard-page__top3,
+.leaderboard-page__full-list {
+	padding: 22rpx;
+}
+
+.leaderboard-page__top3-list {
+	margin-top: 14rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+}
+
+.leaderboard-page__top3-card {
+	padding: 16rpx;
+	border-radius: 20rpx;
+	background: rgba(247, 250, 255, 0.9);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.leaderboard-page__top3-card.is-me {
+	background: rgba(255, 245, 223, 0.92);
+}
+
+.leaderboard-page__top3-rank {
+	display: inline-flex;
+	align-items: center;
+	gap: 6rpx;
+	min-width: 106rpx;
+}
+
+.leaderboard-page__top3-rank-no {
+	font-size: 24rpx;
+	font-weight: 700;
+	color: #42526d;
+}
+
+.leaderboard-page__top3-user {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	min-width: 0;
+}
+
+.leaderboard-page__top3-name {
+	margin-left: 10rpx;
+	font-size: 24rpx;
+	color: #374760;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.leaderboard-page__top3-score {
+	font-size: 22rpx;
+	color: #51637f;
+}
+
+.leaderboard-page__full-list {
+	margin-bottom: 16rpx;
+}
+
+.leaderboard-page__row {
+	margin-top: 12rpx;
+	padding: 14rpx;
+	border-radius: 18rpx;
+	background: rgba(246, 249, 253, 0.94);
+	display: flex;
+	gap: 12rpx;
+}
+
+.leaderboard-page__row.is-me {
+	background: rgba(255, 243, 221, 0.94);
+}
+
+.leaderboard-page__row-rank {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 86rpx;
+	height: 86rpx;
+	border-radius: 18rpx;
+	flex-shrink: 0;
+}
+
+.leaderboard-page__row-rank.is-rank-1 {
+	background: linear-gradient(135deg, #ffe8b8 0%, #fff3cf 100%);
+}
+
+.leaderboard-page__row-rank.is-rank-2 {
+	background: linear-gradient(135deg, #e7edf4 0%, #f4f7fb 100%);
+}
+
+.leaderboard-page__row-rank.is-rank-3 {
+	background: linear-gradient(135deg, #f5dfd0 0%, #faece2 100%);
+}
+
+.leaderboard-page__row-rank.is-rank-normal {
+	background: rgba(231, 238, 247, 0.9);
+}
+
+.leaderboard-page__row-rank-no {
+	font-size: 24rpx;
+	font-weight: 700;
+	color: #4d5c77;
+}
+
+.leaderboard-page__row-main {
+	flex: 1;
+	min-width: 0;
+}
+
+.leaderboard-page__row-user {
+	display: flex;
+	align-items: center;
+}
+
+.leaderboard-page__row-user-copy {
+	flex: 1;
+	min-width: 0;
+	margin-left: 10rpx;
+}
+
+.leaderboard-page__row-name {
+	display: block;
+	font-size: 24rpx;
+	color: #384860;
+	font-weight: 700;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.leaderboard-page__me-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 38rpx;
+	padding: 0 12rpx;
+	border-radius: 999rpx;
+	background: linear-gradient(135deg, #e0bc74 0%, #efce8c 100%);
+	color: #5b4626;
+	font-size: 20rpx;
+	font-weight: 700;
+}
+
+.leaderboard-page__row-metrics {
+	margin-top: 10rpx;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8rpx;
+}
+
+.leaderboard-page__avatar {
+	width: 56rpx;
+	height: 56rpx;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.leaderboard-page__avatar--small {
+	width: 48rpx;
+	height: 48rpx;
+}
+
+.leaderboard-page__avatar--fallback {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(135deg, #8b95ac 0%, #adb6c8 100%);
+}
+
+.leaderboard-page__avatar-text {
+	font-size: 22rpx;
+	font-weight: 700;
+	color: #ffffff;
+}
+</style>
