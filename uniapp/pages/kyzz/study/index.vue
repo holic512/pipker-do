@@ -1,50 +1,70 @@
 <template>
+	<!-- AI 索引: KYZZ 学习页 -->
 	<page-shell
 		current="study"
 		root-class="study-page theme-page"
-		content-style="padding: 0 32rpx 32rpx;"
+		content-style="padding: 0 24rpx 32rpx;"
 	>
 		<view class="study-page__inner">
-			<!-- 顶部格言区域，按设计稿保留居中展示 -->
 			<view class="study-page__motto">
 				<text class="study-page__motto-text">“博观而约取，厚积而薄发”</text>
 				<view class="study-page__motto-line"></view>
 			</view>
 
-			<!-- 装饰线框，用来还原截图中的轻几何背景 -->
 			<view class="study-page__frame study-page__frame--left"></view>
 			<view class="study-page__frame study-page__frame--right"></view>
 			<view class="study-page__diamond"></view>
 
-			<!-- 主学习卡片 -->
 			<view class="study-page__hero-shell">
 				<view class="study-page__hero">
-					<text class="study-page__hero-en">{{ hero.englishTitle }}</text>
-					<text class="study-page__hero-title">{{ hero.title }}</text>
+					<text class="study-page__hero-en">ACADEMIC QUEST</text>
+					<text class="study-page__hero-title">{{ heroTitle }}</text>
 					<view class="study-page__hero-divider"></view>
-					<text class="study-page__hero-desc">{{ hero.questionBank }}</text>
-					<text class="study-page__hero-desc">完成进度：{{ hero.progress }}%</text>
+					<text class="study-page__hero-bank">{{ heroBankName }}</text>
+					<view v-if="recommendedBank" class="study-page__hero-chips">
+						<text class="study-page__hero-chip">{{ recommendedBank.resumeLabel }}</text>
+						<text class="study-page__hero-chip">{{ difficultyLabel(recommendedBank.difficultyLevel) }}</text>
+						<text class="study-page__hero-chip">{{ formatProgress(recommendedBank.currentProgress) }}</text>
+					</view>
+					<text class="study-page__hero-desc">{{ heroDescription }}</text>
+					<button class="study-page__hero-button" @tap="handleStartPractice">
+						{{ heroButtonText }}
+					</button>
 				</view>
 
-				<!-- 7day 改为坚持天数标签 -->
 				<view class="study-page__streak">
 					<uni-icons type="fire-filled" size="14" color="#ffffff" />
-					<text class="study-page__streak-text">{{ streakDays }} DAYS</text>
+					<text class="study-page__streak-text">{{ studyDaysLabel }}</text>
 				</view>
 			</view>
 
-			<!-- 快捷功能入口 -->
-			<view class="study-page__actions">
-				<view
-					v-for="item in quickActions"
-					:key="item.key"
-					class="study-page__action-item"
-				>
-					<view class="study-page__action-icon">
-						<uni-icons :type="item.icon" size="30" color="#56627f" />
-					</view>
-					<text class="study-page__action-label">{{ item.text }}</text>
+			<view v-if="dashboard.records.length" class="study-page__queue">
+				<view class="study-page__queue-head">
+					<text class="study-page__queue-title">继续刷题</text>
+					<text class="study-page__queue-desc">{{ dashboard.recommendedReason || '优先回到最近未完成的题库。' }}</text>
 				</view>
+
+				<view
+					v-for="item in previewBanks"
+					:key="item.bankId"
+					class="study-page__queue-item"
+					@tap="handleBankTap(item.bankId)"
+				>
+					<view class="study-page__queue-copy">
+						<text class="study-page__queue-name">{{ item.bankName }}</text>
+						<text class="study-page__queue-sub">{{ item.resumeLabel }} · {{ item.questionCount }} 题</text>
+					</view>
+					<view class="study-page__queue-side">
+						<text class="study-page__queue-progress">{{ formatProgress(item.currentProgress) }}</text>
+						<text class="study-page__queue-date">{{ formatLastPractice(item.lastPracticeAt) }}</text>
+					</view>
+				</view>
+			</view>
+
+			<view v-else-if="loadedOnce && !loading" class="study-page__empty">
+				<text class="study-page__empty-title">先挑一套题库开始刷题</text>
+				<text class="study-page__empty-desc">加入题库后，学习页会自动帮你记住上次刷到哪里，下次直接续上。</text>
+				<button class="study-page__empty-button" @tap="goPublicBanks">去添加题库</button>
 			</view>
 
 			<study-garden />
@@ -52,30 +72,117 @@
 	</page-shell>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { bootstrapAuth } from '@/shared/session/session'
+import { getPracticeDashboard } from '@/pages/kyzz/api/practice'
+import { openPracticeTab } from '@/pages/kyzz/practice/navigation'
+import type { KyzzPracticeBankViewRecord, KyzzPracticeDashboardState } from '@/pages/kyzz/practice/types'
+import { createEmptyPracticeDashboard, difficultyLabel, formatLastPractice, formatProgress, normalizePracticeDashboard } from '@/pages/kyzz/practice/view'
+
+interface StudyPageState {
+	loading: boolean
+	loadedOnce: boolean
+	dashboard: KyzzPracticeDashboardState
+}
+
+function resolveErrorMessage(error: unknown, fallback: string): string {
+	if (error instanceof Error && error.message) {
+		return error.message
+	}
+	return fallback
+}
+
+export default defineComponent({
 	name: 'StudyPage',
-	data() {
+	data(): StudyPageState {
 		return {
-			// 坚持天数，对应截图里的 7 DAYS
-			streakDays: 7,
-			// 主卡片文案配置
-			hero: {
-				englishTitle: 'ACADEMIC QUEST',
-				title: '开始刷题',
-				questionBank: '当前题库：考研政治核心点',
-				progress: 65
-			},
-			// 页面中部四个快捷入口
-			quickActions: [
-				{ key: 'favorite', text: '收藏', icon: 'star-filled' },
-				{ key: 'wrong', text: '错题库', icon: 'paperplane-filled' },
-				{ key: 'note', text: '笔记', icon: 'compose' },
-				{ key: 'rank', text: '排行榜', icon: 'bars' }
-			]
+			loading: false,
+			loadedOnce: false,
+			dashboard: createEmptyPracticeDashboard()
+		}
+	},
+	computed: {
+		recommendedBank(): KyzzPracticeBankViewRecord | null {
+			return this.dashboard.records.find((item) => item.bankId === this.dashboard.recommendedBankId) || this.dashboard.records[0] || null
+		},
+		previewBanks(): KyzzPracticeBankViewRecord[] {
+			return this.dashboard.records.slice(0, 3)
+		},
+		heroTitle(): string {
+			if (!this.recommendedBank) {
+				return '开始刷题'
+			}
+			return this.recommendedBank.resumeStatus === 'not_started' ? '开始刷题' : '继续刷题'
+		},
+		heroBankName(): string {
+			return this.recommendedBank ? `当前题库：${this.recommendedBank.bankName}` : '当前还没有可练习的题库'
+		},
+		heroDescription(): string {
+			if (this.dashboard.recommendedReason) {
+				return this.dashboard.recommendedReason
+			}
+			return this.recommendedBank
+				? '已按你的最近练习状态准备好入口，点一下就能直接进入。'
+				: '先从公共题库里选一套适合当前阶段的内容。'
+		},
+		heroButtonText(): string {
+			return this.recommendedBank ? '进入刷题' : '去添加题库'
+		},
+		studyDaysLabel(): string {
+			if (!this.recommendedBank) {
+				return 'READY'
+			}
+			if (this.recommendedBank.resumeStatus === 'completed') {
+				return 'REVIEW'
+			}
+			return `第 ${Math.max(this.recommendedBank.resumeQuestionIndex, 1)} 题`
+		}
+	},
+	onShow() {
+		this.bootstrapAndLoad()
+	},
+	methods: {
+		async bootstrapAndLoad(): Promise<void> {
+			if (this.loading) {
+				return
+			}
+			this.loading = true
+			try {
+				await bootstrapAuth({ silent: true })
+				const result = await getPracticeDashboard()
+				this.dashboard = normalizePracticeDashboard(result)
+				this.loadedOnce = true
+			} catch (error) {
+				this.loadedOnce = true
+				uni.showToast({
+					title: resolveErrorMessage(error, '学习页加载失败'),
+					icon: 'none'
+				})
+			} finally {
+				this.loading = false
+			}
+		},
+		difficultyLabel,
+		formatLastPractice,
+		formatProgress,
+		handleStartPractice(): void {
+			if (!this.recommendedBank) {
+				this.goPublicBanks()
+				return
+			}
+			openPracticeTab().catch(() => {})
+		},
+		handleBankTap(bankId: number): void {
+			openPracticeTab({ bankId }).catch(() => {})
+		},
+		goPublicBanks(): void {
+			uni.navigateTo({
+				url: '/pages/kyzz/question-bank/public'
+			})
 		}
 	}
-}
+})
 </script>
 
 <style lang="scss">
@@ -93,7 +200,6 @@ export default {
 	overflow: hidden;
 }
 
-/* 顶部格言 */
 .study-page__motto {
 	position: relative;
 	z-index: 2;
@@ -118,7 +224,6 @@ export default {
 	background: rgba(178, 186, 201, 0.9);
 }
 
-/* 背景几何线框 */
 .study-page__frame,
 .study-page__diamond {
 	position: absolute;
@@ -151,29 +256,29 @@ export default {
 	transform: translateX(-50%) rotate(45deg);
 }
 
-/* 主卡片外层白色描边壳 */
 .study-page__hero-shell {
 	position: relative;
 	z-index: 2;
 	margin: 108rpx auto 0;
-	width: 560rpx;
+	width: 100%;
 	padding: 18rpx;
-	border-radius: 24rpx;
+	border-radius: 26rpx;
 	background: rgba(248, 250, 253, 0.95);
 	box-shadow:
 		0 14rpx 40rpx rgba(147, 160, 182, 0.18),
 		inset 0 0 0 2rpx rgba(196, 205, 220, 0.85);
+	box-sizing: border-box;
 }
 
 .study-page__hero {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: 100rpx 40rpx 92rpx;
-	border-radius: 20rpx;
-	background: linear-gradient(180deg, #1f2633 0%, #283142 100%);
+	padding: 88rpx 40rpx 84rpx;
+	border-radius: 22rpx;
+	background: linear-gradient(180deg, #202837 0%, #2b3446 100%);
 	box-shadow:
-		inset 0 0 0 2rpx rgba(255, 255, 255, 0.06),
+		inset 0 0 0 2rpx rgba(255, 255, 255, 0.05),
 		0 10rpx 22rpx rgba(49, 58, 76, 0.18);
 }
 
@@ -185,7 +290,7 @@ export default {
 }
 
 .study-page__hero-title {
-	margin-top: 34rpx;
+	margin-top: 32rpx;
 	font-size: 66rpx;
 	line-height: 1.18;
 	font-weight: 700;
@@ -194,19 +299,66 @@ export default {
 }
 
 .study-page__hero-divider {
-	margin: 40rpx 0 34rpx;
+	margin: 38rpx 0 32rpx;
 	width: 90rpx;
 	height: 4rpx;
 	border-radius: 999rpx;
 	background: rgba(180, 191, 209, 0.62);
 }
 
+.study-page__hero-bank {
+	display: block;
+	font-size: 28rpx;
+	line-height: 1.6;
+	color: rgba(232, 236, 242, 0.86);
+	text-align: center;
+}
+
+.study-page__hero-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12rpx;
+	justify-content: center;
+	margin-top: 18rpx;
+}
+
+.study-page__hero-chip {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 44rpx;
+	padding: 0 16rpx;
+	border-radius: 999rpx;
+	background: rgba(255, 255, 255, 0.1);
+	font-size: 20rpx;
+	line-height: 1;
+	color: rgba(236, 240, 246, 0.88);
+}
+
 .study-page__hero-desc {
 	display: block;
-	margin-top: 12rpx;
-	font-size: 27rpx;
+	margin-top: 18rpx;
+	font-size: 25rpx;
 	line-height: 1.7;
+	text-align: center;
 	color: rgba(226, 231, 239, 0.8);
+}
+
+.study-page__hero-button {
+	margin-top: 28rpx;
+	padding: 0 36rpx;
+	height: 84rpx;
+	line-height: 84rpx;
+	border-radius: 999rpx;
+	background: rgba(255, 255, 255, 0.95);
+	color: #313b4d;
+	font-size: 25rpx;
+	font-weight: 700;
+	box-shadow: 0 14rpx 28rpx rgba(19, 26, 41, 0.18);
+}
+
+.study-page__hero-button::after {
+	border: 0;
 }
 
 .study-page__streak {
@@ -221,7 +373,7 @@ export default {
 	border-radius: 999rpx;
 	background: linear-gradient(180deg, #6a738c 0%, #7a8399 100%);
 	box-shadow: 0 10rpx 20rpx rgba(110, 121, 143, 0.24);
-	transform: translateX(18rpx);
+	transform: translateX(14rpx);
 }
 
 .study-page__streak-text {
@@ -232,45 +384,121 @@ export default {
 	color: #ffffff;
 }
 
-/* 四个快捷入口 */
-.study-page__actions {
+.study-page__queue,
+.study-page__empty {
 	position: relative;
 	z-index: 2;
-	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	gap: 28rpx;
-	margin-top: 84rpx;
+	margin-top: 24rpx;
+	padding: 28rpx 24rpx;
+	border-radius: 28rpx;
+	background: rgba(255, 255, 255, 0.9);
+	box-shadow: 0 18rpx 36rpx rgba(43, 52, 55, 0.05);
 }
 
-.study-page__action-item {
+.study-page__queue-head {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
 }
 
-.study-page__action-icon {
+.study-page__queue-title {
+	font-size: 30rpx;
+	line-height: 1.2;
+	font-weight: 700;
+	color: #2d3642;
+}
+
+.study-page__queue-desc {
+	margin-top: 10rpx;
+	font-size: 22rpx;
+	line-height: 1.6;
+	color: #778293;
+}
+
+.study-page__queue-item {
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	width: 104rpx;
-	height: 104rpx;
-	border-radius: 22rpx;
-	background: rgba(255, 255, 255, 0.88);
-	box-shadow: 0 14rpx 30rpx rgba(171, 180, 196, 0.2);
+	gap: 18rpx;
+	margin-top: 18rpx;
+	padding-top: 18rpx;
+	border-top: 1rpx solid rgba(225, 231, 239, 0.84);
 }
 
-.study-page__action-label {
-	margin-top: 22rpx;
-	font-size: 27rpx;
-	line-height: 1.4;
-	color: #6d7383;
+.study-page__queue-copy {
+	flex: 1;
+	min-width: 0;
+}
+
+.study-page__queue-name {
+	display: block;
+	font-size: 26rpx;
+	line-height: 1.3;
+	font-weight: 700;
+	color: #2e3643;
+}
+
+.study-page__queue-sub {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 22rpx;
+	line-height: 1.5;
+	color: #7c8795;
+}
+
+.study-page__queue-side {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	flex-shrink: 0;
+}
+
+.study-page__queue-progress {
+	font-size: 22rpx;
+	line-height: 1;
+	font-weight: 700;
+	color: #55627a;
+}
+
+.study-page__queue-date {
+	margin-top: 8rpx;
+	font-size: 20rpx;
+	line-height: 1.2;
+	color: #8b94a1;
+}
+
+.study-page__empty-title {
+	display: block;
+	font-size: 30rpx;
+	line-height: 1.2;
+	font-weight: 700;
+	color: #2d3642;
+}
+
+.study-page__empty-desc {
+	display: block;
+	margin-top: 14rpx;
+	font-size: 24rpx;
+	line-height: 1.7;
+	color: #7a8594;
+}
+
+.study-page__empty-button {
+	margin-top: 24rpx;
+	padding: 0 32rpx;
+	height: 78rpx;
+	line-height: 78rpx;
+	border-radius: 999rpx;
+	background: linear-gradient(135deg, #545e76 0%, #7f8ca7 100%);
+	color: #ffffff;
+	font-size: 24rpx;
+	font-weight: 600;
+	box-shadow: 0 14rpx 28rpx rgba(84, 94, 118, 0.2);
+}
+
+.study-page__empty-button::after {
+	border: 0;
 }
 
 @media screen and (max-width: 375px) {
-	.study-page__hero-shell {
-		width: 100%;
-	}
-
 	.study-page__hero {
 		padding-left: 28rpx;
 		padding-right: 28rpx;
@@ -280,17 +508,8 @@ export default {
 		font-size: 58rpx;
 	}
 
-	.study-page__hero-desc {
+	.study-page__hero-bank {
 		font-size: 24rpx;
-	}
-
-	.study-page__actions {
-		gap: 18rpx;
-	}
-
-	.study-page__action-icon {
-		width: 94rpx;
-		height: 94rpx;
 	}
 }
 </style>

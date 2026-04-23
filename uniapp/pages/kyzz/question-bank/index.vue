@@ -83,6 +83,7 @@
 						<view class="question-bank-page__info-row">
 							<text class="question-bank-page__info-text">最近练习：{{ formatLastPractice(item.lastPracticeAt) }}</text>
 							<text class="question-bank-page__info-text">已做 {{ item.studiedCount }} / {{ item.questionCount }}</text>
+							<text class="question-bank-page__info-text">上次入口：{{ practiceResumeLabel(item) }}</text>
 						</view>
 					</view>
 				</view>
@@ -127,12 +128,16 @@
 import { defineComponent } from 'vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getMineQuestionBanks } from '@/pages/kyzz/api/question-bank'
+import { getPracticeDashboard } from '@/pages/kyzz/api/practice'
+import { openPracticeTab } from '@/pages/kyzz/practice/navigation'
 import type {
 	KyzzQuestionBankMineDashboardState,
 	KyzzQuestionBankMineRecordResponse,
 	KyzzQuestionBankMineViewRecord,
 	SearchConfirmEvent
 } from '@/pages/kyzz/question-bank/types'
+import type { KyzzPracticeDashboardState, KyzzPracticeBankViewRecord } from '@/pages/kyzz/practice/types'
+import { createEmptyPracticeDashboard, normalizePracticeDashboard } from '@/pages/kyzz/practice/view'
 
 const DIFFICULTY_MAP: Record<number, string> = {
 	1: '简单',
@@ -151,6 +156,7 @@ interface MinePageState {
 	loadedOnce: boolean
 	keyword: string
 	dashboard: KyzzQuestionBankMineDashboardState
+	practiceDashboard: KyzzPracticeDashboardState
 }
 
 function createEmptyMineDashboard(): KyzzQuestionBankMineDashboardState {
@@ -183,7 +189,8 @@ export default defineComponent({
 			loading: false,
 			loadedOnce: false,
 			keyword: '',
-			dashboard: createEmptyMineDashboard()
+			dashboard: createEmptyMineDashboard(),
+			practiceDashboard: createEmptyPracticeDashboard()
 		}
 	},
 	computed: {
@@ -197,6 +204,12 @@ export default defineComponent({
 					.filter((field): field is string => Boolean(field))
 					.some((field) => field.toLowerCase().includes(keyword))
 			})
+		},
+		practiceBankMap(): Record<number, KyzzPracticeBankViewRecord> {
+			return this.practiceDashboard.records.reduce<Record<number, KyzzPracticeBankViewRecord>>((result, item) => {
+				result[item.bankId] = item
+				return result
+			}, {})
 		}
 	},
 	onShow() {
@@ -210,6 +223,7 @@ export default defineComponent({
 			try {
 				await bootstrapAuth({ silent: true })
 				await this.loadMineQuestionBanks({ silent: true })
+				await this.loadPracticeDashboard()
 			} catch (error) {
 				if (!options.silent) {
 					uni.showToast({
@@ -249,6 +263,10 @@ export default defineComponent({
 			} finally {
 				this.loading = false
 			}
+		},
+		async loadPracticeDashboard(): Promise<void> {
+			const result = await getPracticeDashboard()
+			this.practiceDashboard = normalizePracticeDashboard(result)
 		},
 		normalizeRecord(record: KyzzQuestionBankMineRecordResponse): KyzzQuestionBankMineViewRecord {
 			return {
@@ -346,6 +364,10 @@ export default defineComponent({
 			return String(value).padStart(2, '0')
 		},
 		stageText(item: KyzzQuestionBankMineViewRecord): string {
+			const practiceRecord = this.practiceBankMap[item.id]
+			if (practiceRecord && practiceRecord.resumeLabel) {
+				return practiceRecord.resumeLabel
+			}
 			const progress = toNumber(item.currentProgress)
 			if (progress >= 100 && item.questionCount > 0) {
 				return '已完成'
@@ -356,6 +378,16 @@ export default defineComponent({
 			return '待开始'
 		},
 		stageClass(item: KyzzQuestionBankMineViewRecord): string {
+			const practiceRecord = this.practiceBankMap[item.id]
+			if (practiceRecord) {
+				if (practiceRecord.resumeStatus === 'completed') {
+					return 'question-bank-page__stage-badge--done'
+				}
+				if (practiceRecord.resumeStatus === 'in_progress') {
+					return 'question-bank-page__stage-badge--active'
+				}
+				return 'question-bank-page__stage-badge--idle'
+			}
 			const progress = toNumber(item.currentProgress)
 			if (progress >= 100 && item.questionCount > 0) {
 				return 'question-bank-page__stage-badge--done'
@@ -364,6 +396,9 @@ export default defineComponent({
 				return 'question-bank-page__stage-badge--active'
 			}
 			return 'question-bank-page__stage-badge--idle'
+		},
+		practiceResumeLabel(item: KyzzQuestionBankMineViewRecord): string {
+			return this.practiceBankMap[item.id]?.resumeLabel || this.stageText(item)
 		},
 		buildCoverInitial(name: string): string {
 			if (!name) {
@@ -386,10 +421,7 @@ export default defineComponent({
 			})
 		},
 		handleBankTap(item: KyzzQuestionBankMineViewRecord): void {
-			uni.showToast({
-				title: `已为你保留“${item.bankName}”的入口，后续可直接接练习流转`,
-				icon: 'none'
-			})
+			openPracticeTab({ bankId: item.id }).catch(() => {})
 		}
 	}
 })

@@ -12,28 +12,22 @@ import org.example.backend.biz.kyzz.dto.KyzzQuestionBankPublicSummaryResponse;
 import org.example.backend.biz.kyzz.dto.KyzzQuestionBankSelectionRequest;
 import org.example.backend.biz.kyzz.entity.KyzzCategory;
 import org.example.backend.biz.kyzz.entity.KyzzQuestionBank;
-import org.example.backend.biz.kyzz.entity.KyzzUserAnswer;
 import org.example.backend.biz.kyzz.entity.KyzzUserQuestionBank;
-import org.example.backend.biz.kyzz.mapper.KyzzCategoryMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionBankMapper;
-import org.example.backend.biz.kyzz.mapper.KyzzUserAnswerMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserQuestionBankMapper;
+import org.example.backend.biz.kyzz.support.KyzzPracticeSupport;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
-import org.example.backend.shared.storage.service.LocalFileStorage;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -46,27 +40,18 @@ import java.util.stream.Collectors;
  */
 @Service
 public class KyzzQuestionBankUserService {
-
-    private static final BigDecimal ZERO_PROGRESS = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-    private static final BigDecimal FULL_PROGRESS = BigDecimal.valueOf(100).setScale(2, RoundingMode.HALF_UP);
     private static final Set<String> SUPPORTED_SELECTION_STATUS = Set.of("all", "selected", "unselected");
 
     private final KyzzQuestionBankMapper kyzzQuestionBankMapper;
     private final KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper;
-    private final KyzzCategoryMapper kyzzCategoryMapper;
-    private final KyzzUserAnswerMapper kyzzUserAnswerMapper;
-    private final LocalFileStorage localFileStorage;
+    private final KyzzPracticeSupport kyzzPracticeSupport;
 
     public KyzzQuestionBankUserService(KyzzQuestionBankMapper kyzzQuestionBankMapper,
                                        KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper,
-                                       KyzzCategoryMapper kyzzCategoryMapper,
-                                       KyzzUserAnswerMapper kyzzUserAnswerMapper,
-                                       LocalFileStorage localFileStorage) {
+                                       KyzzPracticeSupport kyzzPracticeSupport) {
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
         this.kyzzUserQuestionBankMapper = kyzzUserQuestionBankMapper;
-        this.kyzzCategoryMapper = kyzzCategoryMapper;
-        this.kyzzUserAnswerMapper = kyzzUserAnswerMapper;
-        this.localFileStorage = localFileStorage;
+        this.kyzzPracticeSupport = kyzzPracticeSupport;
     }
 
     public KyzzQuestionBankMineResponse getMineQuestionBanks(Long userId) {
@@ -87,8 +72,8 @@ public class KyzzQuestionBankUserService {
             return new KyzzQuestionBankMineResponse(new KyzzQuestionBankMineSummaryResponse(0, 0, 0), List.of());
         }
 
-        Map<Long, KyzzCategory> categoryMap = buildCategoryMap();
-        Map<Long, QuestionBankProgressSnapshot> progressMap = buildProgressSnapshotMap(userId, toBankIds(activeBanks), activeBanks);
+        Map<Long, KyzzCategory> categoryMap = kyzzPracticeSupport.buildCategoryMap();
+        Map<Long, KyzzPracticeSupport.QuestionBankProgressSnapshot> progressMap = kyzzPracticeSupport.buildProgressSnapshotMap(userId, toBankIds(activeBanks), activeBanks);
         List<KyzzQuestionBankMineRecordResponse> records = activeBanks.stream()
                 .map(bank -> toMineRecord(bank, relationMap.get(bank.getId()), categoryMap.get(bank.getCategoryId()), progressMap.get(bank.getId())))
                 .sorted(Comparator
@@ -99,12 +84,12 @@ public class KyzzQuestionBankUserService {
         int selectedCount = records.size();
         int completedCount = (int) records.stream()
                 .filter(item -> item.getQuestionCount() != null && item.getQuestionCount() > 0)
-                .filter(item -> item.getCurrentProgress() != null && item.getCurrentProgress().compareTo(FULL_PROGRESS) >= 0)
+                .filter(item -> item.getCurrentProgress() != null && item.getCurrentProgress().compareTo(KyzzPracticeSupport.FULL_PROGRESS) >= 0)
                 .count();
         int inProgressCount = (int) records.stream()
                 .filter(item -> item.getCurrentProgress() != null)
-                .filter(item -> item.getCurrentProgress().compareTo(ZERO_PROGRESS) > 0)
-                .filter(item -> item.getCurrentProgress().compareTo(FULL_PROGRESS) < 0)
+                .filter(item -> item.getCurrentProgress().compareTo(KyzzPracticeSupport.ZERO_PROGRESS) > 0)
+                .filter(item -> item.getCurrentProgress().compareTo(KyzzPracticeSupport.FULL_PROGRESS) < 0)
                 .count();
         return new KyzzQuestionBankMineResponse(
                 new KyzzQuestionBankMineSummaryResponse(selectedCount, inProgressCount, completedCount),
@@ -124,9 +109,9 @@ public class KyzzQuestionBankUserService {
                 .eq(KyzzQuestionBank::getStatus, 1)
                 .orderByAsc(KyzzQuestionBank::getSortNo)
                 .orderByDesc(KyzzQuestionBank::getId));
-        Map<Long, KyzzCategory> categoryMap = buildCategoryMap();
-        Map<Long, KyzzUserQuestionBank> selectedRelationMap = buildSelectedRelationMap(userId, toBankIds(activeBanks));
-        Map<Long, QuestionBankProgressSnapshot> progressMap = buildProgressSnapshotMap(userId, selectedRelationMap.keySet(), activeBanks);
+        Map<Long, KyzzCategory> categoryMap = kyzzPracticeSupport.buildCategoryMap();
+        Map<Long, KyzzUserQuestionBank> selectedRelationMap = kyzzPracticeSupport.buildSelectedRelationMap(userId, toBankIds(activeBanks));
+        Map<Long, KyzzPracticeSupport.QuestionBankProgressSnapshot> progressMap = kyzzPracticeSupport.buildProgressSnapshotMap(userId, selectedRelationMap.keySet(), activeBanks);
 
         List<KyzzQuestionBank> sortedActiveBanks = activeBanks.stream()
                 .sorted(Comparator
@@ -171,7 +156,7 @@ public class KyzzQuestionBankUserService {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "请选择要执行的题库操作");
         }
 
-        KyzzQuestionBank bank = requireActiveQuestionBank(bankId);
+        KyzzQuestionBank bank = kyzzPracticeSupport.requireActiveQuestionBank(bankId);
         KyzzUserQuestionBank relation = kyzzUserQuestionBankMapper.selectOne(new LambdaQueryWrapper<KyzzUserQuestionBank>()
                 .eq(KyzzUserQuestionBank::getUserId, userId)
                 .eq(KyzzUserQuestionBank::getQuestionBankId, bankId)
@@ -182,7 +167,7 @@ public class KyzzQuestionBankUserService {
                 relation.setUserId(userId);
                 relation.setQuestionBankId(bankId);
                 relation.setJoinSource("manual");
-                relation.setCurrentProgress(ZERO_PROGRESS);
+                relation.setCurrentProgress(KyzzPracticeSupport.ZERO_PROGRESS);
                 relation.setStudiedCount(0);
                 relation.setCorrectCount(0);
                 relation.setWrongCount(0);
@@ -193,42 +178,18 @@ public class KyzzQuestionBankUserService {
             relation = null;
         }
 
-        syncStudyUserCount(bankId);
-        KyzzQuestionBank refreshedBank = requireActiveQuestionBank(bankId);
-        KyzzCategory category = refreshedBank.getCategoryId() == null ? null : kyzzCategoryMapper.selectById(refreshedBank.getCategoryId());
+        kyzzPracticeSupport.syncStudyUserCount(bankId);
+        KyzzQuestionBank refreshedBank = kyzzPracticeSupport.requireActiveQuestionBank(bankId);
+        KyzzCategory category = refreshedBank.getCategoryId() == null ? null : kyzzPracticeSupport.buildCategoryMap().get(refreshedBank.getCategoryId());
 
         if (relation != null) {
-            Map<Long, QuestionBankProgressSnapshot> progressMap = buildProgressSnapshotMap(userId, List.of(bankId), List.of(refreshedBank));
-            QuestionBankProgressSnapshot snapshot = progressMap.getOrDefault(bankId, QuestionBankProgressSnapshot.empty());
-            syncRelationSnapshot(relation.getId(), snapshot);
+            Map<Long, KyzzPracticeSupport.QuestionBankProgressSnapshot> progressMap = kyzzPracticeSupport.buildProgressSnapshotMap(userId, List.of(bankId), List.of(refreshedBank));
+            KyzzPracticeSupport.QuestionBankProgressSnapshot snapshot = progressMap.getOrDefault(bankId, KyzzPracticeSupport.QuestionBankProgressSnapshot.empty());
+            kyzzPracticeSupport.syncRelationSnapshot(relation.getId(), snapshot);
             relation = kyzzUserQuestionBankMapper.selectById(relation.getId());
             return toPublicRecord(refreshedBank, relation, category, snapshot, true);
         }
         return toPublicRecord(refreshedBank, null, category, null, false);
-    }
-
-    private Map<Long, KyzzCategory> buildCategoryMap() {
-        List<KyzzCategory> categories = kyzzCategoryMapper.selectList(new LambdaQueryWrapper<KyzzCategory>()
-                .orderByAsc(KyzzCategory::getCategoryLevel)
-                .orderByAsc(KyzzCategory::getSortNo)
-                .orderByAsc(KyzzCategory::getId));
-        Map<Long, KyzzCategory> result = new HashMap<>();
-        categories.forEach(category -> result.put(category.getId(), category));
-        return result;
-    }
-
-    private Map<Long, KyzzUserQuestionBank> buildSelectedRelationMap(Long userId, Collection<Long> bankIds) {
-        if (bankIds == null || bankIds.isEmpty()) {
-            return Map.of();
-        }
-        List<KyzzUserQuestionBank> relations = kyzzUserQuestionBankMapper.selectList(new LambdaQueryWrapper<KyzzUserQuestionBank>()
-                .eq(KyzzUserQuestionBank::getUserId, userId)
-                .in(KyzzUserQuestionBank::getQuestionBankId, bankIds)
-                .orderByDesc(KyzzUserQuestionBank::getCreatedAt)
-                .orderByDesc(KyzzUserQuestionBank::getId));
-        Map<Long, KyzzUserQuestionBank> result = new LinkedHashMap<>();
-        relations.forEach(item -> result.putIfAbsent(item.getQuestionBankId(), item));
-        return result;
     }
 
     private List<KyzzQuestionBankPublicCategoryResponse> buildPublicCategories(List<KyzzQuestionBank> banks,
@@ -251,91 +212,22 @@ public class KyzzQuestionBankUserService {
                 .toList();
     }
 
-    private Map<Long, QuestionBankProgressSnapshot> buildProgressSnapshotMap(Long userId,
-                                                                             Collection<Long> bankIds,
-                                                                             List<KyzzQuestionBank> banks) {
-        LinkedHashSet<Long> normalizedBankIds = bankIds == null
-                ? new LinkedHashSet<>()
-                : bankIds.stream().filter(Objects::nonNull).collect(LinkedHashSet::new, LinkedHashSet::add, LinkedHashSet::addAll);
-        if (normalizedBankIds.isEmpty()) {
-            return Map.of();
-        }
-
-        Map<Long, Integer> questionCountByBankId = new HashMap<>();
-        banks.forEach(bank -> questionCountByBankId.put(bank.getId(), bank.getQuestionCount() == null ? 0 : bank.getQuestionCount()));
-
-        List<KyzzUserAnswer> answers = kyzzUserAnswerMapper.selectList(new LambdaQueryWrapper<KyzzUserAnswer>()
-                .eq(KyzzUserAnswer::getUserId, userId)
-                .in(KyzzUserAnswer::getQuestionBankId, normalizedBankIds)
-                .orderByAsc(KyzzUserAnswer::getQuestionBankId)
-                .orderByAsc(KyzzUserAnswer::getQuestionId)
-                .orderByDesc(KyzzUserAnswer::getSubmittedAt)
-                .orderByDesc(KyzzUserAnswer::getId));
-
-        Map<Long, Map<Long, KyzzUserAnswer>> latestAnswerByBankQuestion = new HashMap<>();
-        for (KyzzUserAnswer answer : answers) {
-            Map<Long, KyzzUserAnswer> bankAnswerMap = latestAnswerByBankQuestion.computeIfAbsent(answer.getQuestionBankId(), key -> new LinkedHashMap<>());
-            bankAnswerMap.putIfAbsent(answer.getQuestionId(), answer);
-        }
-
-        Map<Long, QuestionBankProgressSnapshot> result = new HashMap<>();
-        normalizedBankIds.forEach(bankId -> {
-            Map<Long, KyzzUserAnswer> latestAnswers = latestAnswerByBankQuestion.getOrDefault(bankId, Map.of());
-            int studiedCount = 0;
-            int correctCount = 0;
-            int wrongCount = 0;
-            LocalDateTime lastPracticeAt = null;
-            for (KyzzUserAnswer answer : latestAnswers.values()) {
-                if (answer.getSubmittedAt() != null && (lastPracticeAt == null || answer.getSubmittedAt().isAfter(lastPracticeAt))) {
-                    lastPracticeAt = answer.getSubmittedAt();
-                }
-                if (!Objects.equals(answer.getAnswerStatus(), 1)) {
-                    continue;
-                }
-                studiedCount++;
-                if (Objects.equals(answer.getIsCorrect(), 1)) {
-                    correctCount++;
-                } else {
-                    wrongCount++;
-                }
-            }
-            result.put(bankId, new QuestionBankProgressSnapshot(
-                    buildProgress(studiedCount, questionCountByBankId.getOrDefault(bankId, 0)),
-                    studiedCount,
-                    correctCount,
-                    wrongCount,
-                    lastPracticeAt
-            ));
-        });
-        return result;
-    }
-
-    private BigDecimal buildProgress(int studiedCount, int questionCount) {
-        if (studiedCount <= 0 || questionCount <= 0) {
-            return ZERO_PROGRESS;
-        }
-        BigDecimal progress = BigDecimal.valueOf(studiedCount)
-                .multiply(BigDecimal.valueOf(100))
-                .divide(BigDecimal.valueOf(questionCount), 2, RoundingMode.HALF_UP);
-        return progress.compareTo(FULL_PROGRESS) > 0 ? FULL_PROGRESS : progress;
-    }
-
     private KyzzQuestionBankMineRecordResponse toMineRecord(KyzzQuestionBank bank,
                                                             KyzzUserQuestionBank relation,
                                                             KyzzCategory category,
-                                                            QuestionBankProgressSnapshot snapshot) {
-        QuestionBankProgressSnapshot resolvedSnapshot = snapshot == null ? QuestionBankProgressSnapshot.empty() : snapshot;
+                                                            KyzzPracticeSupport.QuestionBankProgressSnapshot snapshot) {
+        KyzzPracticeSupport.QuestionBankProgressSnapshot resolvedSnapshot = snapshot == null ? KyzzPracticeSupport.QuestionBankProgressSnapshot.empty() : snapshot;
         return new KyzzQuestionBankMineRecordResponse(
                 bank.getId(),
                 bank.getBankCode(),
                 bank.getBankName(),
                 bank.getSubtitle(),
-                resolveCoverUrl(bank.getCoverUrl()),
+                kyzzPracticeSupport.resolveCoverUrl(bank.getCoverUrl()),
                 bank.getCategoryId(),
                 category == null ? null : category.getCategoryName(),
                 bank.getDifficultyLevel(),
                 bank.getQuestionCount() == null ? 0 : bank.getQuestionCount(),
-                normalizeScore(bank.getTotalScore()),
+                kyzzPracticeSupport.normalizeScore(bank.getTotalScore()),
                 bank.getRatingCount() == null ? 0 : bank.getRatingCount(),
                 bank.getStudyUserCount() == null ? 0 : bank.getStudyUserCount(),
                 resolvedSnapshot.currentProgress(),
@@ -351,22 +243,22 @@ public class KyzzQuestionBankUserService {
     private KyzzQuestionBankPublicRecordResponse toPublicRecord(KyzzQuestionBank bank,
                                                                 KyzzUserQuestionBank relation,
                                                                 KyzzCategory category,
-                                                                QuestionBankProgressSnapshot snapshot,
+                                                                KyzzPracticeSupport.QuestionBankProgressSnapshot snapshot,
                                                                 boolean selected) {
-        QuestionBankProgressSnapshot resolvedSnapshot = selected
-                ? (snapshot == null ? QuestionBankProgressSnapshot.empty() : snapshot)
+        KyzzPracticeSupport.QuestionBankProgressSnapshot resolvedSnapshot = selected
+                ? (snapshot == null ? KyzzPracticeSupport.QuestionBankProgressSnapshot.empty() : snapshot)
                 : null;
         return new KyzzQuestionBankPublicRecordResponse(
                 bank.getId(),
                 bank.getBankCode(),
                 bank.getBankName(),
                 bank.getSubtitle(),
-                resolveCoverUrl(bank.getCoverUrl()),
+                kyzzPracticeSupport.resolveCoverUrl(bank.getCoverUrl()),
                 bank.getCategoryId(),
                 category == null ? null : category.getCategoryName(),
                 bank.getDifficultyLevel(),
                 bank.getQuestionCount() == null ? 0 : bank.getQuestionCount(),
-                normalizeScore(bank.getTotalScore()),
+                kyzzPracticeSupport.normalizeScore(bank.getTotalScore()),
                 bank.getRatingCount() == null ? 0 : bank.getRatingCount(),
                 bank.getStudyUserCount() == null ? 0 : bank.getStudyUserCount(),
                 bank.getSortNo() == null ? 0 : bank.getSortNo(),
@@ -379,20 +271,6 @@ public class KyzzQuestionBankUserService {
                 selected && relation != null ? relation.getCreatedAt() : null,
                 selected
         );
-    }
-
-    private String resolveCoverUrl(String coverValue) {
-        if (!StringUtils.hasText(coverValue)) {
-            return null;
-        }
-        if (localFileStorage.isManagedKey(coverValue)) {
-            return localFileStorage.resolveUrl(coverValue);
-        }
-        return coverValue;
-    }
-
-    private BigDecimal normalizeScore(BigDecimal totalScore) {
-        return totalScore == null ? ZERO_PROGRESS : totalScore.setScale(2, RoundingMode.HALF_UP);
     }
 
     private void validateDifficultyLevel(Integer difficultyLevel) {
@@ -430,38 +308,6 @@ public class KyzzQuestionBankUserService {
         return StringUtils.hasText(source) && source.toLowerCase(Locale.ROOT).contains(keyword);
     }
 
-    private KyzzQuestionBank requireActiveQuestionBank(Long bankId) {
-        if (bankId == null) {
-            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "题库不能为空");
-        }
-        KyzzQuestionBank bank = kyzzQuestionBankMapper.selectById(bankId);
-        if (bank == null) {
-            throw new BusinessException(ApiResponseCode.NOT_FOUND, "题库不存在");
-        }
-        if (!Objects.equals(bank.getStatus(), 1)) {
-            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "题库已下架，暂时无法操作");
-        }
-        return bank;
-    }
-
-    private void syncStudyUserCount(Long bankId) {
-        Long count = kyzzUserQuestionBankMapper.selectCount(new LambdaQueryWrapper<KyzzUserQuestionBank>()
-                .eq(KyzzUserQuestionBank::getQuestionBankId, bankId));
-        kyzzQuestionBankMapper.update(null, new LambdaUpdateWrapper<KyzzQuestionBank>()
-                .eq(KyzzQuestionBank::getId, bankId)
-                .set(KyzzQuestionBank::getStudyUserCount, count == null ? 0 : count.intValue()));
-    }
-
-    private void syncRelationSnapshot(Long relationId, QuestionBankProgressSnapshot snapshot) {
-        kyzzUserQuestionBankMapper.update(null, new LambdaUpdateWrapper<KyzzUserQuestionBank>()
-                .eq(KyzzUserQuestionBank::getId, relationId)
-                .set(KyzzUserQuestionBank::getCurrentProgress, snapshot.currentProgress())
-                .set(KyzzUserQuestionBank::getStudiedCount, snapshot.studiedCount())
-                .set(KyzzUserQuestionBank::getCorrectCount, snapshot.correctCount())
-                .set(KyzzUserQuestionBank::getWrongCount, snapshot.wrongCount())
-                .set(KyzzUserQuestionBank::getLastPracticeAt, snapshot.lastPracticeAt()));
-    }
-
     private List<Long> toBankIds(Collection<KyzzQuestionBank> banks) {
         if (banks == null || banks.isEmpty()) {
             return List.of();
@@ -469,16 +315,5 @@ public class KyzzQuestionBankUserService {
         List<Long> result = new ArrayList<>(banks.size());
         banks.forEach(bank -> result.add(bank.getId()));
         return result;
-    }
-
-    private record QuestionBankProgressSnapshot(BigDecimal currentProgress,
-                                                Integer studiedCount,
-                                                Integer correctCount,
-                                                Integer wrongCount,
-                                                LocalDateTime lastPracticeAt) {
-
-        private static QuestionBankProgressSnapshot empty() {
-            return new QuestionBankProgressSnapshot(ZERO_PROGRESS, 0, 0, 0, null);
-        }
     }
 }
