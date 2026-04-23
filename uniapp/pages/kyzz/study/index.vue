@@ -83,12 +83,6 @@
         </view>
       </view>
 
-      <view v-if="loadedOnce && !loading && !dashboard.records.length" class="study-page__empty">
-        <text class="study-page__empty-title">先挑一套题库开始刷题</text>
-        <text class="study-page__empty-desc">加入题库后，学习页会自动帮你记住上次刷到哪里，下次直接续上。</text>
-        <button class="study-page__empty-button" @tap="goPublicBanks">去添加题库</button>
-      </view>
-
       <study-garden />
     </view>
   </page-shell>
@@ -585,16 +579,6 @@ export default defineComponent({
   margin: 44rpx 18rpx 0;
 }
 
-.study-page__empty {
-  position: relative;
-  z-index: 2;
-  margin-top: 24rpx;
-  padding: 28rpx 24rpx;
-  border-radius: 28rpx;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 18rpx 36rpx rgba(43, 52, 55, 0.05);
-}
-
 .study-page__shortcut-title {
   font-size: 30rpx;
   line-height: 1.2;
@@ -669,39 +653,6 @@ export default defineComponent({
   font-weight: 600;
   text-align: center;
   color: #5c6678;
-}
-
-.study-page__empty-title {
-  display: block;
-  font-size: 30rpx;
-  line-height: 1.2;
-  font-weight: 700;
-  color: #2d3642;
-}
-
-.study-page__empty-desc {
-  display: block;
-  margin-top: 14rpx;
-  font-size: 24rpx;
-  line-height: 1.7;
-  color: #7a8594;
-}
-
-.study-page__empty-button {
-  margin-top: 24rpx;
-  padding: 0 32rpx;
-  height: 78rpx;
-  line-height: 78rpx;
-  border-radius: 999rpx;
-  background: linear-gradient(135deg, #545e76 0%, #7f8ca7 100%);
-  color: #ffffff;
-  font-size: 24rpx;
-  font-weight: 600;
-  box-shadow: 0 14rpx 28rpx rgba(84, 94, 118, 0.2);
-}
-
-.study-page__empty-button::after {
-  border: 0;
 }
 
 /* =======================================

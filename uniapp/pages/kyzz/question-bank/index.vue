@@ -6,8 +6,10 @@
 		content-class="question-bank-page__content"
 	>
 		<view class="question-bank-page__hero">
-			<text class="question-bank-page__title">我的题库</text>
-			<text class="question-bank-page__desc">把常刷题库收进个人清单，回到这里就能继续上次的进度。</text>
+			<view class="question-bank-page__hero-head">
+				<text class="question-bank-page__title">我的题库</text>
+				<text class="question-bank-page__hero-tag">自动续练</text>
+			</view>
 		</view>
 
 		<view class="question-bank-page__search-shell">
@@ -87,7 +89,6 @@
 						<view class="question-bank-page__info-row">
 							<text class="question-bank-page__info-text">最近练习：{{ formatLastPractice(item.lastPracticeAt) }}</text>
 							<text class="question-bank-page__info-text">已做 {{ item.studiedCount }} / {{ item.questionCount }}</text>
-							<text class="question-bank-page__info-text">上次入口：{{ practiceResumeLabel(item) }}</text>
 						</view>
 					</view>
 				</view>
@@ -121,7 +122,6 @@
 			<view class="question-bank-page__add-mark">+</view>
 			<view class="question-bank-page__add-copy">
 				<text class="question-bank-page__add-title">添加新题库</text>
-				<text class="question-bank-page__add-desc">进入完整公共题库列表，按已选 / 未选和分类筛选。</text>
 			</view>
 			<uni-icons type="right" size="18" color="#7e8798" />
 		</view>
@@ -401,9 +401,6 @@ export default defineComponent({
 			}
 			return 'question-bank-page__stage-badge--idle'
 		},
-		practiceResumeLabel(item: KyzzQuestionBankMineViewRecord): string {
-			return this.practiceBankMap[item.id]?.resumeLabel || this.stageText(item)
-		},
 		buildCoverInitial(name: string): string {
 			if (!name) {
 				return '题'
@@ -450,6 +447,13 @@ export default defineComponent({
 	padding: 12rpx 6rpx 0;
 }
 
+.question-bank-page__hero-head {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	flex-wrap: wrap;
+}
+
 .question-bank-page__title {
 	display: block;
 	font-size: 54rpx;
@@ -459,12 +463,20 @@ export default defineComponent({
 	color: #293241;
 }
 
-.question-bank-page__desc {
-	display: block;
-	margin-top: 16rpx;
-	font-size: 26rpx;
-	line-height: 1.7;
-	color: #6f7a86;
+.question-bank-page__hero-tag {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 42rpx;
+	padding: 0 18rpx;
+	border-radius: 999rpx;
+	background: rgba(110, 124, 146, 0.1);
+	border: 1rpx solid rgba(110, 124, 146, 0.18);
+	font-size: 22rpx;
+	line-height: 1;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	color: #667389;
 }
 
 .question-bank-page__search-shell {
@@ -877,14 +889,6 @@ export default defineComponent({
 	line-height: 1.2;
 	font-weight: 700;
 	color: #2f3744;
-}
-
-.question-bank-page__add-desc {
-	display: block;
-	margin-top: 10rpx;
-	font-size: 22rpx;
-	line-height: 1.6;
-	color: #7a8391;
 }
 
 @keyframes question-bank-cover-pulse {
