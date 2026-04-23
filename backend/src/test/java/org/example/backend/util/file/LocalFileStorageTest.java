@@ -2,6 +2,11 @@ package org.example.backend.util.file;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.example.backend.shared.storage.service.LegacyStorageKeyResolver;
+import org.example.backend.shared.storage.service.LocalFileStorage;
+import org.example.backend.shared.storage.service.LocalStorageProperties;
+import org.example.backend.shared.storage.service.StorageUrlResolver;
+import org.example.backend.shared.storage.service.StoredFileInfo;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.IOException;

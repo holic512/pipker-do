@@ -5,6 +5,7 @@ import cn.dev33.satoken.exception.NotPermissionException;
 import org.example.backend.common.api.ApiResponse;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.api.ApiResponseFactory;
+import org.example.backend.shared.security.anticrawler.AntiCrawlerViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -22,6 +23,12 @@ public class GlobalExceptionHandler {
 
     public GlobalExceptionHandler(ApiResponseFactory responseFactory) {
         this.responseFactory = responseFactory;
+    }
+
+    @ExceptionHandler(AntiCrawlerViolationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAntiCrawlerViolation(AntiCrawlerViolationException ex) {
+        return ResponseEntity.status(ex.getHttpStatus())
+                .body(responseFactory.failure(ex.getResponseCode(), ex.getMessage(), ex.getResponsePayload()));
     }
 
     @ExceptionHandler(BusinessException.class)

@@ -64,3 +64,74 @@ wechat:
   miniapp:
     app-id: ${WECHAT_MINIAPP_APP_ID:wx8f51a19f388f49ef}
     app-secret: ${WECHAT_MINIAPP_APP_SECRET:76b1c77f1a22c7fcc3be9ded6f8468de}
+
+anti-crawler:
+  enabled: true
+  whitelist-ips: []
+  groups:
+    auth-login:
+      one-second-limit: 6
+      one-minute-limit: 30
+      ten-minute-limit: 100
+      cooldown-seconds: 60
+      block-seconds: 1800
+      escalation-window-seconds: 600
+      escalation-threshold: 3
+    profile-readwrite:
+      one-second-limit: 10
+      one-minute-limit: 120
+      ten-minute-limit: 500
+      cooldown-seconds: 30
+      block-seconds: 1800
+      escalation-window-seconds: 600
+      escalation-threshold: 3
+    question-bank-read:
+      one-second-limit: 6
+      one-minute-limit: 90
+      ten-minute-limit: 300
+      cooldown-seconds: 60
+      block-seconds: 1800
+      escalation-window-seconds: 600
+      escalation-threshold: 3
+    practice-session-read:
+      one-second-limit: 4
+      one-minute-limit: 120
+      ten-minute-limit: 400
+      cooldown-seconds: 60
+      block-seconds: 1800
+      escalation-window-seconds: 600
+      escalation-threshold: 3
+    practice-submit:
+      one-second-limit: 3
+      one-minute-limit: 60
+      ten-minute-limit: 200
+      cooldown-seconds: 60
+      block-seconds: 1800
+      escalation-window-seconds: 600
+      escalation-threshold: 3
+    avatar-upload:
+      one-second-limit: 0
+      one-minute-limit: 10
+      ten-minute-limit: 30
+      cooldown-seconds: 120
+      block-seconds: 1800
+      escalation-window-seconds: 600
+      escalation-threshold: 3
+  behavior:
+    scan-question-window-seconds: 300
+    scan-question-distinct-threshold: 40
+    scan-bank-window-seconds: 600
+    scan-bank-distinct-threshold: 8
+    robot-window-seconds: 600
+    robot-submit-threshold: 20
+    robot-fast-used-seconds: 2
+    robot-fast-ratio-percent: 80
+    multi-ip-window-seconds: 600
+    multi-ip-distinct-threshold: 4
+    multi-ip-cooldown-seconds: 600
+    multi-ip-repeat-window-seconds: 86400
+    multi-ip-block-seconds: 1800
+    night-read-start-hour: 1
+    night-read-end-hour: 5
+    night-read-multiplier: 1.5
+    suspicious-threshold-factor: 0.5

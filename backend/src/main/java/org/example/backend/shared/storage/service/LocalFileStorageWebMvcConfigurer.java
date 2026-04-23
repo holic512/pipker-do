@@ -26,7 +26,7 @@ public class LocalFileStorageWebMvcConfigurer implements WebMvcConfigurer {
                 .addResourceLocations(location);
     }
 
-    static String toResourceHandlerPattern(String publicBaseUrl) {
+    public static String toResourceHandlerPattern(String publicBaseUrl) {
         if (publicBaseUrl == null || publicBaseUrl.isBlank()) {
             throw new IllegalStateException("请在配置中设置 storage.local.public-base-url");
         }
@@ -48,7 +48,7 @@ public class LocalFileStorageWebMvcConfigurer implements WebMvcConfigurer {
         }
     }
 
-    static String toFileResourceLocation(String basePath) {
+    public static String toFileResourceLocation(String basePath) {
         if (basePath == null || basePath.isBlank()) {
             throw new IllegalStateException("请在配置中设置 storage.local.base-path 或 storage.local.root-dir");
         }

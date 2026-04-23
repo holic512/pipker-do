@@ -2,6 +2,7 @@ package org.example.backend.util.file;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.example.backend.shared.storage.service.LocalFileStorageWebMvcConfigurer;
 
 import java.nio.file.Path;
 

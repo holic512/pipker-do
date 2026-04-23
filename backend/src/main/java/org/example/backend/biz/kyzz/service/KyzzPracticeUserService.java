@@ -24,6 +24,7 @@ import org.example.backend.biz.kyzz.mapper.KyzzUserWrongQuestionMapper;
 import org.example.backend.biz.kyzz.support.KyzzPracticeSupport;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
+import org.example.backend.shared.security.anticrawler.AntiCrawlerSecurityService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -62,17 +63,20 @@ public class KyzzPracticeUserService {
     private final KyzzUserAnswerMapper kyzzUserAnswerMapper;
     private final KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper;
     private final KyzzPracticeSupport kyzzPracticeSupport;
+    private final AntiCrawlerSecurityService antiCrawlerSecurityService;
 
     public KyzzPracticeUserService(KyzzQuestionBankMapper kyzzQuestionBankMapper,
                                    KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper,
                                    KyzzUserAnswerMapper kyzzUserAnswerMapper,
                                    KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper,
-                                   KyzzPracticeSupport kyzzPracticeSupport) {
+                                   KyzzPracticeSupport kyzzPracticeSupport,
+                                   AntiCrawlerSecurityService antiCrawlerSecurityService) {
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
         this.kyzzUserQuestionBankMapper = kyzzUserQuestionBankMapper;
         this.kyzzUserAnswerMapper = kyzzUserAnswerMapper;
         this.kyzzUserWrongQuestionMapper = kyzzUserWrongQuestionMapper;
         this.kyzzPracticeSupport = kyzzPracticeSupport;
+        this.antiCrawlerSecurityService = antiCrawlerSecurityService;
     }
 
     public KyzzPracticeDashboardResponse getDashboard(Long userId) {
@@ -146,6 +150,7 @@ public class KyzzPracticeUserService {
             return buildShortQuestionPreviewResponse(context, request);
         }
 
+        antiCrawlerSecurityService.inspectPracticeSubmitBehavior(userId, request == null ? null : request.getUsedSeconds());
         ObjectiveAnswerResult answerResult = gradeObjectiveQuestion(context, request);
         persistFinalAnswer(
                 userId,
@@ -188,6 +193,7 @@ public class KyzzPracticeUserService {
         }
         validateUsedSeconds(request.getUsedSeconds());
 
+        antiCrawlerSecurityService.inspectPracticeSubmitBehavior(userId, request.getUsedSeconds());
         String submittedAnswerText = trimToEmpty(request.getAnswerText());
         persistFinalAnswer(
                 userId,
