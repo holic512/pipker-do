@@ -63,11 +63,6 @@
 						:key="item.id"
 						class="question-bank-public-page__card"
 					>
-						<view class="question-bank-public-page__card-head">
-							<view class="question-bank-public-page__badge question-bank-public-page__badge--selected">已添加</view>
-							<text class="question-bank-public-page__joined-at">{{ formatJoinedAt(item.joinedAt) }}</text>
-						</view>
-
 						<view class="question-bank-public-page__card-main">
 							<image
 								v-if="item.coverUrl"
@@ -85,36 +80,20 @@
 								<text v-if="item.subtitle" class="question-bank-public-page__card-subtitle">{{ item.subtitle }}</text>
 
 								<view class="question-bank-public-page__meta-row">
+									<text class="question-bank-public-page__meta-pill question-bank-public-page__meta-pill--progress">进度 {{ formatProgress(item.currentProgress) }}</text>
 									<text class="question-bank-public-page__meta-pill">{{ item.categoryName || '未分类' }}</text>
 									<text class="question-bank-public-page__meta-pill" :class="difficultyTagClass(item.difficultyLevel)">{{ difficultyLabel(item.difficultyLevel) }}</text>
 									<text class="question-bank-public-page__meta-pill">{{ item.questionCount }} 题</text>
 								</view>
-
-								<view class="question-bank-public-page__progress-row">
-									<view class="question-bank-public-page__progress-track">
-										<view
-											class="question-bank-public-page__progress-value"
-											:style="{ width: `${progressPercent(item)}%` }"
-										></view>
-									</view>
-									<text class="question-bank-public-page__progress-text">{{ formatProgress(item.currentProgress) }}</text>
-								</view>
-
-								<view class="question-bank-public-page__info-row">
-									<text class="question-bank-public-page__info-text">最近练习：{{ formatLastPractice(item.lastPracticeAt) }}</text>
-									<text class="question-bank-public-page__info-text">答对 {{ item.correctCount }} / 待巩固 {{ item.wrongCount }}</text>
-								</view>
-
-								<view class="question-bank-public-page__actions">
-									<button
-										class="question-bank-public-page__ghost-button"
-										:disabled="togglingId === item.id"
-										@tap="handleToggleSelection(item)"
-									>
-										{{ togglingId === item.id ? '处理中...' : '移出' }}
-									</button>
-								</view>
 							</view>
+
+							<button
+								class="question-bank-public-page__icon-button question-bank-public-page__icon-button--remove"
+								:disabled="togglingId === item.id"
+								@tap="handleToggleSelection(item)"
+							>
+								<uni-icons type="minus" size="18" color="#6d7789" />
+							</button>
 						</view>
 					</view>
 				</view>
@@ -141,11 +120,6 @@
 						:key="item.id"
 						class="question-bank-public-page__card"
 					>
-						<view class="question-bank-public-page__card-head">
-							<view class="question-bank-public-page__badge question-bank-public-page__badge--plain">未添加</view>
-							<text class="question-bank-public-page__heat-text">学习 {{ item.studyUserCount }} · 评分 {{ formatScore(item.totalScore) }}</text>
-						</view>
-
 						<view class="question-bank-public-page__card-main">
 							<image
 								v-if="item.coverUrl"
@@ -167,19 +141,15 @@
 									<text class="question-bank-public-page__meta-pill" :class="difficultyTagClass(item.difficultyLevel)">{{ difficultyLabel(item.difficultyLevel) }}</text>
 									<text class="question-bank-public-page__meta-pill">{{ item.questionCount }} 题</text>
 								</view>
-
-								<text class="question-bank-public-page__card-hint">加入后会在“我的题库”里保留进度，下次可直接续刷。</text>
-
-								<view class="question-bank-public-page__actions">
-									<button
-										class="question-bank-public-page__primary-button"
-										:disabled="togglingId === item.id"
-										@tap="handleToggleSelection(item)"
-									>
-										{{ togglingId === item.id ? '处理中...' : '添加' }}
-									</button>
-								</view>
 							</view>
+
+							<button
+								class="question-bank-public-page__icon-button question-bank-public-page__icon-button--add"
+								:disabled="togglingId === item.id"
+								@tap="handleToggleSelection(item)"
+							>
+								<uni-icons type="plus" size="18" color="#5f6f8b" />
+							</button>
 						</view>
 					</view>
 				</view>
@@ -523,58 +493,11 @@ export default defineComponent({
 			}
 			return ''
 		},
-		progressPercent(item: KyzzQuestionBankPublicViewRecord): number {
-			const progress = toNumber(item.currentProgress)
-			if (progress <= 0) {
-				return 0
-			}
-			if (progress >= 100) {
-				return 100
-			}
-			return progress
-		},
 		formatProgress(value: number): string {
 			const progress = toNumber(value)
 			const normalized = Math.round(progress * 10) / 10
 			const display = Number.isInteger(normalized) ? normalized : normalized.toFixed(1)
 			return `${display}%`
-		},
-		formatScore(value: number): string {
-			return toNumber(value).toFixed(2)
-		},
-		formatLastPractice(value: string | null): string {
-			if (!value) {
-				return '暂未开始'
-			}
-			const normalized = value.replace(/-/g, '/')
-			const practiceDate = new Date(normalized)
-			if (Number.isNaN(practiceDate.getTime())) {
-				return value.slice(0, 16).replace('T', ' ')
-			}
-			const today = new Date()
-			const oneDay = 24 * 60 * 60 * 1000
-			const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
-			const practiceStart = new Date(practiceDate.getFullYear(), practiceDate.getMonth(), practiceDate.getDate()).getTime()
-			const diffDays = Math.floor((todayStart - practiceStart) / oneDay)
-			if (diffDays === 0) {
-				return '今天'
-			}
-			if (diffDays === 1) {
-				return '昨天'
-			}
-			if (diffDays > 1 && diffDays < 7) {
-				return `${diffDays} 天前`
-			}
-			return `${practiceDate.getFullYear()}-${this.pad(practiceDate.getMonth() + 1)}-${this.pad(practiceDate.getDate())}`
-		},
-		formatJoinedAt(value: string | null): string {
-			if (!value) {
-				return '已加入'
-			}
-			return `加入于 ${value.replace('T', ' ').slice(0, 16)}`
-		},
-		pad(value: number): string {
-			return String(value).padStart(2, '0')
 		},
 		buildCoverInitial(name: string): string {
 			if (!name) {
@@ -856,46 +779,10 @@ export default defineComponent({
 	box-shadow: 0 18rpx 36rpx rgba(43, 52, 55, 0.06);
 }
 
-.question-bank-public-page__card-head {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 14rpx;
-}
-
-.question-bank-public-page__badge {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	height: 46rpx;
-	padding: 0 18rpx;
-	border-radius: 999rpx;
-	font-size: 22rpx;
-	line-height: 1;
-	font-weight: 600;
-}
-
-.question-bank-public-page__badge--selected {
-	background: rgba(221, 233, 222, 0.88);
-	color: #567162;
-}
-
-.question-bank-public-page__badge--plain {
-	background: rgba(229, 234, 237, 0.88);
-	color: #717b85;
-}
-
-.question-bank-public-page__joined-at,
-.question-bank-public-page__heat-text {
-	font-size: 20rpx;
-	line-height: 1.5;
-	color: #87909c;
-}
-
 .question-bank-public-page__card-main {
 	display: flex;
+	align-items: center;
 	gap: 20rpx;
-	margin-top: 18rpx;
 }
 
 .question-bank-public-page__cover {
@@ -969,6 +856,11 @@ export default defineComponent({
 	color: #707987;
 }
 
+.question-bank-public-page__meta-pill--progress {
+	background: rgba(215, 226, 255, 0.68);
+	color: #516079;
+}
+
 .question-bank-public-page__meta-pill--simple {
 	background: rgba(221, 233, 222, 0.92);
 	color: #587062;
@@ -989,62 +881,47 @@ export default defineComponent({
 	color: #a35c59;
 }
 
-.question-bank-public-page__progress-row {
-	display: flex;
+.question-bank-public-page__icon-button,
+.question-bank-public-page__primary-button,
+.question-bank-public-page__ghost-button {
+	margin: 0;
+}
+
+.question-bank-public-page__icon-button {
+	display: inline-flex;
 	align-items: center;
-	gap: 12rpx;
-	margin-top: 20rpx;
+	justify-content: center;
+	width: 76rpx;
+	height: 76rpx;
+	padding: 0;
+	border-radius: 24rpx;
+	flex-shrink: 0;
+	background: rgba(241, 244, 248, 0.96);
+	box-shadow: inset 0 0 0 1rpx rgba(219, 226, 235, 0.95);
 }
 
-.question-bank-public-page__progress-track {
-	flex: 1;
-	height: 14rpx;
-	border-radius: 999rpx;
-	background: #edf1f6;
-	overflow: hidden;
+.question-bank-public-page__icon-button--add {
+	background: rgba(227, 235, 249, 0.82);
+	box-shadow: inset 0 0 0 1rpx rgba(188, 203, 226, 0.92);
 }
 
-.question-bank-public-page__progress-value {
-	height: 100%;
-	border-radius: inherit;
-	background: linear-gradient(90deg, #7a889f 0%, #b8c7e8 100%);
+.question-bank-public-page__icon-button--remove {
+	background: rgba(241, 244, 248, 0.96);
+	box-shadow: inset 0 0 0 1rpx rgba(219, 226, 235, 0.95);
 }
 
-.question-bank-public-page__progress-text {
-	font-size: 22rpx;
-	line-height: 1;
-	font-weight: 600;
-	color: #566175;
+.question-bank-public-page__primary-button::after,
+.question-bank-public-page__ghost-button::after,
+.question-bank-public-page__icon-button::after {
+	border: 0;
 }
 
-.question-bank-public-page__info-row {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 12rpx;
-	margin-top: 16rpx;
-}
-
-.question-bank-public-page__info-text,
-.question-bank-public-page__card-hint {
-	font-size: 21rpx;
-	line-height: 1.6;
-	color: #7c8593;
-}
-
-.question-bank-public-page__card-hint {
-	display: block;
-	margin-top: 18rpx;
-}
-
-.question-bank-public-page__actions {
-	display: flex;
-	justify-content: flex-end;
-	margin-top: 22rpx;
+.question-bank-public-page__icon-button[disabled] {
+	opacity: 0.55;
 }
 
 .question-bank-public-page__primary-button,
 .question-bank-public-page__ghost-button {
-	margin: 0;
 	min-width: 156rpx;
 	height: 74rpx;
 	line-height: 74rpx;
@@ -1052,11 +929,6 @@ export default defineComponent({
 	border-radius: 999rpx;
 	font-size: 24rpx;
 	font-weight: 600;
-}
-
-.question-bank-public-page__primary-button::after,
-.question-bank-public-page__ghost-button::after {
-	border: 0;
 }
 
 .question-bank-public-page__primary-button {
