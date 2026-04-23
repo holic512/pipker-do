@@ -32,14 +32,6 @@
           <view class="study-page__hero-divider"></view>
           <text class="study-page__hero-bank">{{ heroBankName }}</text>
 
-          <view v-if="recommendedBank" class="study-page__hero-chips">
-            <text class="study-page__hero-chip">{{ recommendedBank.resumeLabel }}</text>
-            <text class="study-page__hero-chip">{{ difficultyLabel(recommendedBank.difficultyLevel) }}</text>
-            <!-- 移除了原有的百分比文本，融合到底部按钮中 -->
-          </view>
-
-          <text class="study-page__hero-desc">{{ heroDescription }}</text>
-
           <!-- 优化: 环绕进度边框 + 脉冲动效按钮 -->
           <view class="study-page__hero-action">
             <button
@@ -108,7 +100,7 @@ import { bootstrapAuth } from '@/shared/session/session'
 import { getPracticeDashboard } from '@/pages/kyzz/api/practice'
 import { openPracticeTab } from '@/pages/kyzz/practice/navigation'
 import type { KyzzPracticeBankViewRecord, KyzzPracticeDashboardState } from '@/pages/kyzz/practice/types'
-import { createEmptyPracticeDashboard, difficultyLabel, formatProgress, normalizePracticeDashboard } from '@/pages/kyzz/practice/view'
+import { createEmptyPracticeDashboard, formatProgress, normalizePracticeDashboard } from '@/pages/kyzz/practice/view'
 
 interface StudyShortcutItem {
   key: string
@@ -192,14 +184,6 @@ export default defineComponent({
     heroBankName(): string {
       return this.recommendedBank ? `当前题库：${this.recommendedBank.bankName}` : '当前还没有可练习的题库'
     },
-    heroDescription(): string {
-      if (this.dashboard.recommendedReason) {
-        return this.dashboard.recommendedReason
-      }
-      return this.recommendedBank
-          ? '已按你的最近练习状态准备好入口，点一下就能直接进入。'
-          : '先从公共题库里选一套适合当前阶段的内容。'
-    },
     heroButtonText(): string {
       return this.recommendedBank ? '进入刷题' : '去添加题库'
     },
@@ -272,7 +256,6 @@ export default defineComponent({
         this.typewriterTimer = null
       }
     },
-    difficultyLabel,
     formatProgress,
     handleStartPractice(): void {
       if (!this.recommendedBank) {
@@ -430,8 +413,10 @@ export default defineComponent({
 .study-page__hero-shell {
   position: relative;
   z-index: 2;
-  margin: 64rpx 34rpx 0;
-  width: auto;
+  width: 632rpx;
+  height: 632rpx;
+  max-width: calc(100% - 88rpx);
+  margin: 64rpx auto 0;
   padding: 12rpx;
   border-radius: 26rpx;
   background: rgba(248, 250, 253, 0.95);
@@ -445,7 +430,10 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 68rpx 30rpx 64rpx;
+  justify-content: center;
+  height: 100%;
+  padding: 52rpx 28rpx 48rpx;
+  box-sizing: border-box;
   border-radius: 22rpx;
   background: linear-gradient(180deg, #202837 0%, #2b3446 100%);
   box-shadow:
@@ -461,8 +449,8 @@ export default defineComponent({
 }
 
 .study-page__hero-title {
-  margin-top: 32rpx;
-  font-size: 66rpx;
+  margin-top: 26rpx;
+  font-size: 62rpx;
   line-height: 1.18;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -470,7 +458,7 @@ export default defineComponent({
 }
 
 .study-page__hero-divider {
-  margin: 38rpx 0 32rpx;
+  margin: 32rpx 0 34rpx;
   width: 90rpx;
   height: 4rpx;
   border-radius: 999rpx;
@@ -479,45 +467,20 @@ export default defineComponent({
 
 .study-page__hero-bank {
   display: block;
-  font-size: 28rpx;
-  line-height: 1.6;
-  color: rgba(232, 236, 242, 0.86);
+  max-width: 100%;
+  font-size: 24rpx;
+  line-height: 1.55;
+  font-weight: 600;
+  color: rgba(232, 236, 242, 0.84);
   text-align: center;
-}
-
-.study-page__hero-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  justify-content: center;
-  margin-top: 18rpx;
-}
-
-.study-page__hero-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44rpx;
-  padding: 0 16rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.1);
-  font-size: 20rpx;
-  line-height: 1;
-  color: rgba(236, 240, 246, 0.88);
-}
-
-.study-page__hero-desc {
-  display: block;
-  margin-top: 18rpx;
-  font-size: 25rpx;
-  line-height: 1.7;
-  text-align: center;
-  color: rgba(226, 231, 239, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 进度环绕脉冲按钮样式 ==================== */
 .study-page__hero-action {
-  margin-top: 36rpx;
+  margin-top: 28rpx;
   position: relative;
   display: flex;
   justify-content: center;
@@ -619,7 +582,7 @@ export default defineComponent({
 .study-page__shortcut-shell {
   position: relative;
   z-index: 2;
-  margin: 28rpx 18rpx 0;
+  margin: 44rpx 18rpx 0;
 }
 
 .study-page__empty {
@@ -787,17 +750,23 @@ export default defineComponent({
 }
 
 @media screen and (max-width: 375px) {
+  .study-page__hero-shell {
+    width: 596rpx;
+    height: 596rpx;
+    max-width: calc(100% - 92rpx);
+  }
+
   .study-page__hero {
-    padding-left: 28rpx;
-    padding-right: 28rpx;
+    padding-left: 24rpx;
+    padding-right: 24rpx;
   }
 
   .study-page__hero-title {
-    font-size: 58rpx;
+    font-size: 56rpx;
   }
 
   .study-page__hero-bank {
-    font-size: 24rpx;
+    font-size: 22rpx;
   }
 }
 </style>
