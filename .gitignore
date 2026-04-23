@@ -8,6 +8,7 @@ admin-web/node_modules/
 
 # Java / Maven build outputs
 backend/target/
+backend/.m2repo/
 *.class
 
 # Admin web build outputs

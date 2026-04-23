@@ -652,6 +652,46 @@ interface QuestionOptionForm {
   isCorrect: number
 }
 
+function createDefaultDashboardStats(): KyzzQuestionAdminDashboard['stats'] {
+  return {
+    totalQuestions: 0,
+    activeQuestions: 0,
+    inactiveQuestions: 0,
+    singleChoiceQuestions: 0,
+    multipleChoiceQuestions: 0,
+    shortAnswerQuestions: 0
+  }
+}
+
+function createDefaultDashboardPagination(): KyzzQuestionAdminDashboard['pagination'] {
+  return {
+    pageNo: 1,
+    pageSize: 20,
+    total: 0,
+    totalPages: 0
+  }
+}
+
+// AI 索引: KYZZ 题目管理接口响应兜底，避免列表字段缺失导致渲染异常。
+function ensureArray<T>(value: T[] | null | undefined): T[] {
+  return Array.isArray(value) ? value : []
+}
+
+function normalizeQuestionRecord(record: KyzzQuestionAdminItem): KyzzQuestionAdminItem {
+  return {
+    ...record,
+    tags: ensureArray(record.tags),
+    correctOptionKeys: ensureArray(record.correctOptionKeys)
+  }
+}
+
+function normalizeQuestionDetail(detail: KyzzQuestionAdminDetail): KyzzQuestionAdminDetail {
+  return {
+    ...normalizeQuestionRecord(detail),
+    options: ensureArray(detail.options)
+  }
+}
+
 const route = useRoute()
 const sessionStore = useAdminSessionStore()
 const currentYear = new Date().getFullYear()
@@ -686,21 +726,9 @@ const followBankCategory = ref(true)
 const formRef = ref<FormInstance>()
 
 const dashboard = reactive<KyzzQuestionAdminDashboard>({
-  stats: {
-    totalQuestions: 0,
-    activeQuestions: 0,
-    inactiveQuestions: 0,
-    singleChoiceQuestions: 0,
-    multipleChoiceQuestions: 0,
-    shortAnswerQuestions: 0
-  },
+  stats: createDefaultDashboardStats(),
   records: [],
-  pagination: {
-    pageNo: 1,
-    pageSize: 20,
-    total: 0,
-    totalPages: 0
-  },
+  pagination: createDefaultDashboardPagination(),
   questionBanks: [],
   categories: [],
   tags: []
@@ -778,9 +806,9 @@ const routeTagId = computed(() => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
 })
 
-const questionBankOptions = computed(() => dashboard.questionBanks)
-const categoryOptions = computed(() => dashboard.categories)
-const questionTagOptions = computed(() => dashboard.tags)
+const questionBankOptions = computed(() => ensureArray(dashboard.questionBanks))
+const categoryOptions = computed(() => ensureArray(dashboard.categories))
+const questionTagOptions = computed(() => ensureArray(dashboard.tags))
 const questionBankMap = computed(() => {
   const result = new Map<number, KyzzQuestionBankOption>()
   questionBankOptions.value.forEach((bank) => result.set(bank.id, bank))
@@ -981,33 +1009,34 @@ function removeOption(index: number) {
 }
 
 function fillForm(detail: KyzzQuestionAdminDetail, mode: 'edit' | 'copy') {
-  editingId.value = mode === 'edit' ? detail.id : null
+  const normalizedDetail = normalizeQuestionDetail(detail)
+  editingId.value = mode === 'edit' ? normalizedDetail.id : null
   drawerMode.value = mode
-  form.questionBankId = detail.questionBankId
-  form.categoryId = detail.categoryId
-  form.questionType = detail.questionType
-  form.stem = detail.stem
-  form.analysis = detail.analysis || ''
-  form.answerText = detail.answerText || ''
-  form.difficultyLevel = detail.difficultyLevel
-  form.score = Number(detail.score)
-  form.sourceName = detail.sourceName || ''
-  form.yearNo = detail.yearNo
-  form.sortNo = detail.sortNo
-  form.status = mode === 'copy' ? 1 : detail.status
-  form.tagIds = detail.tags.map((tag) => tag.id)
+  form.questionBankId = normalizedDetail.questionBankId
+  form.categoryId = normalizedDetail.categoryId
+  form.questionType = normalizedDetail.questionType
+  form.stem = normalizedDetail.stem
+  form.analysis = normalizedDetail.analysis || ''
+  form.answerText = normalizedDetail.answerText || ''
+  form.difficultyLevel = normalizedDetail.difficultyLevel
+  form.score = Number(normalizedDetail.score)
+  form.sourceName = normalizedDetail.sourceName || ''
+  form.yearNo = normalizedDetail.yearNo
+  form.sortNo = normalizedDetail.sortNo
+  form.status = mode === 'copy' ? 1 : normalizedDetail.status
+  form.tagIds = normalizedDetail.tags.map((tag) => tag.id)
   setFormOptions(
-    detail.questionType === 'short'
+    normalizedDetail.questionType === 'short'
       ? []
-      : (detail.options.length
-        ? detail.options.map((option) => ({
+      : (normalizedDetail.options.length
+        ? normalizedDetail.options.map((option) => ({
             optionKey: option.optionKey,
             optionContent: option.optionContent,
             isCorrect: option.isCorrect
           }))
         : createDefaultOptions())
   )
-  followBankCategory.value = isFollowingBankCategory(detail.questionBankId, detail.categoryId)
+  followBankCategory.value = isFollowingBankCategory(normalizedDetail.questionBankId, normalizedDetail.categoryId)
   if (followBankCategory.value) {
     syncCategoryFromBank()
   }
@@ -1031,12 +1060,12 @@ async function loadDashboard() {
       difficultyLevel: filters.difficultyLevel,
       yearNo: resolveFilterYearNo()
     })
-    dashboard.stats = result.stats
-    dashboard.records = result.records
-    dashboard.pagination = result.pagination
-    dashboard.questionBanks = result.questionBanks
-    dashboard.categories = result.categories
-    dashboard.tags = result.tags
+    dashboard.stats = result.stats ?? createDefaultDashboardStats()
+    dashboard.records = ensureArray(result.records).map(normalizeQuestionRecord)
+    dashboard.pagination = result.pagination ?? createDefaultDashboardPagination()
+    dashboard.questionBanks = ensureArray(result.questionBanks)
+    dashboard.categories = ensureArray(result.categories)
+    dashboard.tags = ensureArray(result.tags)
   } catch (error) {
     ElMessage.error((error as Error).message || '加载题目失败')
   } finally {
