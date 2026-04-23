@@ -61,6 +61,7 @@
 					<view class="wrong-book-page__card-tags">
 						<text class="wrong-book-page__tag">{{ questionTypeLabel(item.questionType) }}</text>
 						<text class="wrong-book-page__tag" :class="difficultyTagClass(item.difficultyLevel)">{{ difficultyLabel(item.difficultyLevel) }}</text>
+						<text class="wrong-book-page__tag wrong-book-page__tag--bank">题库 · {{ item.bankName }}</text>
 					</view>
 					<text
 						class="wrong-book-page__status"
@@ -70,13 +71,34 @@
 					</text>
 				</view>
 
-				<text class="wrong-book-page__stem">{{ item.stem }}</text>
-				<text class="wrong-book-page__bank">题库：{{ item.bankName }}</text>
+				<view
+					class="wrong-book-page__stem"
+					:class="{ 'is-collapsed': shouldShowStemToggle(item) && !isStemExpanded(item.questionId) }"
+				>
+					{{ item.stem }}
+				</view>
+				<view
+					v-if="shouldShowStemToggle(item)"
+					class="wrong-book-page__stem-toggle"
+					@tap="toggleStem(item.questionId)"
+				>
+					<text class="wrong-book-page__stem-toggle-text">{{ isStemExpanded(item.questionId) ? '收起题干' : '展开题干' }}</text>
+					<uni-icons :type="isStemExpanded(item.questionId) ? 'top' : 'bottom'" size="14" color="#7a8799" />
+				</view>
 
-				<view class="wrong-book-page__meta-list">
-					<text class="wrong-book-page__meta-item">最近答错：{{ formatWrongQuestionTime(item.lastWrongAt) }}</text>
-					<text class="wrong-book-page__meta-item">累计错 {{ item.wrongCount }} 次</text>
-					<text v-if="item.isMastered && item.masteredAt" class="wrong-book-page__meta-item">掌握于：{{ formatWrongQuestionTime(item.masteredAt) }}</text>
+				<view class="wrong-book-page__meta-row">
+					<view class="wrong-book-page__meta-pill">
+						<uni-icons type="calendar" size="14" color="#7b8798" />
+						<text class="wrong-book-page__meta-pill-text">最近答错 {{ formatWrongQuestionTime(item.lastWrongAt) }}</text>
+					</view>
+					<view class="wrong-book-page__meta-pill">
+						<uni-icons type="info-filled" size="14" color="#7b8798" />
+						<text class="wrong-book-page__meta-pill-text">累计错 {{ item.wrongCount }} 次</text>
+					</view>
+					<view v-if="item.isMastered && item.masteredAt" class="wrong-book-page__meta-pill wrong-book-page__meta-pill--mastered">
+						<uni-icons type="checkbox-filled" size="14" color="#5b7a65" />
+						<text class="wrong-book-page__meta-pill-text wrong-book-page__meta-pill-text--mastered">掌握于 {{ formatWrongQuestionTime(item.masteredAt) }}</text>
+					</view>
 				</view>
 
 				<view class="wrong-book-page__card-foot">
@@ -128,6 +150,7 @@ interface WrongBookPageState {
 	keyword: string
 	keywordDraft: string
 	dashboard: KyzzWrongQuestionDashboardState
+	expandedQuestionIds: number[]
 }
 
 function resolveErrorMessage(error: unknown, fallback: string): string {
@@ -146,7 +169,8 @@ export default defineComponent({
 			currentStatus: 'all',
 			keyword: '',
 			keywordDraft: '',
-			dashboard: createEmptyWrongQuestionDashboard()
+			dashboard: createEmptyWrongQuestionDashboard(),
+			expandedQuestionIds: []
 		}
 	},
 	computed: {
@@ -230,6 +254,8 @@ export default defineComponent({
 					keyword: this.keyword.trim() || undefined
 				})
 				this.dashboard = normalizeWrongQuestionDashboard(result)
+				const activeQuestionIds = new Set(this.dashboard.records.map((item) => item.questionId))
+				this.expandedQuestionIds = this.expandedQuestionIds.filter((questionId) => activeQuestionIds.has(questionId))
 				this.loadedOnce = true
 			} catch (error) {
 				this.loadedOnce = true
@@ -261,6 +287,19 @@ export default defineComponent({
 			this.keyword = ''
 			this.keywordDraft = ''
 			this.loadWrongQuestions().catch(() => {})
+		},
+		shouldShowStemToggle(record: KyzzWrongQuestionViewRecord): boolean {
+			return (record.stem || '').trim().length > 68
+		},
+		isStemExpanded(questionId: number): boolean {
+			return this.expandedQuestionIds.includes(questionId)
+		},
+		toggleStem(questionId: number): void {
+			if (this.isStemExpanded(questionId)) {
+				this.expandedQuestionIds = this.expandedQuestionIds.filter((item) => item !== questionId)
+				return
+			}
+			this.expandedQuestionIds = [...this.expandedQuestionIds, questionId]
 		},
 		handleRetry(record: KyzzWrongQuestionViewRecord): void {
 			openPracticeTab({
@@ -486,6 +525,12 @@ export default defineComponent({
 	color: #965251;
 }
 
+.wrong-book-page__tag--bank {
+	max-width: 100%;
+	background: linear-gradient(135deg, rgba(232, 239, 251, 0.98) 0%, rgba(242, 247, 255, 0.98) 100%);
+	color: #4a6287;
+}
+
 .wrong-book-page__status.is-active {
 	background: rgba(247, 226, 224, 0.98);
 	color: #964e4b;
@@ -505,26 +550,65 @@ export default defineComponent({
 	color: #27313f;
 }
 
-.wrong-book-page__bank {
-	display: block;
-	margin-top: 14rpx;
-	font-size: 22rpx;
-	line-height: 1.5;
-	color: #6c788c;
+.wrong-book-page__stem.is-collapsed {
+	display: -webkit-box;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
 }
 
-.wrong-book-page__meta-list {
-	display: flex;
-	flex-direction: column;
+.wrong-book-page__stem-toggle {
+	display: inline-flex;
+	align-items: center;
 	gap: 8rpx;
+	margin-top: 12rpx;
+	padding: 10rpx 14rpx;
+	border-radius: 999rpx;
+	background: rgba(243, 247, 252, 0.96);
+	box-shadow: inset 0 0 0 1rpx rgba(227, 233, 241, 0.96);
+}
+
+.wrong-book-page__stem-toggle-text {
+	font-size: 21rpx;
+	line-height: 1;
+	font-weight: 600;
+	color: #6e7b8f;
+}
+
+.wrong-book-page__meta-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10rpx;
 	margin-top: 16rpx;
 }
 
-.wrong-book-page__meta-item,
+.wrong-book-page__meta-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 8rpx;
+	min-height: 44rpx;
+	padding: 0 14rpx;
+	border-radius: 999rpx;
+	background: rgba(243, 247, 252, 0.96);
+	box-shadow: inset 0 0 0 1rpx rgba(227, 233, 241, 0.96);
+}
+
+.wrong-book-page__meta-pill--mastered {
+	background: rgba(237, 247, 239, 0.98);
+	box-shadow: inset 0 0 0 1rpx rgba(211, 231, 216, 0.96);
+}
+
+.wrong-book-page__meta-pill-text,
+.wrong-book-page__meta-pill-text--mastered,
 .wrong-book-page__foot-tip {
 	font-size: 22rpx;
 	line-height: 1.6;
 	color: #7c8796;
+}
+
+.wrong-book-page__meta-pill-text--mastered {
+	color: #5b7a65;
 }
 
 .wrong-book-page__card-foot {

@@ -66,25 +66,27 @@
       </view>
 
       <view class="study-page__shortcut-shell">
-        <view class="study-page__shortcut-head">
-          <text class="study-page__shortcut-title">快捷入口</text>
-          <text class="study-page__shortcut-desc">常用功能收在这里，想回看、对比、整理都能直接过去。</text>
+        <view class="study-page__shortcut-title-row">
+          <view class="study-page__shortcut-title-mark">
+            <view class="study-page__shortcut-title-bar study-page__shortcut-title-bar--left"></view>
+            <view class="study-page__shortcut-title-bar study-page__shortcut-title-bar--right"></view>
+          </view>
+          <text class="study-page__shortcut-title">常用入口</text>
         </view>
 
         <view class="study-page__shortcut-grid">
           <view
               v-for="item in shortcutItems"
               :key="item.key"
-              class="study-page__shortcut-card"
+              class="study-page__shortcut-item"
               @tap="openShortcut(item.pagePath)"
           >
-            <view class="study-page__shortcut-icon-shell" :style="{ background: item.iconShellBackground, boxShadow: item.iconShadow }">
-              <view class="study-page__shortcut-icon-core" :style="{ background: item.iconCoreBackground }">
-                <uni-icons :type="item.icon" size="24" :color="item.iconColor" />
+            <view class="study-page__shortcut-card">
+              <view class="study-page__shortcut-icon">
+                <uni-icons :type="item.icon" size="29" :color="item.iconColor" />
               </view>
             </view>
             <text class="study-page__shortcut-card-title">{{ item.title }}</text>
-            <text class="study-page__shortcut-card-desc">{{ item.description }}</text>
           </view>
         </view>
       </view>
@@ -111,12 +113,8 @@ import { createEmptyPracticeDashboard, difficultyLabel, formatProgress, normaliz
 interface StudyShortcutItem {
   key: string
   title: string
-  description: string
   icon: string
   iconColor: string
-  iconShellBackground: string
-  iconCoreBackground: string
-  iconShadow: string
   pagePath: string
 }
 
@@ -151,48 +149,32 @@ export default defineComponent({
       typewriterTimer: null,
       shortcutItems: [
         {
-          key: 'wrong-book',
-          title: '错题本',
-          description: '把答错的题集中起来，回头直接查漏补缺。',
-          icon: 'help',
-          iconColor: '#8e5551',
-          iconShellBackground: 'linear-gradient(180deg, rgba(255, 241, 239, 0.98) 0%, rgba(250, 225, 220, 0.96) 100%)',
-          iconCoreBackground: 'linear-gradient(135deg, rgba(255, 232, 228, 0.98) 0%, rgba(255, 247, 245, 0.98) 100%)',
-          iconShadow: '0 18rpx 30rpx rgba(196, 131, 123, 0.18)',
-          pagePath: '/pages/kyzz/wrong-book/index'
-        },
-        {
-          key: 'leaderboard',
-          title: '排行榜',
-          description: '看看竞赛榜单和自己的冲榜位置。',
-          icon: 'medal-filled',
-          iconColor: '#7b6241',
-          iconShellBackground: 'linear-gradient(180deg, rgba(255, 248, 232, 0.98) 0%, rgba(247, 233, 196, 0.96) 100%)',
-          iconCoreBackground: 'linear-gradient(135deg, rgba(255, 240, 203, 0.98) 0%, rgba(255, 251, 239, 0.98) 100%)',
-          iconShadow: '0 18rpx 30rpx rgba(196, 168, 104, 0.16)',
-          pagePath: '/pages/kyzz/leaderboard/index'
-        },
-        {
           key: 'favorite',
           title: '收藏',
-          description: '后面常看的内容，会慢慢沉到这里。',
           icon: 'star-filled',
-          iconColor: '#946153',
-          iconShellBackground: 'linear-gradient(180deg, rgba(255, 244, 240, 0.98) 0%, rgba(248, 225, 215, 0.96) 100%)',
-          iconCoreBackground: 'linear-gradient(135deg, rgba(255, 235, 229, 0.98) 0%, rgba(255, 249, 246, 0.98) 100%)',
-          iconShadow: '0 18rpx 30rpx rgba(199, 146, 134, 0.16)',
+          iconColor: '#6f7890',
           pagePath: '/pages/kyzz/favorite/index'
+        },
+        {
+          key: 'wrong-book',
+          title: '错题库',
+          icon: 'help',
+          iconColor: '#6f7890',
+          pagePath: '/pages/kyzz/wrong-book/index'
         },
         {
           key: 'note',
           title: '笔记',
-          description: '重点摘记和易混点整理，后面都放这边。',
           icon: 'compose',
-          iconColor: '#4e6b79',
-          iconShellBackground: 'linear-gradient(180deg, rgba(238, 247, 251, 0.98) 0%, rgba(214, 233, 241, 0.96) 100%)',
-          iconCoreBackground: 'linear-gradient(135deg, rgba(226, 240, 246, 0.98) 0%, rgba(248, 252, 253, 0.98) 100%)',
-          iconShadow: '0 18rpx 30rpx rgba(125, 161, 177, 0.16)',
+          iconColor: '#6f7890',
           pagePath: '/pages/kyzz/note/index'
+        },
+        {
+          key: 'leaderboard',
+          title: '排行榜',
+          icon: 'medal-filled',
+          iconColor: '#6f7890',
+          pagePath: '/pages/kyzz/leaderboard/index'
         }
       ]
     }
@@ -448,9 +430,9 @@ export default defineComponent({
 .study-page__hero-shell {
   position: relative;
   z-index: 2;
-  margin: 108rpx auto 0;
-  width: 100%;
-  padding: 18rpx;
+  margin: 64rpx 34rpx 0;
+  width: auto;
+  padding: 12rpx;
   border-radius: 26rpx;
   background: rgba(248, 250, 253, 0.95);
   box-shadow:
@@ -463,7 +445,7 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 88rpx 40rpx 84rpx;
+  padding: 68rpx 30rpx 64rpx;
   border-radius: 22rpx;
   background: linear-gradient(180deg, #202837 0%, #2b3446 100%);
   box-shadow:
@@ -634,7 +616,12 @@ export default defineComponent({
   color: #ffffff;
 }
 
-.study-page__shortcut-shell,
+.study-page__shortcut-shell {
+  position: relative;
+  z-index: 2;
+  margin: 28rpx 18rpx 0;
+}
+
 .study-page__empty {
   position: relative;
   z-index: 2;
@@ -645,73 +632,80 @@ export default defineComponent({
   box-shadow: 0 18rpx 36rpx rgba(43, 52, 55, 0.05);
 }
 
-.study-page__shortcut-head {
-  display: flex;
-  flex-direction: column;
-}
-
 .study-page__shortcut-title {
   font-size: 30rpx;
   line-height: 1.2;
   font-weight: 700;
-  color: #2d3642;
+  color: #203153;
 }
 
-.study-page__shortcut-desc {
-  margin-top: 10rpx;
-  font-size: 22rpx;
-  line-height: 1.6;
-  color: #778293;
+.study-page__shortcut-title-row {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.study-page__shortcut-title-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.study-page__shortcut-title-bar {
+  width: 10rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, #3c86ff 0%, #6ba6ff 100%);
+}
+
+.study-page__shortcut-title-bar--left {
+  height: 26rpx;
+}
+
+.study-page__shortcut-title-bar--right {
+  height: 20rpx;
 }
 
 .study-page__shortcut-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18rpx;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12rpx;
   margin-top: 22rpx;
 }
 
+.study-page__shortcut-item {
+  min-width: 0;
+}
+
 .study-page__shortcut-card {
-  padding: 22rpx 20rpx;
-  border-radius: 24rpx;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 249, 252, 0.96) 100%);
-  box-shadow: inset 0 0 0 1rpx rgba(227, 233, 242, 0.94);
-}
-
-.study-page__shortcut-icon-shell {
-  display: inline-flex;
+  position: relative;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 84rpx;
-  height: 84rpx;
+  width: 100%;
+  padding-top: 100%;
   border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 16rpx 34rpx rgba(43, 52, 55, 0.06),
+    inset 0 0 0 1rpx rgba(232, 237, 244, 0.9);
 }
 
-.study-page__shortcut-icon-core {
-  display: inline-flex;
+.study-page__shortcut-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 54rpx;
-  height: 54rpx;
-  border-radius: 18rpx;
-  box-shadow: inset 0 0 0 1rpx rgba(255, 255, 255, 0.7);
 }
 
 .study-page__shortcut-card-title {
   display: block;
-  margin-top: 18rpx;
-  font-size: 26rpx;
-  line-height: 1.3;
-  font-weight: 700;
-  color: #2d3643;
-}
-
-.study-page__shortcut-card-desc {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 21rpx;
-  line-height: 1.6;
-  color: #7c8797;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
+  font-weight: 600;
+  text-align: center;
+  color: #5c6678;
 }
 
 .study-page__empty-title {
