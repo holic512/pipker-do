@@ -123,6 +123,9 @@ export interface KyzzQuestionBankPublicDraftFilters {
 
 export interface SearchConfirmEvent {
 	value?: string
+	detail?: {
+		value?: string | null
+	}
 }
 
 export interface SegmentedControlClickEvent {

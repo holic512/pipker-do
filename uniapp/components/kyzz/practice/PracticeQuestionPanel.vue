@@ -2,8 +2,10 @@
 	<view v-if="question && currentBank" class="practice-question-panel">
 		<view class="practice-question-panel__summary-bar">
 			<view class="practice-question-panel__summary-main">
-				<text class="practice-question-panel__summary-index">第 {{ progress.currentQuestionIndex }} / {{ progress.totalQuestionCount }} 题</text>
-				<text class="practice-question-panel__summary-bank">{{ currentBank.bankName }}</text>
+				<view class="practice-question-panel__summary-heading">
+					<text class="practice-question-panel__summary-index">第 {{ progress.currentQuestionIndex }} / {{ progress.totalQuestionCount }} 题</text>
+					<text v-if="currentBank.bankName" class="practice-question-panel__summary-bank-tag">{{ currentBank.bankName }}</text>
+				</view>
 			</view>
 			<view class="practice-question-panel__switcher" @tap="$emit('open-switcher')">
 				<text class="practice-question-panel__switcher-text">切换题库</text>
@@ -28,7 +30,6 @@
 		</view>
 
 		<view class="practice-question-panel__stem-shell">
-			<text v-if="question.sourceName" class="practice-question-panel__stem-source">{{ question.sourceName }}</text>
 			<view class="practice-question-panel__stem">{{ question.stem }}</view>
 		</view>
 
@@ -138,8 +139,15 @@ export default defineComponent({
 
 .practice-question-panel__summary-main {
 	min-width: 0;
+	flex: 1;
+}
+
+.practice-question-panel__summary-heading {
 	display: flex;
-	flex-direction: column;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10rpx 14rpx;
+	min-width: 0;
 }
 
 .practice-question-panel__summary-index {
@@ -149,12 +157,23 @@ export default defineComponent({
 	color: #242d3a;
 }
 
-.practice-question-panel__summary-bank {
-	margin-top: 10rpx;
-	font-size: 24rpx;
-	line-height: 1.5;
-	color: #4d5a70;
+.practice-question-panel__summary-bank-tag {
+	display: inline-flex;
+	align-items: center;
+	max-width: 100%;
+	min-height: 42rpx;
+	padding: 0 16rpx;
+	box-sizing: border-box;
+	border-radius: 999rpx;
+	background: rgba(223, 232, 247, 0.96);
+	box-shadow: inset 0 0 0 1rpx rgba(190, 204, 227, 0.92);
+	font-size: 20rpx;
+	line-height: 1;
 	font-weight: 600;
+	color: #4b627f;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .practice-question-panel__switcher {
@@ -262,15 +281,7 @@ export default defineComponent({
 	border: 1rpx solid rgba(217, 225, 236, 0.9);
 }
 
-.practice-question-panel__stem-source {
-	display: block;
-	font-size: 21rpx;
-	line-height: 1.4;
-	color: #748094;
-}
-
 .practice-question-panel__stem {
-	margin-top: 18rpx;
 	font-size: 31rpx;
 	line-height: 1.8;
 	font-weight: 600;

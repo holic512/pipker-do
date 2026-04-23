@@ -11,16 +11,20 @@
 		</view>
 
 		<view class="question-bank-page__search-shell">
-			<uni-search-bar
-				v-model="keyword"
-				placeholder="搜索题库名称、副标题、分类"
-				cancel-button="none"
-				clear-button="auto"
-				radius="16"
-				bg-color="#f5f7fb"
-				@confirm="handleSearchConfirm"
-				@clear="handleSearchClear"
-			/>
+			<view class="question-bank-page__search-box">
+				<uni-icons type="search" size="18" color="#99a5b5" />
+				<input
+					v-model="keyword"
+					class="question-bank-page__search-input"
+					placeholder="搜索题库名称、副标题、分类"
+					placeholder-class="question-bank-page__search-placeholder"
+					confirm-type="search"
+					@confirm="handleSearchConfirm"
+				/>
+				<view v-if="keyword" class="question-bank-page__search-clear" @tap="handleSearchClear">
+					<text class="question-bank-page__search-clear-text">×</text>
+				</view>
+			</view>
 		</view>
 
 		<view v-if="loading && !loadedOnce" class="question-bank-page__state-card">
@@ -407,7 +411,7 @@ export default defineComponent({
 			return name.trim().slice(0, 1).toUpperCase()
 		},
 		handleSearchConfirm(event: SearchConfirmEvent): void {
-			this.keyword = event?.value || this.keyword
+			this.keyword = (event?.detail?.value || event?.value || this.keyword || '').trim()
 		},
 		handleSearchClear(): void {
 			this.keyword = ''
@@ -465,10 +469,46 @@ export default defineComponent({
 
 .question-bank-page__search-shell {
 	margin-top: 28rpx;
-	padding: 10rpx 14rpx;
-	border-radius: 28rpx;
-	background: rgba(255, 255, 255, 0.8);
-	box-shadow: 0 16rpx 36rpx rgba(43, 52, 55, 0.06);
+}
+
+.question-bank-page__search-box {
+	display: flex;
+	align-items: center;
+	gap: 14rpx;
+	height: 82rpx;
+	padding: 0 22rpx;
+	border-radius: 999rpx;
+	background: rgba(244, 247, 251, 0.96);
+	box-shadow: inset 0 0 0 1rpx rgba(225, 232, 241, 0.98);
+}
+
+.question-bank-page__search-input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	font-size: 26rpx;
+	color: #2d3645;
+}
+
+.question-bank-page__search-placeholder {
+	font-size: 24rpx;
+	color: #a9b2bf;
+}
+
+.question-bank-page__search-clear {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 38rpx;
+	height: 38rpx;
+	border-radius: 50%;
+	background: rgba(210, 218, 229, 0.92);
+}
+
+.question-bank-page__search-clear-text {
+	font-size: 28rpx;
+	line-height: 1;
+	color: #ffffff;
 }
 
 .question-bank-page__state-card,

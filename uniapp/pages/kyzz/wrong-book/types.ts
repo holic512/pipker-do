@@ -49,4 +49,7 @@ export interface KyzzWrongQuestionDashboardState {
 
 export interface SearchConfirmEvent {
 	value?: string
+	detail?: {
+		value?: string | null
+	}
 }

@@ -2,16 +2,20 @@
 	<!-- AI 索引: 公共题库页 -->
 	<view class="question-bank-public-page">
 		<view class="question-bank-public-page__search-shell">
-			<uni-search-bar
-				v-model="keywordInput"
-				placeholder="搜索题库名称、副标题、分类"
-				cancel-button="none"
-				clear-button="auto"
-				radius="16"
-				bg-color="#f5f7fb"
-				@confirm="handleSearchConfirm"
-				@clear="handleSearchClear"
-			/>
+			<view class="question-bank-public-page__search-box">
+				<uni-icons type="search" size="18" color="#99a5b5" />
+				<input
+					v-model="keywordInput"
+					class="question-bank-public-page__search-input"
+					placeholder="搜索题库名称、副标题、分类"
+					placeholder-class="question-bank-public-page__search-placeholder"
+					confirm-type="search"
+					@confirm="handleSearchConfirm"
+				/>
+				<view v-if="keywordInput" class="question-bank-public-page__search-clear" @tap="handleSearchClear">
+					<text class="question-bank-public-page__search-clear-text">×</text>
+				</view>
+			</view>
 		</view>
 
 		<view class="question-bank-public-page__toolbar">
@@ -30,11 +34,6 @@
 				<text class="question-bank-public-page__filter-text">筛选</text>
 				<text v-if="filterBadgeCount" class="question-bank-public-page__filter-badge">{{ filterBadgeCount }}</text>
 			</button>
-		</view>
-
-		<view class="question-bank-public-page__summary">
-			<text class="question-bank-public-page__summary-main">共 {{ summary.totalCount }} 个题库</text>
-			<text class="question-bank-public-page__summary-sub">{{ filterSummaryText }}</text>
 		</view>
 
 		<view v-if="loading && !loadedOnce" class="question-bank-public-page__state-card">
@@ -354,43 +353,6 @@ export default defineComponent({
 		unselectedRecords(): KyzzQuestionBankPublicViewRecord[] {
 			return this.records.filter((item) => !item.selected)
 		},
-		summary(): { totalCount: number; selectedCount: number; unselectedCount: number } {
-			const selectedCount = this.selectedRecords.length
-			const totalCount = this.records.length
-			return {
-				totalCount,
-				selectedCount,
-				unselectedCount: totalCount - selectedCount
-			}
-		},
-		categoryMap(): Record<number, KyzzQuestionBankPublicCategoryResponse> {
-			return this.categories.reduce<Record<number, KyzzQuestionBankPublicCategoryResponse>>((result, item) => {
-				result[item.id] = item
-				return result
-			}, {})
-		},
-		filterSummaryText(): string {
-			const segments: string[] = []
-			if (this.filters.selectionStatus !== 'all') {
-				const option = SELECTION_STATUS_OPTIONS.find((item) => item.value === this.filters.selectionStatus)
-				if (option) {
-					segments.push(option.label)
-				}
-			}
-			if (this.filters.categoryId !== null && this.categoryMap[this.filters.categoryId]) {
-				segments.push(this.categoryMap[this.filters.categoryId].categoryName)
-			}
-			if (this.filters.difficultyLevel !== null) {
-				segments.push(this.difficultyLabel(this.filters.difficultyLevel))
-			}
-			if (this.filters.keyword) {
-				segments.push(`关键词“${this.filters.keyword}”`)
-			}
-			if (!segments.length) {
-				return `当前展示全部公共题库，已选 ${this.summary.selectedCount} 个`
-			}
-			return `当前筛选：${segments.join(' / ')}`
-		},
 		hasActiveFilters(): boolean {
 			return Boolean(
 				this.filters.keyword
@@ -481,7 +443,7 @@ export default defineComponent({
 			})
 		},
 		handleSearchConfirm(event: SearchConfirmEvent): void {
-			this.filters.keyword = (event?.value || this.keywordInput || '').trim()
+			this.filters.keyword = (event?.detail?.value || event?.value || this.keywordInput || '').trim()
 			this.keywordInput = this.filters.keyword
 			void this.loadPublicQuestionBanks()
 		},
@@ -682,10 +644,46 @@ export default defineComponent({
 }
 
 .question-bank-public-page__search-shell {
-	padding: 8rpx 10rpx;
-	border-radius: 26rpx;
-	background: rgba(255, 255, 255, 0.9);
-	box-shadow: 0 12rpx 30rpx rgba(43, 52, 55, 0.05);
+}
+
+.question-bank-public-page__search-box {
+	display: flex;
+	align-items: center;
+	gap: 14rpx;
+	height: 82rpx;
+	padding: 0 22rpx;
+	border-radius: 999rpx;
+	background: rgba(244, 247, 251, 0.96);
+	box-shadow: inset 0 0 0 1rpx rgba(225, 232, 241, 0.98);
+}
+
+.question-bank-public-page__search-input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	font-size: 26rpx;
+	color: #2d3645;
+}
+
+.question-bank-public-page__search-placeholder {
+	font-size: 24rpx;
+	color: #a9b2bf;
+}
+
+.question-bank-public-page__search-clear {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 38rpx;
+	height: 38rpx;
+	border-radius: 50%;
+	background: rgba(210, 218, 229, 0.92);
+}
+
+.question-bank-public-page__search-clear-text {
+	font-size: 28rpx;
+	line-height: 1;
+	color: #ffffff;
 }
 
 .question-bank-public-page__toolbar {
@@ -733,30 +731,6 @@ export default defineComponent({
 	font-size: 20rpx;
 	line-height: 1;
 	color: #ffffff;
-}
-
-.question-bank-public-page__summary {
-	display: flex;
-	flex-direction: column;
-	gap: 10rpx;
-	margin-top: 22rpx;
-	padding: 24rpx;
-	border-radius: 26rpx;
-	background: rgba(255, 255, 255, 0.92);
-	box-shadow: 0 16rpx 34rpx rgba(43, 52, 55, 0.05);
-}
-
-.question-bank-public-page__summary-main {
-	font-size: 30rpx;
-	line-height: 1.2;
-	font-weight: 700;
-	color: #2f3745;
-}
-
-.question-bank-public-page__summary-sub {
-	font-size: 22rpx;
-	line-height: 1.6;
-	color: #7c8593;
 }
 
 .question-bank-public-page__state-card,

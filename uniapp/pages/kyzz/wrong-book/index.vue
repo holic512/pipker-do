@@ -1,49 +1,40 @@
 <template>
 	<view class="wrong-book-page">
-		<view class="wrong-book-page__summary">
-			<view class="wrong-book-page__summary-card wrong-book-page__summary-card--active">
-				<text class="wrong-book-page__summary-label">待巩固</text>
-				<text class="wrong-book-page__summary-value">{{ dashboard.summary.activeCount }}</text>
-				<text class="wrong-book-page__summary-desc">还需要回头再练</text>
+		<view class="wrong-book-page__toolbar">
+			<view class="wrong-book-page__toolbar-head">
+				<view class="wrong-book-page__tabs">
+					<view class="wrong-book-page__tabs-track">
+						<view
+							v-for="tab in statusTabs"
+							:key="tab.status"
+							class="wrong-book-page__tab"
+							:class="{ 'is-active': currentStatus === tab.status }"
+							@tap="handleStatusChange(tab.status)"
+						>
+							<text class="wrong-book-page__tab-label">{{ tab.label }}</text>
+							<text class="wrong-book-page__tab-count">{{ tab.count }}</text>
+						</view>
+					</view>
+				</view>
+				<text class="wrong-book-page__toolbar-meta">累计错题 {{ dashboard.summary.totalWrongTimes }} 次</text>
 			</view>
-			<view class="wrong-book-page__summary-card wrong-book-page__summary-card--mastered">
-				<text class="wrong-book-page__summary-label">已掌握</text>
-				<text class="wrong-book-page__summary-value">{{ dashboard.summary.masteredCount }}</text>
-				<text class="wrong-book-page__summary-desc">重练后已通过</text>
-			</view>
-			<view class="wrong-book-page__summary-card wrong-book-page__summary-card--times">
-				<text class="wrong-book-page__summary-label">累计错题次数</text>
-				<text class="wrong-book-page__summary-value">{{ dashboard.summary.totalWrongTimes }}</text>
-				<text class="wrong-book-page__summary-desc">帮助你找准薄弱点</text>
-			</view>
-		</view>
 
-		<scroll-view class="wrong-book-page__tabs" scroll-x show-scrollbar="false">
-			<view class="wrong-book-page__tabs-track">
-				<view
-					v-for="tab in statusTabs"
-					:key="tab.status"
-					class="wrong-book-page__tab"
-					:class="{ 'is-active': currentStatus === tab.status }"
-					@tap="handleStatusChange(tab.status)"
-				>
-					<text class="wrong-book-page__tab-text">{{ tab.label }}</text>
-					<text class="wrong-book-page__tab-count">{{ tab.count }}</text>
+			<view class="wrong-book-page__search-shell">
+				<view class="wrong-book-page__search-box">
+					<uni-icons type="search" size="18" color="#99a5b5" />
+					<input
+						v-model="keywordDraft"
+						class="wrong-book-page__search-input"
+						placeholder="搜索题干或题库名"
+						placeholder-class="wrong-book-page__search-placeholder"
+						confirm-type="search"
+						@confirm="handleSearchConfirm"
+					/>
+					<view v-if="keywordDraft" class="wrong-book-page__search-clear" @tap="handleSearchClear">
+						<text class="wrong-book-page__search-clear-text">×</text>
+					</view>
 				</view>
 			</view>
-		</scroll-view>
-
-		<view class="wrong-book-page__search-shell">
-			<uni-search-bar
-				v-model="keywordDraft"
-				placeholder="搜索题干或题库名"
-				cancel-button="none"
-				clear-button="auto"
-				radius="18"
-				bg-color="#f4f7fb"
-				@confirm="handleSearchConfirm"
-				@clear="handleSearchClear"
-			/>
 		</view>
 
 		<view v-if="loading && !loadedOnce" class="wrong-book-page__state-card">
@@ -275,7 +266,7 @@ export default defineComponent({
 			this.loadWrongQuestions().catch(() => {})
 		},
 		handleSearchConfirm(event: SearchConfirmEvent): void {
-			const value = (event?.value || this.keywordDraft || '').trim()
+			const value = (event?.detail?.value || event?.value || this.keywordDraft || '').trim()
 			this.keyword = value
 			this.keywordDraft = value
 			this.loadWrongQuestions().catch(() => {})
@@ -340,96 +331,125 @@ export default defineComponent({
 		radial-gradient(circle at top, rgba(255, 255, 255, 0.99) 0%, rgba(243, 247, 252, 0.97) 46%, rgba(233, 239, 247, 0.95) 100%);
 }
 
-.wrong-book-page__summary {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 16rpx;
+.wrong-book-page__toolbar {
+	padding: 2rpx 8rpx 0;
 }
 
-.wrong-book-page__summary-card {
-	padding: 24rpx 20rpx;
-	border-radius: 26rpx;
-	background: rgba(255, 255, 255, 0.9);
-	box-shadow: 0 18rpx 34rpx rgba(43, 52, 55, 0.05);
-}
-
-.wrong-book-page__summary-card--active {
-	background: linear-gradient(180deg, rgba(255, 244, 242, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
-}
-
-.wrong-book-page__summary-card--mastered {
-	background: linear-gradient(180deg, rgba(239, 248, 243, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
-}
-
-.wrong-book-page__summary-card--times {
-	background: linear-gradient(180deg, rgba(240, 245, 252, 0.98) 0%, rgba(255, 255, 255, 0.94) 100%);
-}
-
-.wrong-book-page__summary-label {
-	display: block;
-	font-size: 22rpx;
-	line-height: 1.4;
-	color: #68758b;
-}
-
-.wrong-book-page__summary-value {
-	display: block;
-	margin-top: 12rpx;
-	font-size: 40rpx;
-	line-height: 1;
-	font-weight: 700;
-	color: #283241;
-}
-
-.wrong-book-page__summary-desc {
-	display: block;
-	margin-top: 12rpx;
-	font-size: 20rpx;
-	line-height: 1.5;
-	color: #8a94a5;
+.wrong-book-page__toolbar-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 12rpx 20rpx;
 }
 
 .wrong-book-page__tabs {
-	margin-top: 24rpx;
-	white-space: nowrap;
+	flex: 1;
+	min-width: 0;
 }
 
 .wrong-book-page__tabs-track {
-	display: inline-flex;
-	gap: 14rpx;
-	padding-right: 24rpx;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 18rpx 30rpx;
 }
 
 .wrong-book-page__tab {
+	position: relative;
 	display: inline-flex;
-	align-items: center;
-	gap: 10rpx;
-	padding: 18rpx 24rpx;
+	align-items: baseline;
+	gap: 8rpx;
+	padding-bottom: 14rpx;
+}
+
+.wrong-book-page__tab::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 4rpx;
 	border-radius: 999rpx;
-	background: rgba(255, 255, 255, 0.86);
-	box-shadow: inset 0 0 0 1rpx rgba(221, 228, 238, 0.92);
+	background: transparent;
+	transition: background-color 0.2s ease;
 }
 
-.wrong-book-page__tab.is-active {
-	background: linear-gradient(135deg, #545e76 0%, #7f8ca7 100%);
-	box-shadow: 0 18rpx 32rpx rgba(84, 94, 118, 0.16);
+.wrong-book-page__tab.is-active::after {
+	background: #59657d;
 }
 
-.wrong-book-page__tab-text,
+.wrong-book-page__tab-label,
 .wrong-book-page__tab-count {
-	font-size: 24rpx;
+	font-size: 28rpx;
 	line-height: 1;
 	font-weight: 600;
-	color: #556176;
+	color: #7d8795;
 }
 
-.wrong-book-page__tab.is-active .wrong-book-page__tab-text,
+.wrong-book-page__tab-count {
+	font-size: 24rpx;
+	color: #9ba5b3;
+}
+
+.wrong-book-page__tab.is-active .wrong-book-page__tab-label,
 .wrong-book-page__tab.is-active .wrong-book-page__tab-count {
-	color: #ffffff;
+	color: #283241;
+	font-weight: 700;
+}
+
+.wrong-book-page__toolbar-meta {
+	padding-bottom: 14rpx;
+	font-size: 22rpx;
+	line-height: 1.4;
+	color: #adb5c1;
+	white-space: nowrap;
 }
 
 .wrong-book-page__search-shell {
-	margin-top: 22rpx;
+	margin-top: 18rpx;
+	padding-top: 18rpx;
+	border-top: 1rpx solid rgba(220, 227, 236, 0.78);
+}
+
+.wrong-book-page__search-box {
+	display: flex;
+	align-items: center;
+	gap: 14rpx;
+	height: 82rpx;
+	padding: 0 22rpx;
+	border-radius: 999rpx;
+	background: rgba(244, 247, 251, 0.96);
+	box-shadow: inset 0 0 0 1rpx rgba(225, 232, 241, 0.98);
+}
+
+.wrong-book-page__search-input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	font-size: 26rpx;
+	color: #2d3645;
+}
+
+.wrong-book-page__search-placeholder {
+	font-size: 24rpx;
+	color: #a9b2bf;
+}
+
+.wrong-book-page__search-clear {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 38rpx;
+	height: 38rpx;
+	border-radius: 50%;
+	background: rgba(210, 218, 229, 0.92);
+}
+
+.wrong-book-page__search-clear-text {
+	font-size: 28rpx;
+	line-height: 1;
+	color: #ffffff;
 }
 
 .wrong-book-page__state-card,
