@@ -14,12 +14,7 @@
 		</view>
 
 		<view class="practice-question-panel__summary-sub">
-			<text class="practice-question-panel__summary-status">{{ currentBank.resumeLabel }}</text>
 			<text class="practice-question-panel__summary-progress">{{ formatProgress(currentBank.currentProgress) }}</text>
-		</view>
-
-		<view class="practice-question-panel__summary-track">
-			<view class="practice-question-panel__summary-value" :style="{ width: `${progressPercent(currentBank.currentProgress)}%` }"></view>
 		</view>
 
 		<view class="practice-question-panel__meta-row">
@@ -69,7 +64,7 @@ import type {
 	KyzzPracticeReviewViewResult,
 	KyzzPracticeSessionProgress
 } from '@/pages/kyzz/practice/types'
-import { difficultyLabel, difficultyTagClass, formatProgress, progressPercent, questionTypeLabel } from '@/pages/kyzz/practice/view'
+import { difficultyLabel, difficultyTagClass, formatProgress, questionTypeLabel } from '@/pages/kyzz/practice/view'
 
 // AI 索引: KYZZ 刷题页题面组件。
 
@@ -106,7 +101,6 @@ export default defineComponent({
 		difficultyLabel,
 		difficultyTagClass,
 		formatProgress,
-		progressPercent,
 		questionTypeLabel,
 		optionCardClass(optionKey: string): string {
 			const selected = this.selectedOptionKeys.includes(optionKey)
@@ -198,15 +192,8 @@ export default defineComponent({
 .practice-question-panel__summary-sub {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: 16rpx;
+	justify-content: flex-end;
 	margin-top: 16rpx;
-}
-
-.practice-question-panel__summary-status {
-	font-size: 22rpx;
-	line-height: 1.5;
-	color: #6e798c;
 }
 
 .practice-question-panel__summary-progress {
@@ -214,20 +201,6 @@ export default defineComponent({
 	line-height: 1;
 	font-weight: 700;
 	color: #415069;
-}
-
-.practice-question-panel__summary-track {
-	overflow: hidden;
-	margin-top: 14rpx;
-	height: 12rpx;
-	border-radius: 999rpx;
-	background: rgba(208, 217, 231, 0.9);
-}
-
-.practice-question-panel__summary-value {
-	height: 100%;
-	border-radius: inherit;
-	background: linear-gradient(90deg, #4b576d 0%, #74839d 100%);
 }
 
 .practice-question-panel__meta-row {

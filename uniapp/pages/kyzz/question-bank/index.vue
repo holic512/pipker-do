@@ -66,7 +66,6 @@
 								</view>
 							</view>
 						</view>
-						<text class="question-bank-page__cover-progress">{{ formatProgress(item.currentProgress) }}</text>
 					</view>
 
 					<view class="question-bank-page__card-body">
@@ -332,12 +331,6 @@ export default defineComponent({
 			return {
 				background: `conic-gradient(${activeColor} 0deg, ${activeColor} ${progressDegree}, rgba(224, 230, 240, 0.88) ${progressDegree}, rgba(224, 230, 240, 0.88) 360deg)`
 			}
-		},
-		formatProgress(value: number): string {
-			const progress = toNumber(value)
-			const normalized = Math.round(progress * 10) / 10
-			const display = Number.isInteger(normalized) ? normalized : normalized.toFixed(1)
-			return `${display}%`
 		},
 		formatLastPractice(value: string | null): string {
 			if (!value) {
@@ -663,14 +656,6 @@ export default defineComponent({
 	height: 16rpx;
 	border-radius: 6rpx;
 	background: rgba(84, 94, 118, 0.16);
-}
-
-.question-bank-page__cover-progress {
-	font-size: 22rpx;
-	line-height: 1;
-	font-weight: 700;
-	letter-spacing: 0.02em;
-	color: #526077;
 }
 
 .question-bank-page__card-body {

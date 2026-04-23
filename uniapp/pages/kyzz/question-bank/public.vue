@@ -44,8 +44,14 @@
 		<template v-else-if="records.length">
 			<view v-if="selectedRecords.length" class="question-bank-public-page__section">
 				<view class="question-bank-public-page__section-head">
-					<view>
-						<text class="question-bank-public-page__section-title">已选择</text>
+					<view class="question-bank-public-page__section-copy">
+						<view class="question-bank-public-page__section-title-row">
+							<view class="question-bank-public-page__section-title-mark">
+								<view class="question-bank-public-page__section-title-bar question-bank-public-page__section-title-bar--left"></view>
+								<view class="question-bank-public-page__section-title-bar question-bank-public-page__section-title-bar--right"></view>
+							</view>
+							<text class="question-bank-public-page__section-title">已选择</text>
+						</view>
 						<text class="question-bank-public-page__section-desc">这些题库已经加入你的个人题库，会继续记录进度。</text>
 					</view>
 					<text class="question-bank-public-page__section-count">{{ selectedRecords.length }}</text>
@@ -116,8 +122,14 @@
 
 			<view v-if="unselectedRecords.length" class="question-bank-public-page__section">
 				<view class="question-bank-public-page__section-head">
-					<view>
-						<text class="question-bank-public-page__section-title">未选择</text>
+					<view class="question-bank-public-page__section-copy">
+						<view class="question-bank-public-page__section-title-row">
+							<view class="question-bank-public-page__section-title-mark">
+								<view class="question-bank-public-page__section-title-bar question-bank-public-page__section-title-bar--left"></view>
+								<view class="question-bank-public-page__section-title-bar question-bank-public-page__section-title-bar--right"></view>
+							</view>
+							<text class="question-bank-public-page__section-title">未选择</text>
+						</view>
 						<text class="question-bank-public-page__section-desc">挑几套适合当前阶段的题库，加入后会自动出现在“我的题库”。</text>
 					</view>
 					<text class="question-bank-public-page__section-count">{{ unselectedRecords.length }}</text>
@@ -767,6 +779,38 @@ export default defineComponent({
 	justify-content: space-between;
 	gap: 16rpx;
 	margin-bottom: 18rpx;
+}
+
+.question-bank-public-page__section-copy {
+	min-width: 0;
+	flex: 1;
+}
+
+.question-bank-public-page__section-title-row {
+	display: flex;
+	align-items: center;
+	gap: 14rpx;
+}
+
+.question-bank-public-page__section-title-mark {
+	display: inline-flex;
+	align-items: center;
+	gap: 6rpx;
+	flex-shrink: 0;
+}
+
+.question-bank-public-page__section-title-bar {
+	width: 10rpx;
+	border-radius: 999rpx;
+	background: linear-gradient(180deg, #3c86ff 0%, #6ba6ff 100%);
+}
+
+.question-bank-public-page__section-title-bar--left {
+	height: 26rpx;
+}
+
+.question-bank-public-page__section-title-bar--right {
+	height: 20rpx;
 }
 
 .question-bank-public-page__section-title {
