@@ -39,7 +39,10 @@ public class WechatAuthClient {
 
     public WechatCode2SessionResponse code2Session(String code) {
         if (!StringUtils.hasText(properties.getAppId()) || !StringUtils.hasText(properties.getAppSecret())) {
-            throw new BusinessException(ApiResponseCode.WECHAT_LOGIN_FAILED, "微信小程序登录配置缺失");
+            throw new BusinessException(
+                    ApiResponseCode.WECHAT_LOGIN_FAILED,
+                    "微信小程序登录配置缺失，请设置 WECHAT_MINIAPP_APP_ID 和 WECHAT_MINIAPP_APP_SECRET"
+            );
         }
         if (!StringUtils.hasText(code)) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "登录 code 不能为空");

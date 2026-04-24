@@ -22,10 +22,11 @@ logging:
 
 storage:
   local:
-    base-path: /Volumes/HARDDRIVE1/project/private/pipker-do/file
-    public-base-url: http://localhost:8080/static/files
+    base-path: ${STORAGE_LOCAL_BASE_PATH:${user.dir}/file}
+    public-base-url: ${STORAGE_LOCAL_PUBLIC_BASE_URL:http://localhost:8080/static/files}
 
 wechat:
   miniapp:
-    app-id: ${WECHAT_MINIAPP_APP_ID:wx8f51a19f388f49ef}
-    app-secret: ${WECHAT_MINIAPP_APP_SECRET:76b1c77f1a22c7fcc3be9ded6f8468de}
+    # AI 索引: 微信小程序密钥只从本地环境变量读取，不在仓库中保留真实值。
+    app-id: ${WECHAT_MINIAPP_APP_ID:}
+    app-secret: ${WECHAT_MINIAPP_APP_SECRET:}

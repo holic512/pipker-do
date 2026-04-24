@@ -10,6 +10,9 @@ admin-web/node_modules/
 backend/target/
 backend/.m2repo/
 *.class
+backend/.env
+backend/.env.local
+backend/src/main/resources/application-local.yml
 
 # ai-index: ignore backend db sql files except schema definition
 backend/src/main/resources/db/*
