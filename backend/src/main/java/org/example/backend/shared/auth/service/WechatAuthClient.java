@@ -41,7 +41,7 @@ public class WechatAuthClient {
         if (!StringUtils.hasText(properties.getAppId()) || !StringUtils.hasText(properties.getAppSecret())) {
             throw new BusinessException(
                     ApiResponseCode.WECHAT_LOGIN_FAILED,
-                    "微信小程序登录配置缺失，请设置 WECHAT_MINIAPP_APP_ID 和 WECHAT_MINIAPP_APP_SECRET"
+                    "微信小程序登录配置缺失，请在 application-<profile>.yml 中设置 wechat.miniapp.app-id 和 wechat.miniapp.app-secret"
             );
         }
         if (!StringUtils.hasText(code)) {

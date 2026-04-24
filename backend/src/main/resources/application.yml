@@ -43,10 +43,8 @@ sa-token:
 
 wechat:
   miniapp:
-    app-id: ${WECHAT_MINIAPP_APP_ID:}
-    app-secret: ${WECHAT_MINIAPP_APP_SECRET:}
-    connect-timeout: ${WECHAT_MINIAPP_CONNECT_TIMEOUT:3s}
-    read-timeout: ${WECHAT_MINIAPP_READ_TIMEOUT:5s}
+    connect-timeout: 3s
+    read-timeout: 5s
 
 anti-crawler:
   enabled: true

@@ -1,0 +1,67 @@
+# ai-index: spring boot prod profile example configuration copy to application-prod yml
+server:
+  compression:
+    enabled: true
+    min-response-size: 2KB
+  shutdown: graceful
+  tomcat:
+    accept-count: 100
+    connection-timeout: 3s
+    keep-alive-timeout: 15s
+    max-connections: 256
+    max-keep-alive-requests: 100
+    processor-cache: 48
+    threads:
+      max: 48
+      min-spare: 8
+      max-queue-capacity: 200
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/pipkerdo?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&cachePrepStmts=true&prepStmtCacheSize=128&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true&useLocalSessionState=true&rewriteBatchedStatements=true&cacheResultSetMetadata=true&cacheServerConfiguration=true&elideSetAutoCommits=true&maintainTimeStats=false
+    username: pipkerdo
+    password: replace_with_prod_mysql_password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 1000
+      validation-timeout: 1000
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      keepalive-time: 120000
+  data:
+    redis:
+      database: 1
+      host: 127.0.0.1
+      port: 6379
+      password: replace_with_prod_redis_password
+      timeout: 2s
+      connect-timeout: 2s
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 0
+          max-wait: 500ms
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+logging:
+  level:
+    org.apache.ibatis: warn
+    org.example.backend.mapper: info
+
+storage:
+  local:
+    base-path: /data/pipkerdo/file
+    public-base-url: https://your-domain.example.com/static/files
+
+wechat:
+  miniapp:
+    app-id: wx_your_miniapp_appid
+    app-secret: replace_with_your_wechat_miniapp_secret

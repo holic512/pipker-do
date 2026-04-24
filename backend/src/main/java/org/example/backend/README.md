@@ -1,5 +1,14 @@
 # Backend Structure
 
+<!-- ai-index: backend runtime config files use application example yml templates -->
+
+## Runtime Config
+
+- Shared config stays in `backend/src/main/resources/application.yml`.
+- Local development should copy `application-dev.example.yml` to `application-dev.yml`.
+- Production deployment should copy `application-prod.example.yml` to `application-prod.yml`.
+- Real runtime config files are ignored by Git. The repository only tracks the corresponding `*.example.yml` templates.
+
 - `common`: framework-level infrastructure only, such as unified response, config, exception handling, and request filters.
 - `shared`: reusable cross-business capabilities.
 - `shared/account`: user, VIP, profile, and account-facing controllers/services/mappers/entities.

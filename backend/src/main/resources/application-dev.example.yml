@@ -1,0 +1,32 @@
+# ai-index: spring boot dev profile example configuration copy to application-dev yml
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/pipkerdo?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: replace_with_local_mysql_password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      database: 1
+      host: 127.0.0.1
+      port: 6379
+      password:
+      timeout: 10s
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    org.example.backend.mapper: debug
+
+storage:
+  local:
+    base-path: ./file
+    public-base-url: http://localhost:8080/static/files
+
+wechat:
+  miniapp:
+    app-id: wx_your_miniapp_appid
+    app-secret: replace_with_your_wechat_miniapp_secret
