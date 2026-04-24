@@ -10,11 +10,7 @@
 			<view class="practice-page__halo practice-page__halo--top"></view>
 			<view class="practice-page__halo practice-page__halo--bottom"></view>
 
-			<view v-if="uiState.loading && !uiState.loadedOnce" class="practice-page__state-shell">
-				<practice-state-notice :notice="loadingNotice" />
-			</view>
-
-			<view v-else-if="resolvedStateNotice" class="practice-page__state-shell">
+			<view v-if="resolvedStateNotice" class="practice-page__state-shell">
 				<practice-state-notice
 					:notice="resolvedStateNotice"
 					@primary="handleEmptyPrimary"
@@ -130,6 +126,14 @@
 					@switch-bank="handleSwitchBank"
 				/>
 			</uni-popup>
+
+			<view v-if="uiState.loading" class="practice-page__loading-mask">
+				<view class="practice-page__loading-card">
+					<view class="practice-page__loading-spinner"></view>
+					<text class="practice-page__loading-title">{{ loadingMaskTitle }}</text>
+					<text class="practice-page__loading-desc">{{ loadingMaskDescription }}</text>
+				</view>
+			</view>
 		</view>
 	</page-shell>
 </template>
@@ -164,7 +168,6 @@ import type {
 } from '@/pages/kyzz/practice/types'
 import {
 	buildCompletedNotice,
-	buildLoadingNotice,
 	buildNoBankNotice,
 	buildNoQuestionNotice,
 	createEmptyPracticeAnswerDraft,
@@ -361,8 +364,23 @@ export default defineComponent({
 			}
 			return this.answerDraft.selectedOptionKeys.length > 0
 		},
-		loadingNotice(): KyzzPracticeNoticeViewModel {
-			return buildLoadingNotice()
+		loadingMaskTitle(): string {
+			if (!this.uiState.loadedOnce && hasRouteTarget(this.routeQuery)) {
+				return '正在进入题目'
+			}
+			if (!this.uiState.loadedOnce) {
+				return '正在恢复练习进度'
+			}
+			return '正在切换题目'
+		},
+		loadingMaskDescription(): string {
+			if (!this.uiState.loadedOnce && hasRouteTarget(this.routeQuery)) {
+				return '马上定位到选中的题库'
+			}
+			if (!this.uiState.loadedOnce) {
+				return '为你定位上次未完成的位置'
+			}
+			return '请稍等，题目马上就好'
 		},
 		emptyNotice(): KyzzPracticeNoticeViewModel | null {
 			if (this.uiState.emptyState === 'no_bank') {
@@ -867,6 +885,68 @@ export default defineComponent({
 
 .practice-page .uni-popup {
 	z-index: 1200;
+}
+
+.practice-page__loading-mask {
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	z-index: 1100;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 48rpx calc(env(safe-area-inset-bottom) + 132rpx);
+	background: rgba(247, 250, 253, 0.58);
+	backdrop-filter: blur(6rpx);
+	box-sizing: border-box;
+}
+
+.practice-page__loading-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 288rpx;
+	padding: 34rpx 32rpx 32rpx;
+	border-radius: 28rpx;
+	background: rgba(255, 255, 255, 0.95);
+	box-shadow:
+		0 22rpx 52rpx rgba(66, 78, 96, 0.12),
+		inset 0 0 0 1rpx rgba(220, 226, 235, 0.86);
+	box-sizing: border-box;
+}
+
+.practice-page__loading-spinner {
+	width: 44rpx;
+	height: 44rpx;
+	margin-bottom: 20rpx;
+	border-radius: 50%;
+	border: 4rpx solid rgba(113, 126, 148, 0.18);
+	border-top-color: #5f6d83;
+	animation: practice-loading-spin 0.82s linear infinite;
+}
+
+.practice-page__loading-title {
+	font-size: 27rpx;
+	line-height: 1.35;
+	font-weight: 700;
+	color: #263142;
+	text-align: center;
+}
+
+.practice-page__loading-desc {
+	margin-top: 8rpx;
+	font-size: 22rpx;
+	line-height: 1.45;
+	color: #728094;
+	text-align: center;
+}
+
+@keyframes practice-loading-spin {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 @media screen and (max-width: 375px) {
