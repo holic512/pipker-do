@@ -44,17 +44,17 @@ export interface RuntimeEnv {
 const ENV_MAP: Record<RuntimeEnvName, RuntimeEnvPreset> = {
 	development: {
 		// 本地开发地址。真机调试时不要继续使用 127.0.0.1，应改成电脑局域网 IP 或可访问的开发域名。
-		apiBaseUrl: 'http://127.0.0.1:8080',
+		apiBaseUrl: 'https://do.pipker.com',
 		timeout: 15000
 	},
 	test: {
 		// 体验版/测试版地址。这里改成你的测试服务器域名。
-		apiBaseUrl: 'http://127.0.0.1:8080',
+		apiBaseUrl: 'https://do.pipker.com',
 		timeout: 15000
 	},
 	production: {
 		// 正式发布地址。这里应改成线上域名，且通常需要是已配置到微信后台的 HTTPS 域名。
-		apiBaseUrl: 'http://127.0.0.1:8080',
+		apiBaseUrl: 'https://do.pipker.com',
 		timeout: 15000
 	}
 }
