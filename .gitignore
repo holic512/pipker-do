@@ -11,6 +11,10 @@ backend/target/
 backend/.m2repo/
 *.class
 
+# ai-index: ignore backend db sql files except schema definition
+backend/src/main/resources/db/*
+!backend/src/main/resources/db/schema.sql
+
 # Admin web build outputs
 admin-web/dist/
 admin-web/*.tsbuildinfo
