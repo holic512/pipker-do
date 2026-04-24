@@ -95,10 +95,6 @@
 		</view>
 
 		<view v-else class="question-bank-page__empty">
-			<view class="question-bank-page__empty-ornament">
-				<view class="question-bank-page__empty-ring"></view>
-				<view class="question-bank-page__empty-dot"></view>
-			</view>
 			<text class="question-bank-page__empty-title">{{ keyword.trim() ? '没有找到匹配题库' : '还没有加入题库' }}</text>
 			<text class="question-bank-page__empty-desc">
 				{{ keyword.trim() ? '换个关键词再试试，或者去公共题库看看有没有合适的内容。' : '先去公共题库挑几套常刷题库，之后这里会自动保存你的学习进度。' }}
@@ -778,31 +774,6 @@ export default defineComponent({
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
-}
-
-.question-bank-page__empty-ornament {
-	position: relative;
-	width: 120rpx;
-	height: 120rpx;
-	margin-bottom: 12rpx;
-}
-
-.question-bank-page__empty-ring {
-	width: 100%;
-	height: 100%;
-	border-radius: 50%;
-	border: 3rpx solid rgba(84, 94, 118, 0.14);
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(237, 242, 249, 0.82) 100%);
-}
-
-.question-bank-page__empty-dot {
-	position: absolute;
-	right: 12rpx;
-	top: 12rpx;
-	width: 22rpx;
-	height: 22rpx;
-	border-radius: 50%;
-	background: rgba(84, 94, 118, 0.2);
 }
 
 .question-bank-page__empty-actions {
