@@ -251,9 +251,17 @@ function hasRouteTarget(query: KyzzPracticeSessionQuery): boolean {
 }
 
 function mergeSessionQuery(base: KyzzPracticeSessionQuery, patch: KyzzPracticeSessionQuery): KyzzPracticeSessionQuery {
+	const bankChanged = patch.bankId !== null
+		&& patch.bankId !== undefined
+		&& patch.bankId !== base.bankId
+	const hasExplicitQuestion = patch.questionId !== null && patch.questionId !== undefined
 	return {
 		bankId: patch.bankId ?? base.bankId ?? null,
-		questionId: patch.questionId ?? base.questionId ?? null,
+		questionId: hasExplicitQuestion
+			? patch.questionId ?? null
+			: bankChanged
+				? null
+				: base.questionId ?? null,
 		freshAttempt: patch.freshAttempt ?? base.freshAttempt ?? null
 	}
 }

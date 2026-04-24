@@ -659,10 +659,13 @@ public class KyzzPracticeUserService {
                                                List<KyzzQuestion> questions,
                                                KyzzPracticeBankRecordResponse activeBank) {
         if (questionId != null) {
-            return questions.stream()
+            KyzzQuestion requestedQuestion = questions.stream()
                     .filter(item -> Objects.equals(item.getId(), questionId))
                     .findFirst()
-                    .orElseThrow(() -> new BusinessException(ApiResponseCode.NOT_FOUND, "题目不存在或已下架"));
+                    .orElse(null);
+            if (requestedQuestion != null) {
+                return requestedQuestion;
+            }
         }
         if (activeBank.getResumeQuestionId() != null) {
             return questions.stream()
