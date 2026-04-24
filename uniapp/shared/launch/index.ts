@@ -4,6 +4,7 @@ import { getToken } from '@/shared/auth/storage'
 import env from '@/shared/config/env'
 import { createDefaultTabbarItems, type TabbarItem } from '@/shared/navigation/tabbar'
 import { getOrCreateDeviceProfile } from '@/shared/platform/device'
+import { warmKyzzCorePreload } from '@/shared/preload/kyzz'
 import { bootstrapAuth } from '@/shared/session/session'
 
 export type LaunchStatus = 'idle' | 'loading' | 'ready' | 'error'
@@ -115,6 +116,7 @@ async function runLaunchBootstrap(): Promise<LaunchSnapshot> {
 	await syncStep('auth', '同步用户信息', async () => {
 		try {
 			await bootstrapAuth({ silent: true })
+			warmKyzzCorePreload()
 		} catch (error) {
 			console.warn('[launch] auth bootstrap skipped', error)
 		}

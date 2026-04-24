@@ -126,11 +126,16 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { bootstrapAuth } from '@/shared/session/session'
-import { getMineQuestionBanks } from '@/pages/kyzz/api/question-bank'
-import { getPracticeDashboard } from '@/pages/kyzz/api/practice'
+import {
+	getCachedMineQuestionBanks,
+	getCachedPracticeDashboard,
+	preloadMineQuestionBanks,
+	preloadPracticeDashboard
+} from '@/shared/preload/kyzz'
 import { openPracticeTab } from '@/pages/kyzz/practice/navigation'
 import type {
 	KyzzQuestionBankMineDashboardState,
+	KyzzQuestionBankMineResponse,
 	KyzzQuestionBankMineRecordResponse,
 	KyzzQuestionBankMineViewRecord,
 	SearchConfirmEvent
@@ -220,9 +225,13 @@ export default defineComponent({
 	methods: {
 		async bootstrapAndLoad(options: LoadMineOptions = {}): Promise<void> {
 			try {
+				this.applyCachedPreload()
 				await bootstrapAuth({ silent: true })
-				await this.loadMineQuestionBanks({ silent: true })
-				await this.loadPracticeDashboard()
+				const forceRefresh = options.fromPullDownRefresh || this.loadedOnce
+				await Promise.all([
+					this.loadMineQuestionBanks({ silent: true, force: forceRefresh }),
+					this.loadPracticeDashboard({ force: forceRefresh })
+				])
 			} catch (error) {
 				if (!options.silent) {
 					uni.showToast({
@@ -236,20 +245,33 @@ export default defineComponent({
 				}
 			}
 		},
-		async loadMineQuestionBanks(options: Pick<LoadMineOptions, 'silent'> = {}): Promise<void> {
+		applyCachedPreload(): void {
+			const cachedMineQuestionBanks = getCachedMineQuestionBanks()
+			if (cachedMineQuestionBanks) {
+				this.applyMineQuestionBanks(cachedMineQuestionBanks)
+			}
+			const cachedPracticeDashboard = getCachedPracticeDashboard()
+			if (cachedPracticeDashboard) {
+				this.practiceDashboard = normalizePracticeDashboard(cachedPracticeDashboard)
+			}
+		},
+		applyMineQuestionBanks(result: KyzzQuestionBankMineResponse): void {
+			this.dashboard = {
+				summary: result?.summary ?? createEmptyMineDashboard().summary,
+				records: Array.isArray(result?.records)
+					? result.records.map((record) => this.normalizeRecord(record))
+					: []
+			}
+			this.loadedOnce = true
+		},
+		async loadMineQuestionBanks(options: Pick<LoadMineOptions, 'silent'> & { force?: boolean } = {}): Promise<void> {
 			if (this.loading) {
 				return
 			}
 			this.loading = true
 			try {
-				const result = await getMineQuestionBanks()
-				this.dashboard = {
-					summary: result?.summary ?? createEmptyMineDashboard().summary,
-					records: Array.isArray(result?.records)
-						? result.records.map((record) => this.normalizeRecord(record))
-						: []
-				}
-				this.loadedOnce = true
+				const result = await preloadMineQuestionBanks({ force: options.force })
+				this.applyMineQuestionBanks(result)
 				if (!options.silent) {
 					uni.showToast({
 						title: '题库已刷新',
@@ -263,8 +285,8 @@ export default defineComponent({
 				this.loading = false
 			}
 		},
-		async loadPracticeDashboard(): Promise<void> {
-			const result = await getPracticeDashboard()
+		async loadPracticeDashboard(options: { force?: boolean } = {}): Promise<void> {
+			const result = await preloadPracticeDashboard({ force: options.force })
 			this.practiceDashboard = normalizePracticeDashboard(result)
 		},
 		normalizeRecord(record: KyzzQuestionBankMineRecordResponse): KyzzQuestionBankMineViewRecord {

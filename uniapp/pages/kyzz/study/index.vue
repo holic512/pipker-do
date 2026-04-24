@@ -122,7 +122,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { bootstrapAuth } from '@/shared/session/session'
-import { getPracticeDashboard } from '@/pages/kyzz/api/practice'
+import { getCachedPracticeDashboard, preloadPracticeDashboard, warmKyzzCorePreload } from '@/shared/preload/kyzz'
 import { openPracticeTab } from '@/pages/kyzz/practice/navigation'
 import type { KyzzPracticeBankViewRecord, KyzzPracticeDashboardState } from '@/pages/kyzz/practice/types'
 import { createEmptyPracticeDashboard, formatProgress, normalizePracticeDashboard } from '@/pages/kyzz/practice/view'
@@ -246,12 +246,18 @@ export default defineComponent({
       if (this.loading) {
         return
       }
+      const cachedDashboard = getCachedPracticeDashboard()
+      if (cachedDashboard) {
+        this.dashboard = normalizePracticeDashboard(cachedDashboard)
+        this.loadedOnce = true
+      }
       this.loading = true
       try {
         await bootstrapAuth({ silent: true })
-        const result = await getPracticeDashboard()
+        const result = await preloadPracticeDashboard({ force: this.loadedOnce })
         this.dashboard = normalizePracticeDashboard(result)
         this.loadedOnce = true
+        warmKyzzCorePreload()
       } catch (error) {
         this.loadedOnce = true
         uni.showToast({
