@@ -1,5 +1,11 @@
 {
 	"pages": [{
+			"path": "pages/common/launch/index",
+			"style": {
+				"navigationBarTitleText": "启动中"
+			}
+		},
+		{
 			"path": "pages/kyzz/study/index",
 			"style": {
 				"navigationBarTitleText": "学习"
@@ -85,40 +91,41 @@
 		}
 	},
 	"tabBar": {
-		"color": "#bcc5d4",
-		"selectedColor": "#2f3648",
-		"backgroundColor": "#ffffff",
+		// AI 索引: 小程序原生 tabBar 仅作 switchTab 占位，首帧隐藏真实图标避免冷启动闪现。
+		"color": "#F8F9FA",
+		"selectedColor": "#F8F9FA",
+		"backgroundColor": "#F8F9FA",
 		"borderStyle": "white",
 		"list": [
 			{
 				"pagePath": "pages/kyzz/study/index",
 				"text": "学习",
-				"iconPath": "static/uni.png",
-				"selectedIconPath": "static/uni.png"
+				"iconPath": "static/tabbar-placeholder.png",
+				"selectedIconPath": "static/tabbar-placeholder.png"
 			},
 			{
 				"pagePath": "pages/kyzz/question-bank/index",
 				"text": "题库",
-				"iconPath": "static/uni.png",
-				"selectedIconPath": "static/uni.png"
+				"iconPath": "static/tabbar-placeholder.png",
+				"selectedIconPath": "static/tabbar-placeholder.png"
 			},
 			{
 				"pagePath": "pages/kyzz/practice/index",
 				"text": "练习",
-				"iconPath": "static/uni.png",
-				"selectedIconPath": "static/uni.png"
+				"iconPath": "static/tabbar-placeholder.png",
+				"selectedIconPath": "static/tabbar-placeholder.png"
 			},
 			{
 				"pagePath": "pages/kyzz/exam/index",
 				"text": "考试",
-				"iconPath": "static/uni.png",
-				"selectedIconPath": "static/uni.png"
+				"iconPath": "static/tabbar-placeholder.png",
+				"selectedIconPath": "static/tabbar-placeholder.png"
 			},
 			{
 				"pagePath": "pages/common/mine/index",
 				"text": "我的",
-				"iconPath": "static/uni.png",
-				"selectedIconPath": "static/uni.png"
+				"iconPath": "static/tabbar-placeholder.png",
+				"selectedIconPath": "static/tabbar-placeholder.png"
 			}
 		]
 	}
