@@ -23,13 +23,34 @@ function normalizeOptionalBoolean(value: unknown): boolean | null {
 	return null
 }
 
+function normalizeSourceType(value: unknown): KyzzPracticeLaunchTarget['sourceType'] | null {
+	if (value === 'bank' || value === 'wrong_book' || value === 'favorite') {
+		return value
+	}
+	return null
+}
+
+function normalizeSourceStatus(value: unknown): KyzzPracticeLaunchTarget['sourceStatus'] | null {
+	if (value === 'all' || value === 'active' || value === 'mastered') {
+		return value
+	}
+	return null
+}
+
+function normalizeOptionalString(value: unknown): string | null {
+	return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
 export function persistPracticeLaunchTarget(target: KyzzPracticeLaunchTarget = {}): void {
 	const normalizedTarget: KyzzPracticeLaunchTarget = {
 		bankId: normalizeOptionalNumber(target.bankId),
 		questionId: normalizeOptionalNumber(target.questionId),
-		freshAttempt: normalizeOptionalBoolean(target.freshAttempt)
+		freshAttempt: normalizeOptionalBoolean(target.freshAttempt),
+		sourceType: normalizeSourceType(target.sourceType),
+		sourceStatus: normalizeSourceStatus(target.sourceStatus),
+		keyword: normalizeOptionalString(target.keyword)
 	}
-	if (normalizedTarget.bankId === null && normalizedTarget.questionId === null) {
+	if (normalizedTarget.bankId === null && normalizedTarget.questionId === null && normalizedTarget.sourceType === null) {
 		uni.removeStorageSync(PRACTICE_LAUNCH_TARGET_KEY)
 		return
 	}
@@ -45,7 +66,10 @@ export function consumePracticeLaunchTarget(): KyzzPracticeLaunchTarget {
 	return {
 		bankId: normalizeOptionalNumber((cachedTarget as KyzzPracticeLaunchTarget).bankId),
 		questionId: normalizeOptionalNumber((cachedTarget as KyzzPracticeLaunchTarget).questionId),
-		freshAttempt: normalizeOptionalBoolean((cachedTarget as KyzzPracticeLaunchTarget).freshAttempt)
+		freshAttempt: normalizeOptionalBoolean((cachedTarget as KyzzPracticeLaunchTarget).freshAttempt),
+		sourceType: normalizeSourceType((cachedTarget as KyzzPracticeLaunchTarget).sourceType),
+		sourceStatus: normalizeSourceStatus((cachedTarget as KyzzPracticeLaunchTarget).sourceStatus),
+		keyword: normalizeOptionalString((cachedTarget as KyzzPracticeLaunchTarget).keyword)
 	}
 }
 

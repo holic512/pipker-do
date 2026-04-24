@@ -17,4 +17,10 @@ public class KyzzPracticeReviewRequest {
     private String answerText;
 
     private Integer usedSeconds;
+
+    private String sourceType;
+
+    private String sourceStatus;
+
+    private String keyword;
 }

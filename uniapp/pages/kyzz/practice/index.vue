@@ -28,6 +28,8 @@
 				<practice-question-panel
 					:current-bank="currentBank"
 					:progress="sessionState.progress"
+					:source-title="sessionState.sourceTitle"
+					:is-source-practice="sessionState.sourceType !== 'bank'"
 					:question="question"
 					:is-favorite="isCurrentQuestionFavorite"
 					:selected-option-keys="answerDraft.selectedOptionKeys"
@@ -167,7 +169,9 @@ import type {
 	KyzzPracticeSessionQuery,
 	KyzzPracticeSessionState,
 	KyzzPracticeUiState,
-	UniPopupRef
+	UniPopupRef,
+	KyzzPracticeSourceStatus,
+	KyzzPracticeSourceType
 } from '@/pages/kyzz/practice/types'
 import {
 	buildCompletedNotice,
@@ -189,6 +193,9 @@ interface PracticePageQuery {
 	bankId?: string
 	questionId?: string
 	freshAttempt?: string
+	sourceType?: string
+	sourceStatus?: string
+	keyword?: string
 }
 
 interface PracticePageState {
@@ -231,6 +238,24 @@ function parseOptionalBoolean(value: string | undefined): boolean | null {
 	return null
 }
 
+function parseSourceType(value: string | undefined): KyzzPracticeSourceType | null {
+	if (value === 'bank' || value === 'wrong_book' || value === 'favorite') {
+		return value
+	}
+	return null
+}
+
+function parseSourceStatus(value: string | undefined): KyzzPracticeSourceStatus | null {
+	if (value === 'all' || value === 'active' || value === 'mastered') {
+		return value
+	}
+	return null
+}
+
+function parseOptionalString(value: string | undefined): string | null {
+	return value && value.trim() ? value.trim() : null
+}
+
 function showModal(options: { title: string; content: string; confirmText?: string; cancelText?: string }): Promise<boolean> {
 	return new Promise((resolve) => {
 		uni.showModal({
@@ -251,6 +276,7 @@ function showModal(options: { title: string; content: string; confirmText?: stri
 function hasRouteTarget(query: KyzzPracticeSessionQuery): boolean {
 	return query.bankId !== null && query.bankId !== undefined
 		|| query.questionId !== null && query.questionId !== undefined
+		|| query.sourceType !== null && query.sourceType !== undefined
 }
 
 function mergeSessionQuery(base: KyzzPracticeSessionQuery, patch: KyzzPracticeSessionQuery): KyzzPracticeSessionQuery {
@@ -258,14 +284,20 @@ function mergeSessionQuery(base: KyzzPracticeSessionQuery, patch: KyzzPracticeSe
 		&& patch.bankId !== undefined
 		&& patch.bankId !== base.bankId
 	const hasExplicitQuestion = patch.questionId !== null && patch.questionId !== undefined
+	const sourceChanged = patch.sourceType !== null
+		&& patch.sourceType !== undefined
+		&& patch.sourceType !== base.sourceType
 	return {
 		bankId: patch.bankId ?? base.bankId ?? null,
 		questionId: hasExplicitQuestion
 			? patch.questionId ?? null
-			: bankChanged
+			: bankChanged || sourceChanged
 				? null
 				: base.questionId ?? null,
-		freshAttempt: patch.freshAttempt ?? base.freshAttempt ?? null
+		freshAttempt: patch.freshAttempt ?? base.freshAttempt ?? null,
+		sourceType: patch.sourceType ?? base.sourceType ?? null,
+		sourceStatus: patch.sourceStatus ?? base.sourceStatus ?? null,
+		keyword: patch.keyword ?? base.keyword ?? null
 	}
 }
 
@@ -291,7 +323,10 @@ export default defineComponent({
 			routeQuery: {
 				bankId: null,
 				questionId: null,
-				freshAttempt: null
+				freshAttempt: null,
+				sourceType: null,
+				sourceStatus: null,
+				keyword: null
 			},
 			switchPopupVisible: false
 		}
@@ -335,6 +370,9 @@ export default defineComponent({
 			)
 		},
 		nextButtonText(): string {
+			if (this.reviewState.result?.completedSource && !this.reviewState.result.nextQuestionId) {
+				return this.sessionState.sourceType === 'bank' ? '再刷一遍' : '已完成本轮'
+			}
 			if (this.reviewState.result?.completedBank) {
 				return '再刷一遍'
 			}
@@ -425,7 +463,10 @@ export default defineComponent({
 		this.routeQuery = {
 			bankId: parseOptionalNumber(query.bankId),
 			questionId: parseOptionalNumber(query.questionId),
-			freshAttempt: parseOptionalBoolean(query.freshAttempt)
+			freshAttempt: parseOptionalBoolean(query.freshAttempt),
+			sourceType: parseSourceType(query.sourceType),
+			sourceStatus: parseSourceStatus(query.sourceStatus),
+			keyword: parseOptionalString(query.keyword)
 		}
 	},
 	onShow() {
@@ -476,7 +517,10 @@ export default defineComponent({
 				this.routeQuery = {
 					bankId: this.sessionState.activeBank?.bankId ?? query.bankId ?? null,
 					questionId: this.sessionState.question?.id ?? query.questionId ?? null,
-					freshAttempt: null
+					freshAttempt: null,
+					sourceType: this.sessionState.sourceType === 'bank' ? null : this.sessionState.sourceType,
+					sourceStatus: query.sourceStatus ?? null,
+					keyword: query.keyword ?? null
 				}
 				if (this.reviewState.result && this.sessionState.question) {
 					await this.loadComments({ reset: true, questionId: this.sessionState.question.id, silent: true })
@@ -539,7 +583,10 @@ export default defineComponent({
 			try {
 				const payload: KyzzPracticeReviewRequest = {
 					bankId: this.currentBank.bankId,
-					usedSeconds: this.buildUsedSeconds()
+					usedSeconds: this.buildUsedSeconds(),
+					sourceType: this.routeQuery.sourceType ?? null,
+					sourceStatus: this.routeQuery.sourceStatus ?? null,
+					keyword: this.routeQuery.keyword ?? null
 				}
 				if (this.question.questionType === 'short') {
 					payload.answerText = this.answerDraft.answerText.trim()
@@ -569,7 +616,10 @@ export default defineComponent({
 					bankId: this.currentBank.bankId,
 					answerText: this.answerDraft.answerText.trim(),
 					usedSeconds: this.buildUsedSeconds(),
-					selfJudgedCorrect
+					selfJudgedCorrect,
+					sourceType: this.routeQuery.sourceType ?? null,
+					sourceStatus: this.routeQuery.sourceStatus ?? null,
+					keyword: this.routeQuery.keyword ?? null
 				}
 				const result = await selfJudgePracticeQuestion(this.question.id, payload)
 				this.reviewState.result = normalizePracticeReviewResult(result)
@@ -747,7 +797,10 @@ export default defineComponent({
 			}
 			await this.loadSession({
 				bankId: this.currentBank.bankId,
-				questionId: this.reviewState.result.nextQuestionId
+				questionId: this.reviewState.result.nextQuestionId,
+				sourceType: this.routeQuery.sourceType ?? null,
+				sourceStatus: this.routeQuery.sourceStatus ?? null,
+				keyword: this.routeQuery.keyword ?? null
 			})
 		},
 		async handlePreviousQuestion(): Promise<void> {
@@ -771,7 +824,10 @@ export default defineComponent({
 			}
 			await this.loadSession({
 				bankId: this.currentBank.bankId,
-				questionId: this.sessionState.previousQuestionId
+				questionId: this.sessionState.previousQuestionId,
+				sourceType: this.routeQuery.sourceType ?? null,
+				sourceStatus: this.routeQuery.sourceStatus ?? null,
+				keyword: this.routeQuery.keyword ?? null
 			})
 		},
 		async handleSwitchBank(item: KyzzPracticeBankViewRecord): Promise<void> {
@@ -793,7 +849,10 @@ export default defineComponent({
 			}
 			this.closeSwitchPopup()
 			await this.loadSession({
-				bankId: item.bankId
+				bankId: item.bankId,
+				sourceType: null,
+				sourceStatus: null,
+				keyword: null
 			})
 		},
 		openSwitchPopup(): void {

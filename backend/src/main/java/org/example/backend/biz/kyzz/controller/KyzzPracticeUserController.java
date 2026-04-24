@@ -41,12 +41,18 @@ public class KyzzPracticeUserController {
     @GetMapping("/session")
     public ApiResponse<KyzzPracticeSessionResponse> getSession(@RequestParam(required = false) Long bankId,
                                                                @RequestParam(required = false) Long questionId,
-                                                               @RequestParam(required = false) Boolean freshAttempt) {
+                                                               @RequestParam(required = false) Boolean freshAttempt,
+                                                               @RequestParam(required = false) String sourceType,
+                                                               @RequestParam(required = false) String sourceStatus,
+                                                               @RequestParam(required = false) String keyword) {
         return responseFactory.success(kyzzPracticeUserService.getSession(
                 LoginUserContext.requireUserId(),
                 bankId,
                 questionId,
-                freshAttempt
+                freshAttempt,
+                sourceType,
+                sourceStatus,
+                keyword
         ));
     }
 

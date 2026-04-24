@@ -40,4 +40,10 @@ public class KyzzPracticeReviewResponse implements Serializable {
     private Integer nextQuestionIndex;
 
     private Boolean completedBank;
+
+    private String sourceType;
+
+    private String sourceTitle;
+
+    private Boolean completedSource;
 }

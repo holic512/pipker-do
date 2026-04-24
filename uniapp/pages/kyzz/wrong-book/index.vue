@@ -62,41 +62,38 @@
 					</text>
 				</view>
 
-				<view
-					class="wrong-book-page__stem"
-					:class="{ 'is-collapsed': shouldShowStemToggle(item) && !isStemExpanded(item.questionId) }"
-				>
-					{{ item.stem }}
-				</view>
-				<view
-					v-if="shouldShowStemToggle(item)"
-					class="wrong-book-page__stem-toggle"
-					@tap="toggleStem(item.questionId)"
-				>
-					<text class="wrong-book-page__stem-toggle-text">{{ isStemExpanded(item.questionId) ? '收起题干' : '展开题干' }}</text>
-					<uni-icons :type="isStemExpanded(item.questionId) ? 'top' : 'bottom'" size="14" color="#7a8799" />
+				<view class="wrong-book-page__stem-wrap">
+					<view
+						class="wrong-book-page__stem"
+						:class="{ 'is-collapsed': shouldShowStemToggle(item) && !isStemExpanded(item.questionId) }"
+					>
+						{{ item.stem }}
+					</view>
+					<view
+						v-if="shouldShowStemToggle(item)"
+						class="wrong-book-page__stem-toggle"
+						@tap="toggleStem(item.questionId)"
+					>
+						<uni-icons :type="isStemExpanded(item.questionId) ? 'top' : 'bottom'" size="14" color="#7a8799" />
+					</view>
 				</view>
 
 				<view class="wrong-book-page__meta-row">
-					<view class="wrong-book-page__meta-pill">
-						<uni-icons type="calendar" size="14" color="#7b8798" />
-						<text class="wrong-book-page__meta-pill-text">最近答错 {{ formatWrongQuestionTime(item.lastWrongAt) }}</text>
+					<view class="wrong-book-page__meta-pills">
+						<view class="wrong-book-page__meta-pill">
+							<uni-icons type="calendar" size="14" color="#7b8798" />
+							<text class="wrong-book-page__meta-pill-text">最近答错 {{ formatWrongQuestionTime(item.lastWrongAt) }}</text>
+						</view>
+						<view class="wrong-book-page__meta-pill">
+							<uni-icons type="info-filled" size="14" color="#7b8798" />
+							<text class="wrong-book-page__meta-pill-text">累计错 {{ item.wrongCount }} 次</text>
+						</view>
+						<view v-if="item.isMastered && item.masteredAt" class="wrong-book-page__meta-pill wrong-book-page__meta-pill--mastered">
+							<uni-icons type="checkbox-filled" size="14" color="#5b7a65" />
+							<text class="wrong-book-page__meta-pill-text wrong-book-page__meta-pill-text--mastered">掌握于 {{ formatWrongQuestionTime(item.masteredAt) }}</text>
+						</view>
 					</view>
-					<view class="wrong-book-page__meta-pill">
-						<uni-icons type="info-filled" size="14" color="#7b8798" />
-						<text class="wrong-book-page__meta-pill-text">累计错 {{ item.wrongCount }} 次</text>
-					</view>
-					<view v-if="item.isMastered && item.masteredAt" class="wrong-book-page__meta-pill wrong-book-page__meta-pill--mastered">
-						<uni-icons type="checkbox-filled" size="14" color="#5b7a65" />
-						<text class="wrong-book-page__meta-pill-text wrong-book-page__meta-pill-text--mastered">掌握于 {{ formatWrongQuestionTime(item.masteredAt) }}</text>
-					</view>
-				</view>
-
-				<view class="wrong-book-page__card-foot">
-					<text class="wrong-book-page__foot-tip">
-						{{ item.isMastered ? '可以再刷一遍，确认这题已经真正稳住。' : '建议趁记忆还在，重新做一遍这题。' }}
-					</text>
-					<button class="wrong-book-page__retry-button" @tap="handleRetry(item)">再练这题</button>
+					<button class="wrong-book-page__retry-button" @tap="handleRetry(item)">从这题开始练</button>
 				</view>
 			</view>
 		</view>
@@ -280,7 +277,7 @@ export default defineComponent({
 			this.loadWrongQuestions().catch(() => {})
 		},
 		shouldShowStemToggle(record: KyzzWrongQuestionViewRecord): boolean {
-			return (record.stem || '').trim().length > 68
+			return (record.stem || '').trim().length > 42
 		},
 		isStemExpanded(questionId: number): boolean {
 			return this.expandedQuestionIds.includes(questionId)
@@ -296,6 +293,9 @@ export default defineComponent({
 			openPracticeTab({
 				bankId: record.bankId,
 				questionId: record.questionId,
+				sourceType: 'wrong_book',
+				sourceStatus: this.currentStatus,
+				keyword: this.keyword.trim() || null,
 				freshAttempt: true
 			}).catch(() => {
 				uni.showToast({
@@ -493,8 +493,7 @@ export default defineComponent({
 	box-shadow: 0 20rpx 38rpx rgba(43, 52, 55, 0.05);
 }
 
-.wrong-book-page__card-head,
-.wrong-book-page__card-foot {
+.wrong-book-page__card-head {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
@@ -561,9 +560,13 @@ export default defineComponent({
 	color: #476453;
 }
 
+.wrong-book-page__stem-wrap {
+	position: relative;
+	margin-top: 18rpx;
+}
+
 .wrong-book-page__stem {
 	display: block;
-	margin-top: 18rpx;
 	font-size: 28rpx;
 	line-height: 1.7;
 	font-weight: 600;
@@ -575,36 +578,43 @@ export default defineComponent({
 	overflow: hidden;
 	text-overflow: ellipsis;
 	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 3;
+	-webkit-line-clamp: 2;
+	padding-right: 50rpx;
 }
 
 .wrong-book-page__stem-toggle {
+	position: absolute;
+	right: 0;
+	bottom: 3rpx;
 	display: inline-flex;
 	align-items: center;
-	gap: 8rpx;
-	margin-top: 12rpx;
-	padding: 10rpx 14rpx;
+	justify-content: center;
+	width: 42rpx;
+	height: 36rpx;
 	border-radius: 999rpx;
 	background: rgba(243, 247, 252, 0.96);
 	box-shadow: inset 0 0 0 1rpx rgba(227, 233, 241, 0.96);
 }
 
-.wrong-book-page__stem-toggle-text {
-	font-size: 21rpx;
-	line-height: 1;
-	font-weight: 600;
-	color: #6e7b8f;
-}
-
 .wrong-book-page__meta-row {
 	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12rpx;
+	margin-top: 16rpx;
+}
+
+.wrong-book-page__meta-pills {
+	display: flex;
+	flex: 1;
+	min-width: 0;
 	flex-wrap: wrap;
 	gap: 10rpx;
-	margin-top: 16rpx;
 }
 
 .wrong-book-page__meta-pill {
 	display: inline-flex;
+	min-width: 0;
 	align-items: center;
 	gap: 8rpx;
 	min-height: 44rpx;
@@ -620,8 +630,7 @@ export default defineComponent({
 }
 
 .wrong-book-page__meta-pill-text,
-.wrong-book-page__meta-pill-text--mastered,
-.wrong-book-page__foot-tip {
+.wrong-book-page__meta-pill-text--mastered {
 	font-size: 22rpx;
 	line-height: 1.6;
 	color: #7c8796;
@@ -631,29 +640,22 @@ export default defineComponent({
 	color: #5b7a65;
 }
 
-.wrong-book-page__card-foot {
-	margin-top: 18rpx;
-	padding-top: 18rpx;
-	border-top: 1rpx solid rgba(224, 231, 239, 0.84);
-}
-
-.wrong-book-page__foot-tip {
-	flex: 1;
-	min-width: 0;
-}
-
 .wrong-book-page__retry-button,
 .wrong-book-page__empty-button {
 	margin: 0;
-	padding: 0 28rpx;
-	height: 74rpx;
-	line-height: 74rpx;
-	border-radius: 24rpx;
+	padding: 0 20rpx;
+	height: 54rpx;
+	line-height: 54rpx;
+	border-radius: 18rpx;
 	background: linear-gradient(135deg, #545e76 0%, #7f8ca7 100%);
 	color: #ffffff;
-	font-size: 24rpx;
+	font-size: 22rpx;
 	font-weight: 600;
-	box-shadow: 0 16rpx 30rpx rgba(84, 94, 118, 0.18);
+	box-shadow: 0 12rpx 22rpx rgba(84, 94, 118, 0.14);
+}
+
+.wrong-book-page__retry-button {
+	flex-shrink: 0;
 }
 
 .wrong-book-page__retry-button::after,

@@ -16,9 +16,11 @@ import org.example.backend.biz.kyzz.entity.KyzzQuestionBank;
 import org.example.backend.biz.kyzz.entity.KyzzQuestionOption;
 import org.example.backend.biz.kyzz.entity.KyzzUserAnswer;
 import org.example.backend.biz.kyzz.entity.KyzzUserQuestionBank;
+import org.example.backend.biz.kyzz.entity.KyzzUserFavorite;
 import org.example.backend.biz.kyzz.entity.KyzzUserWrongQuestion;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionBankMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserAnswerMapper;
+import org.example.backend.biz.kyzz.mapper.KyzzUserFavoriteMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserQuestionBankMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserWrongQuestionMapper;
 import org.example.backend.biz.kyzz.support.KyzzCacheService;
@@ -53,6 +55,14 @@ public class KyzzPracticeUserService {
     private static final String QUESTION_TYPE_SINGLE = "single";
     private static final String QUESTION_TYPE_MULTIPLE = "multiple";
     private static final String QUESTION_TYPE_SHORT = "short";
+    private static final String SOURCE_TYPE_BANK = "bank";
+    private static final String SOURCE_TYPE_WRONG_BOOK = "wrong_book";
+    private static final String SOURCE_TYPE_FAVORITE = "favorite";
+    private static final String WRONG_STATUS_ALL = "all";
+    private static final String WRONG_STATUS_ACTIVE = "active";
+    private static final String WRONG_STATUS_MASTERED = "mastered";
+    private static final Set<String> SUPPORTED_SOURCE_TYPES = Set.of(SOURCE_TYPE_BANK, SOURCE_TYPE_WRONG_BOOK, SOURCE_TYPE_FAVORITE);
+    private static final Set<String> SUPPORTED_WRONG_STATUSES = Set.of(WRONG_STATUS_ALL, WRONG_STATUS_ACTIVE, WRONG_STATUS_MASTERED);
     private static final Set<String> SUPPORTED_QUESTION_TYPES = Set.of(
             QUESTION_TYPE_SINGLE,
             QUESTION_TYPE_MULTIPLE,
@@ -62,6 +72,7 @@ public class KyzzPracticeUserService {
     private final KyzzQuestionBankMapper kyzzQuestionBankMapper;
     private final KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper;
     private final KyzzUserAnswerMapper kyzzUserAnswerMapper;
+    private final KyzzUserFavoriteMapper kyzzUserFavoriteMapper;
     private final KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper;
     private final KyzzPracticeSupport kyzzPracticeSupport;
     private final KyzzFavoriteQuestionUserService kyzzFavoriteQuestionUserService;
@@ -71,6 +82,7 @@ public class KyzzPracticeUserService {
     public KyzzPracticeUserService(KyzzQuestionBankMapper kyzzQuestionBankMapper,
                                    KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper,
                                    KyzzUserAnswerMapper kyzzUserAnswerMapper,
+                                   KyzzUserFavoriteMapper kyzzUserFavoriteMapper,
                                    KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper,
                                    KyzzPracticeSupport kyzzPracticeSupport,
                                    KyzzFavoriteQuestionUserService kyzzFavoriteQuestionUserService,
@@ -79,6 +91,7 @@ public class KyzzPracticeUserService {
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
         this.kyzzUserQuestionBankMapper = kyzzUserQuestionBankMapper;
         this.kyzzUserAnswerMapper = kyzzUserAnswerMapper;
+        this.kyzzUserFavoriteMapper = kyzzUserFavoriteMapper;
         this.kyzzUserWrongQuestionMapper = kyzzUserWrongQuestionMapper;
         this.kyzzPracticeSupport = kyzzPracticeSupport;
         this.kyzzFavoriteQuestionUserService = kyzzFavoriteQuestionUserService;
@@ -108,10 +121,26 @@ public class KyzzPracticeUserService {
     public KyzzPracticeSessionResponse getSession(Long userId,
                                                   Long bankId,
                                                   Long questionId,
-                                                  Boolean freshAttempt) {
+                                                  Boolean freshAttempt,
+                                                  String sourceType,
+                                                  String sourceStatus,
+                                                  String keyword) {
+        String normalizedSourceType = normalizeSourceType(sourceType);
         DashboardContext context = buildDashboardContext(userId);
         if (context.records().isEmpty()) {
             throw new BusinessException(ApiResponseCode.NOT_FOUND, "还没有可刷题库，先去添加一套题库吧");
+        }
+
+        if (!SOURCE_TYPE_BANK.equals(normalizedSourceType)) {
+            return buildSourceSession(
+                    userId,
+                    context,
+                    normalizedSourceType,
+                    normalizeWrongStatus(sourceStatus),
+                    normalizeKeyword(keyword),
+                    questionId,
+                    freshAttempt
+            );
         }
 
         KyzzPracticeBankRecordResponse recommended = resolveRecommendedRecord(context.records());
@@ -154,8 +183,13 @@ public class KyzzPracticeUserService {
                                 questions,
                                 currentQuestionIndex,
                                 optionMap.getOrDefault(targetQuestion.getId(), List.of()),
-                                latestAnswerMap.get(targetQuestion.getId())
-                        )
+                                latestAnswerMap.get(targetQuestion.getId()),
+                                SOURCE_TYPE_BANK,
+                                sourceTitle(SOURCE_TYPE_BANK),
+                                false
+                        ),
+                SOURCE_TYPE_BANK,
+                sourceTitle(SOURCE_TYPE_BANK)
         );
     }
 
@@ -173,6 +207,13 @@ public class KyzzPracticeUserService {
 
         antiCrawlerSecurityService.inspectPracticeSubmitBehavior(userId, request == null ? null : request.getUsedSeconds());
         ObjectiveAnswerResult answerResult = gradeObjectiveQuestion(context, request);
+        PracticeSourceNavigation sourceNavigation = buildSourceNavigation(
+                userId,
+                context.question().getId(),
+                request == null ? null : request.getSourceType(),
+                request == null ? null : request.getSourceStatus(),
+                request == null ? null : request.getKeyword()
+        );
         persistFinalAnswer(
                 userId,
                 context.bank().getId(),
@@ -184,21 +225,18 @@ public class KyzzPracticeUserService {
         syncWrongQuestion(userId, context.bank().getId(), context.question().getId(), answerResult.correct());
         KyzzPracticeBankRecordResponse updatedBank = refreshBankRecord(userId, context.bank().getId());
         kyzzCacheService.evictUserAggregateCaches(userId);
-        return new KyzzPracticeReviewResponse(
+        return buildFinalReviewResponse(
                 context.question().getId(),
                 context.bank().getId(),
                 questionType,
                 answerResult.submittedOptionKeys(),
                 null,
-                false,
                 answerResult.correct(),
                 answerResult.correctOptionKeys(),
                 context.question().getAnswerText(),
                 context.question().getAnalysis(),
                 updatedBank,
-                updatedBank.getResumeQuestionId(),
-                updatedBank.getResumeQuestionIndex(),
-                KyzzPracticeSupport.RESUME_STATUS_COMPLETED.equals(updatedBank.getResumeStatus())
+                sourceNavigation
         );
     }
 
@@ -217,6 +255,13 @@ public class KyzzPracticeUserService {
 
         antiCrawlerSecurityService.inspectPracticeSubmitBehavior(userId, request.getUsedSeconds());
         String submittedAnswerText = trimToEmpty(request.getAnswerText());
+        PracticeSourceNavigation sourceNavigation = buildSourceNavigation(
+                userId,
+                context.question().getId(),
+                request.getSourceType(),
+                request.getSourceStatus(),
+                request.getKeyword()
+        );
         persistFinalAnswer(
                 userId,
                 context.bank().getId(),
@@ -228,21 +273,18 @@ public class KyzzPracticeUserService {
         syncWrongQuestion(userId, context.bank().getId(), context.question().getId(), request.getSelfJudgedCorrect());
         KyzzPracticeBankRecordResponse updatedBank = refreshBankRecord(userId, context.bank().getId());
         kyzzCacheService.evictUserAggregateCaches(userId);
-        return new KyzzPracticeReviewResponse(
+        return buildFinalReviewResponse(
                 context.question().getId(),
                 context.bank().getId(),
                 context.question().getQuestionType(),
                 List.of(),
                 submittedAnswerText,
-                false,
                 request.getSelfJudgedCorrect(),
                 List.of(),
                 context.question().getAnswerText(),
                 context.question().getAnalysis(),
                 updatedBank,
-                updatedBank.getResumeQuestionId(),
-                updatedBank.getResumeQuestionIndex(),
-                KyzzPracticeSupport.RESUME_STATUS_COMPLETED.equals(updatedBank.getResumeStatus())
+                sourceNavigation
         );
     }
 
@@ -311,6 +353,240 @@ public class KyzzPracticeUserService {
         return new DashboardContext(records, recordMap, questionMap);
     }
 
+    private KyzzPracticeSessionResponse buildSourceSession(Long userId,
+                                                            DashboardContext context,
+                                                            String sourceType,
+                                                            String wrongStatus,
+                                                            String keyword,
+                                                            Long questionId,
+                                                            Boolean freshAttempt) {
+        SourceQuestionQueue queue = buildSourceQuestionQueue(userId, context, sourceType, wrongStatus, keyword);
+        if (queue.questions().isEmpty()) {
+            throw new BusinessException(ApiResponseCode.NOT_FOUND, sourceEmptyMessage(sourceType));
+        }
+
+        KyzzQuestion targetQuestion = resolveSourceTargetQuestion(questionId, queue.questions());
+        KyzzPracticeBankRecordResponse activeBank = context.recordMap().get(targetQuestion.getQuestionBankId());
+        if (activeBank == null) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "请先把题目所属题库加入我的题库再开始刷题");
+        }
+
+        Map<Long, List<KyzzQuestionOption>> optionMap = kyzzPracticeSupport.buildQuestionOptionMap(List.of(targetQuestion.getId()));
+        Map<Long, KyzzUserAnswer> latestAnswerMap = kyzzPracticeSupport.buildLatestAnswerByBankQuestionMap(userId, List.of(activeBank.getBankId()))
+                .getOrDefault(activeBank.getBankId(), Map.of());
+        int currentQuestionIndex = findQuestionIndex(queue.questions(), targetQuestion.getId());
+        KyzzQuestion previousQuestion = currentQuestionIndex > 1 ? queue.questions().get(currentQuestionIndex - 2) : null;
+
+        return new KyzzPracticeSessionResponse(
+                activeBank,
+                context.records(),
+                new KyzzPracticeSessionProgressResponse(currentQuestionIndex, queue.questions().size()),
+                toQuestionResponse(userId, targetQuestion, optionMap.getOrDefault(targetQuestion.getId(), List.of())),
+                previousQuestion == null ? null : previousQuestion.getId(),
+                previousQuestion == null ? null : currentQuestionIndex - 1,
+                Boolean.TRUE.equals(freshAttempt)
+                        ? null
+                        : buildHistoricalReviewResult(
+                                activeBank,
+                                targetQuestion,
+                                queue.questions(),
+                                currentQuestionIndex,
+                                optionMap.getOrDefault(targetQuestion.getId(), List.of()),
+                                latestAnswerMap.get(targetQuestion.getId()),
+                                sourceType,
+                                queue.sourceTitle(),
+                                true
+                        ),
+                sourceType,
+                queue.sourceTitle()
+        );
+    }
+
+    private SourceQuestionQueue buildSourceQuestionQueue(Long userId,
+                                                         DashboardContext context,
+                                                         String sourceType,
+                                                         String wrongStatus,
+                                                         String keyword) {
+        Map<Long, KyzzQuestion> activeQuestionMap = flattenQuestionMap(context.questionMap());
+        if (SOURCE_TYPE_FAVORITE.equals(sourceType)) {
+            List<KyzzUserFavorite> favorites = kyzzUserFavoriteMapper.selectList(new LambdaQueryWrapper<KyzzUserFavorite>()
+                    .eq(KyzzUserFavorite::getUserId, userId)
+                    .orderByDesc(KyzzUserFavorite::getCreatedAt)
+                    .orderByDesc(KyzzUserFavorite::getId));
+            List<KyzzQuestion> questions = favorites.stream()
+                    .map(item -> activeQuestionMap.get(item.getTargetId()))
+                    .filter(Objects::nonNull)
+                    .filter(item -> matchesSourceKeyword(item, context, keyword))
+                    .collect(Collectors.collectingAndThen(
+                            Collectors.toMap(
+                                    KyzzQuestion::getId,
+                                    item -> item,
+                                    (left, right) -> left,
+                                    LinkedHashMap::new
+                            ),
+                            map -> new ArrayList<>(map.values())
+                    ));
+            return new SourceQuestionQueue(sourceType, sourceTitle(sourceType), questions);
+        }
+
+        List<KyzzUserWrongQuestion> wrongQuestions = kyzzUserWrongQuestionMapper.selectList(new LambdaQueryWrapper<KyzzUserWrongQuestion>()
+                .eq(KyzzUserWrongQuestion::getUserId, userId));
+        List<KyzzQuestion> questions = wrongQuestions.stream()
+                .filter(item -> matchesWrongStatus(item, wrongStatus))
+                .filter(item -> activeQuestionMap.containsKey(item.getQuestionId()))
+                .sorted(this::compareWrongQuestionEntity)
+                .map(item -> activeQuestionMap.get(item.getQuestionId()))
+                .filter(item -> matchesSourceKeyword(item, context, keyword))
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toMap(
+                                KyzzQuestion::getId,
+                                item -> item,
+                                (left, right) -> left,
+                                LinkedHashMap::new
+                        ),
+                        map -> new ArrayList<>(map.values())
+                ));
+        return new SourceQuestionQueue(sourceType, sourceTitle(sourceType, wrongStatus), questions);
+    }
+
+    private Map<Long, KyzzQuestion> flattenQuestionMap(Map<Long, List<KyzzQuestion>> questionMap) {
+        if (questionMap == null || questionMap.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, KyzzQuestion> result = new LinkedHashMap<>();
+        questionMap.values().stream()
+                .flatMap(Collection::stream)
+                .forEach(question -> result.putIfAbsent(question.getId(), question));
+        return result;
+    }
+
+    private KyzzQuestion resolveSourceTargetQuestion(Long questionId, List<KyzzQuestion> questions) {
+        if (questionId != null) {
+            return questions.stream()
+                    .filter(item -> Objects.equals(item.getId(), questionId))
+                    .findFirst()
+                    .orElseGet(() -> questions.get(0));
+        }
+        return questions.get(0);
+    }
+
+    private boolean matchesWrongStatus(KyzzUserWrongQuestion record, String wrongStatus) {
+        if (WRONG_STATUS_ALL.equals(wrongStatus)) {
+            return true;
+        }
+        boolean mastered = Objects.equals(record.getIsMastered(), 1);
+        if (WRONG_STATUS_ACTIVE.equals(wrongStatus)) {
+            return !mastered;
+        }
+        return mastered;
+    }
+
+    private boolean matchesSourceKeyword(KyzzQuestion question, DashboardContext context, String keyword) {
+        if (!StringUtils.hasText(keyword)) {
+            return true;
+        }
+        String stem = question.getStem() == null ? "" : question.getStem().toLowerCase(Locale.ROOT);
+        KyzzPracticeBankRecordResponse bank = context.recordMap().get(question.getQuestionBankId());
+        String bankName = bank == null || bank.getBankName() == null ? "" : bank.getBankName().toLowerCase(Locale.ROOT);
+        return stem.contains(keyword) || bankName.contains(keyword);
+    }
+
+    private int compareWrongQuestionEntity(KyzzUserWrongQuestion left, KyzzUserWrongQuestion right) {
+        int statusCompare = Boolean.compare(Objects.equals(left.getIsMastered(), 1), Objects.equals(right.getIsMastered(), 1));
+        if (statusCompare != 0) {
+            return statusCompare;
+        }
+        int lastWrongCompare = Comparator.<LocalDateTime>nullsLast(Comparator.reverseOrder()).compare(left.getLastWrongAt(), right.getLastWrongAt());
+        if (lastWrongCompare != 0) {
+            return lastWrongCompare;
+        }
+        int wrongCountCompare = Comparator.<Integer>nullsLast(Comparator.reverseOrder()).compare(left.getWrongCount(), right.getWrongCount());
+        if (wrongCountCompare != 0) {
+            return wrongCountCompare;
+        }
+        return Comparator.<Long>nullsLast(Comparator.reverseOrder()).compare(left.getQuestionId(), right.getQuestionId());
+    }
+
+    private PracticeSourceNavigation buildSourceNavigation(Long userId,
+                                                           Long questionId,
+                                                           String sourceType,
+                                                           String sourceStatus,
+                                                           String keyword) {
+        String normalizedSourceType = normalizeSourceType(sourceType);
+        if (SOURCE_TYPE_BANK.equals(normalizedSourceType)) {
+            return null;
+        }
+        DashboardContext context = buildDashboardContext(userId);
+        SourceQuestionQueue queue = buildSourceQuestionQueue(
+                userId,
+                context,
+                normalizedSourceType,
+                normalizeWrongStatus(sourceStatus),
+                normalizeKeyword(keyword)
+        );
+        int currentQuestionIndex = findQuestionIndexOrZero(queue.questions(), questionId);
+        Long nextQuestionId = null;
+        Integer nextQuestionIndex = null;
+        if (currentQuestionIndex > 0 && currentQuestionIndex < queue.questions().size()) {
+            KyzzQuestion nextQuestion = queue.questions().get(currentQuestionIndex);
+            nextQuestionId = nextQuestion.getId();
+            nextQuestionIndex = currentQuestionIndex + 1;
+        }
+        return new PracticeSourceNavigation(
+                normalizedSourceType,
+                queue.sourceTitle(),
+                nextQuestionId,
+                nextQuestionIndex,
+                nextQuestionId == null
+        );
+    }
+
+    private KyzzPracticeReviewResponse buildFinalReviewResponse(Long questionId,
+                                                                 Long bankId,
+                                                                 String questionType,
+                                                                 List<String> submittedOptionKeys,
+                                                                 String submittedAnswerText,
+                                                                 Boolean isCorrect,
+                                                                 List<String> correctOptionKeys,
+                                                                 String answerText,
+                                                                 String analysis,
+                                                                 KyzzPracticeBankRecordResponse updatedBank,
+                                                                 PracticeSourceNavigation sourceNavigation) {
+        boolean completedBank = KyzzPracticeSupport.RESUME_STATUS_COMPLETED.equals(updatedBank.getResumeStatus());
+        Long nextQuestionId = updatedBank.getResumeQuestionId();
+        Integer nextQuestionIndex = updatedBank.getResumeQuestionIndex();
+        String sourceType = SOURCE_TYPE_BANK;
+        String sourceTitle = sourceTitle(SOURCE_TYPE_BANK);
+        boolean completedSource = completedBank;
+        if (sourceNavigation != null) {
+            nextQuestionId = sourceNavigation.nextQuestionId();
+            nextQuestionIndex = sourceNavigation.nextQuestionIndex();
+            sourceType = sourceNavigation.sourceType();
+            sourceTitle = sourceNavigation.sourceTitle();
+            completedSource = sourceNavigation.completedSource();
+            completedBank = false;
+        }
+        return new KyzzPracticeReviewResponse(
+                questionId,
+                bankId,
+                questionType,
+                submittedOptionKeys,
+                submittedAnswerText,
+                false,
+                isCorrect,
+                correctOptionKeys,
+                answerText,
+                analysis,
+                updatedBank,
+                nextQuestionId,
+                nextQuestionIndex,
+                completedBank,
+                sourceType,
+                sourceTitle,
+                completedSource
+        );
+    }
+
     private KyzzPracticeReviewResponse buildShortQuestionPreviewResponse(PracticeQuestionContext context,
                                                                          KyzzPracticeReviewRequest request) {
         KyzzPracticeBankRecordResponse currentBank = buildCurrentBankRecord(context);
@@ -328,6 +604,12 @@ public class KyzzPracticeUserService {
                 currentBank,
                 null,
                 null,
+                false,
+                normalizeSourceType(request == null ? null : request.getSourceType()),
+                sourceTitle(
+                        normalizeSourceType(request == null ? null : request.getSourceType()),
+                        normalizeWrongStatus(request == null ? null : request.getSourceStatus())
+                ),
                 false
         );
     }
@@ -337,7 +619,10 @@ public class KyzzPracticeUserService {
                                                                    List<KyzzQuestion> questions,
                                                                    int currentQuestionIndex,
                                                                    List<KyzzQuestionOption> options,
-                                                                   KyzzUserAnswer latestAnswer) {
+                                                                   KyzzUserAnswer latestAnswer,
+                                                                   String sourceType,
+                                                                   String sourceTitle,
+                                                                   boolean sourceQueueMode) {
         if (latestAnswer == null || !Objects.equals(latestAnswer.getAnswerStatus(), 1)) {
             return null;
         }
@@ -351,15 +636,21 @@ public class KyzzPracticeUserService {
         Long nextQuestionId = null;
         Integer nextQuestionIndex = null;
         boolean completedBank = false;
+        boolean completedSource = false;
         if (currentQuestionIndex < questions.size()) {
             KyzzQuestion nextQuestion = questions.get(currentQuestionIndex);
             nextQuestionId = nextQuestion.getId();
             nextQuestionIndex = currentQuestionIndex + 1;
+        } else if (sourceQueueMode) {
+            completedSource = true;
         } else if (KyzzPracticeSupport.RESUME_STATUS_COMPLETED.equals(activeBank.getResumeStatus())
                 && activeBank.getResumeQuestionId() != null) {
             nextQuestionId = activeBank.getResumeQuestionId();
             nextQuestionIndex = activeBank.getResumeQuestionIndex();
             completedBank = true;
+            completedSource = true;
+        } else {
+            completedSource = true;
         }
 
         if (QUESTION_TYPE_SHORT.equals(question.getQuestionType())) {
@@ -377,7 +668,10 @@ public class KyzzPracticeUserService {
                     activeBank,
                     nextQuestionId,
                     nextQuestionIndex,
-                    completedBank
+                    completedBank,
+                    sourceType,
+                    sourceTitle,
+                    completedSource
             );
         }
 
@@ -395,7 +689,10 @@ public class KyzzPracticeUserService {
                 activeBank,
                 nextQuestionId,
                 nextQuestionIndex,
-                completedBank
+                completedBank,
+                sourceType,
+                sourceTitle,
+                completedSource
         );
     }
 
@@ -726,6 +1023,15 @@ public class KyzzPracticeUserService {
         return Comparator.<Long>nullsLast(Comparator.reverseOrder()).compare(leftId, rightId);
     }
 
+    private int findQuestionIndexOrZero(List<KyzzQuestion> questions, Long questionId) {
+        for (int index = 0; index < questions.size(); index++) {
+            if (Objects.equals(questions.get(index).getId(), questionId)) {
+                return index + 1;
+            }
+        }
+        return 0;
+    }
+
     private int findQuestionIndex(List<KyzzQuestion> questions, Long questionId) {
         for (int index = 0; index < questions.size(); index++) {
             if (Objects.equals(questions.get(index).getId(), questionId)) {
@@ -794,11 +1100,82 @@ public class KyzzPracticeUserService {
         return result;
     }
 
+    private String normalizeSourceType(String sourceType) {
+        if (!StringUtils.hasText(sourceType)) {
+            return SOURCE_TYPE_BANK;
+        }
+        String normalized = sourceType.trim().toLowerCase(Locale.ROOT);
+        if (!SUPPORTED_SOURCE_TYPES.contains(normalized)) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "练习来源不支持");
+        }
+        return normalized;
+    }
+
+    private String normalizeWrongStatus(String sourceStatus) {
+        if (!StringUtils.hasText(sourceStatus)) {
+            return WRONG_STATUS_ALL;
+        }
+        String normalized = sourceStatus.trim().toLowerCase(Locale.ROOT);
+        if (!SUPPORTED_WRONG_STATUSES.contains(normalized)) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "错题筛选状态不支持");
+        }
+        return normalized;
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (!StringUtils.hasText(keyword)) {
+            return "";
+        }
+        return keyword.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String sourceTitle(String sourceType) {
+        return sourceTitle(sourceType, WRONG_STATUS_ALL);
+    }
+
+    private String sourceTitle(String sourceType, String wrongStatus) {
+        if (SOURCE_TYPE_FAVORITE.equals(sourceType)) {
+            return "收藏练习";
+        }
+        if (SOURCE_TYPE_WRONG_BOOK.equals(sourceType)) {
+            if (WRONG_STATUS_ACTIVE.equals(wrongStatus)) {
+                return "待巩固错题";
+            }
+            if (WRONG_STATUS_MASTERED.equals(wrongStatus)) {
+                return "已掌握错题";
+            }
+            return "错题本练习";
+        }
+        return "题库练习";
+    }
+
+    private String sourceEmptyMessage(String sourceType) {
+        if (SOURCE_TYPE_FAVORITE.equals(sourceType)) {
+            return "当前收藏暂无可练习题目";
+        }
+        if (SOURCE_TYPE_WRONG_BOOK.equals(sourceType)) {
+            return "当前错题暂无可练习题目";
+        }
+        return "当前暂无可练习题目";
+    }
+
     private String trimToEmpty(String value) {
         if (value == null) {
             return "";
         }
         return value.trim();
+    }
+
+    private record SourceQuestionQueue(String sourceType,
+                                       String sourceTitle,
+                                       List<KyzzQuestion> questions) {
+    }
+
+    private record PracticeSourceNavigation(String sourceType,
+                                            String sourceTitle,
+                                            Long nextQuestionId,
+                                            Integer nextQuestionIndex,
+                                            Boolean completedSource) {
     }
 
     private record DashboardContext(List<KyzzPracticeBankRecordResponse> records,

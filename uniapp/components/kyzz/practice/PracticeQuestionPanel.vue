@@ -4,6 +4,7 @@
 			<view class="practice-question-panel__summary-main">
 				<view class="practice-question-panel__summary-heading">
 					<text class="practice-question-panel__summary-index">第 {{ progress.currentQuestionIndex }} / {{ progress.totalQuestionCount }} 题</text>
+					<text v-if="isSourcePractice && sourceTitle" class="practice-question-panel__summary-source-tag">{{ sourceTitle }}</text>
 					<text v-if="currentBank.bankName" class="practice-question-panel__summary-bank-tag">{{ currentBank.bankName }}</text>
 				</view>
 			</view>
@@ -16,7 +17,7 @@
 					<uni-icons :type="isFavorite ? 'star-filled' : 'star'" size="18" :color="isFavorite ? '#bd7a36' : '#667286'" />
 				</button>
 
-				<view class="practice-question-panel__switcher" @tap="$emit('open-switcher')">
+				<view v-if="!isSourcePractice" class="practice-question-panel__switcher" @tap="$emit('open-switcher')">
 					<text class="practice-question-panel__switcher-text">切换题库</text>
 					<uni-icons type="right" size="12" color="#49566e" />
 				</view>
@@ -84,6 +85,14 @@ export default defineComponent({
 		progress: {
 			type: Object as PropType<KyzzPracticeSessionProgress>,
 			required: true
+		},
+		sourceTitle: {
+			type: String,
+			default: ''
+		},
+		isSourcePractice: {
+			type: Boolean,
+			default: false
 		},
 		question: {
 			type: Object as PropType<KyzzPracticeQuestionView | null>,
@@ -167,6 +176,7 @@ export default defineComponent({
 	color: #242d3a;
 }
 
+.practice-question-panel__summary-source-tag,
 .practice-question-panel__summary-bank-tag {
 	display: inline-flex;
 	align-items: center;
@@ -184,6 +194,12 @@ export default defineComponent({
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.practice-question-panel__summary-source-tag {
+	background: rgba(237, 247, 239, 0.98);
+	box-shadow: inset 0 0 0 1rpx rgba(204, 225, 211, 0.92);
+	color: #557061;
 }
 
 .practice-question-panel__switcher {

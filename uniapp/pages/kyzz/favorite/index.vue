@@ -1,17 +1,6 @@
 <template>
 	<view class="favorite-page">
 		<view class="favorite-page__toolbar">
-			<view class="favorite-page__hero">
-				<view class="favorite-page__hero-icon">
-					<uni-icons type="star-filled" size="25" color="#8d5d47" />
-				</view>
-				<view class="favorite-page__hero-copy">
-					<text class="favorite-page__title">收藏</text>
-					<text class="favorite-page__desc">把常回看的题目收在这里，随时回到原题库再练一遍。</text>
-				</view>
-				<text class="favorite-page__count">{{ favoriteState.totalCount }} 题</text>
-			</view>
-
 			<view class="favorite-page__search-shell">
 				<view class="favorite-page__search-box">
 					<uni-icons type="search" size="18" color="#99a5b5" />
@@ -47,25 +36,26 @@
 						<text class="favorite-page__tag" :class="difficultyTagClass(item.difficultyLevel)">{{ difficultyLabel(item.difficultyLevel) }}</text>
 						<text class="favorite-page__tag favorite-page__tag--bank">题库 · {{ item.bankName }}</text>
 					</view>
-					<view class="favorite-page__status">
+					<button class="favorite-page__favorite-button" @tap="handleUnfavorite(item)">
 						<uni-icons type="star-filled" size="13" color="#a66a3f" />
-						<text class="favorite-page__status-text">已收藏</text>
-					</view>
+						<text class="favorite-page__favorite-button-text">已收藏</text>
+					</button>
 				</view>
 
-				<view
-					class="favorite-page__stem"
-					:class="{ 'is-collapsed': shouldShowStemToggle(item) && !isStemExpanded(item.questionId) }"
-				>
-					{{ item.stem }}
-				</view>
-				<view
-					v-if="shouldShowStemToggle(item)"
-					class="favorite-page__stem-toggle"
-					@tap="toggleStem(item.questionId)"
-				>
-					<text class="favorite-page__stem-toggle-text">{{ isStemExpanded(item.questionId) ? '收起题干' : '展开题干' }}</text>
-					<uni-icons :type="isStemExpanded(item.questionId) ? 'top' : 'bottom'" size="14" color="#7a8799" />
+				<view class="favorite-page__stem-wrap">
+					<view
+						class="favorite-page__stem"
+						:class="{ 'is-collapsed': shouldShowStemToggle(item) && !isStemExpanded(item.questionId) }"
+					>
+						{{ item.stem }}
+					</view>
+					<view
+						v-if="shouldShowStemToggle(item)"
+						class="favorite-page__stem-toggle"
+						@tap="toggleStem(item.questionId)"
+					>
+						<uni-icons :type="isStemExpanded(item.questionId) ? 'top' : 'bottom'" size="14" color="#7a8799" />
+					</view>
 				</view>
 
 				<view class="favorite-page__meta-row">
@@ -73,12 +63,7 @@
 						<uni-icons type="calendar" size="14" color="#7b8798" />
 						<text class="favorite-page__meta-pill-text">收藏于 {{ formatFavoriteQuestionTime(item.favoriteAt) }}</text>
 					</view>
-				</view>
-
-				<view class="favorite-page__card-foot">
-					<text class="favorite-page__foot-tip">从对应题库打开这道题，提交后会继续沿用原题库进度。</text>
-					<button class="favorite-page__ghost-button" @tap="handleUnfavorite(item)">取消收藏</button>
-					<button class="favorite-page__retry-button" @tap="handleRetry(item)">再练这题</button>
+					<button class="favorite-page__retry-button" @tap="handleRetry(item)">从这题开始练</button>
 				</view>
 			</view>
 		</view>
@@ -219,7 +204,7 @@ export default defineComponent({
 			this.loadFavoriteQuestions().catch(() => {})
 		},
 		shouldShowStemToggle(record: KyzzFavoriteQuestionViewRecord): boolean {
-			return (record.stem || '').trim().length > 68
+			return (record.stem || '').trim().length > 42
 		},
 		isStemExpanded(questionId: number): boolean {
 			return this.expandedQuestionIds.includes(questionId)
@@ -253,6 +238,8 @@ export default defineComponent({
 			openPracticeTab({
 				bankId: record.bankId,
 				questionId: record.questionId,
+				sourceType: 'favorite',
+				keyword: this.keyword.trim() || null,
 				freshAttempt: true
 			}).catch(() => {
 				uni.showToast({
@@ -288,59 +275,8 @@ export default defineComponent({
 	padding: 2rpx 8rpx 0;
 }
 
-.favorite-page__hero {
-	display: flex;
-	align-items: center;
-	gap: 18rpx;
-	padding: 26rpx 24rpx;
-	border-radius: 30rpx;
-	background: rgba(255, 255, 255, 0.9);
-	box-shadow: 0 20rpx 38rpx rgba(43, 52, 55, 0.06);
-}
-
-.favorite-page__hero-icon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 78rpx;
-	height: 78rpx;
-	border-radius: 26rpx;
-	background: linear-gradient(135deg, rgba(255, 233, 226, 0.98) 0%, rgba(255, 248, 245, 0.98) 100%);
-	box-shadow: inset 0 0 0 1rpx rgba(239, 210, 198, 0.88);
-}
-
-.favorite-page__hero-copy {
-	flex: 1;
-	min-width: 0;
-}
-
-.favorite-page__title {
-	display: block;
-	font-size: 34rpx;
-	line-height: 1.25;
-	font-weight: 700;
-	color: #283241;
-}
-
-.favorite-page__desc {
-	display: block;
-	margin-top: 8rpx;
-	font-size: 23rpx;
-	line-height: 1.45;
-	color: #7a8697;
-}
-
-.favorite-page__count {
-	padding: 10rpx 16rpx;
-	border-radius: 999rpx;
-	background: rgba(255, 244, 229, 0.98);
-	font-size: 22rpx;
-	font-weight: 700;
-	color: #8d5d47;
-}
-
 .favorite-page__search-shell {
-	margin-top: 18rpx;
+	margin-top: 0;
 }
 
 .favorite-page__search-box {
@@ -424,8 +360,7 @@ export default defineComponent({
 	box-shadow: 0 20rpx 38rpx rgba(43, 52, 55, 0.05);
 }
 
-.favorite-page__card-head,
-.favorite-page__card-foot {
+.favorite-page__card-head {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
@@ -439,7 +374,7 @@ export default defineComponent({
 }
 
 .favorite-page__tag,
-.favorite-page__status {
+.favorite-page__favorite-button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -482,20 +417,29 @@ export default defineComponent({
 	color: #4a6287;
 }
 
-.favorite-page__status {
+.favorite-page__favorite-button {
 	gap: 6rpx;
+	margin: 0;
 	background: rgba(255, 244, 229, 0.98);
 	color: #8d5d47;
 }
 
-.favorite-page__status-text {
+.favorite-page__favorite-button::after {
+	border: 0;
+}
+
+.favorite-page__favorite-button-text {
 	font-size: 20rpx;
 	font-weight: 700;
 }
 
+.favorite-page__stem-wrap {
+	position: relative;
+	margin-top: 18rpx;
+}
+
 .favorite-page__stem {
 	display: block;
-	margin-top: 18rpx;
 	font-size: 28rpx;
 	line-height: 1.7;
 	font-weight: 600;
@@ -507,36 +451,35 @@ export default defineComponent({
 	overflow: hidden;
 	text-overflow: ellipsis;
 	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 3;
+	-webkit-line-clamp: 2;
+	padding-right: 50rpx;
 }
 
 .favorite-page__stem-toggle {
+	position: absolute;
+	right: 0;
+	bottom: 3rpx;
 	display: inline-flex;
 	align-items: center;
-	gap: 8rpx;
-	margin-top: 12rpx;
-	padding: 10rpx 14rpx;
+	justify-content: center;
+	width: 42rpx;
+	height: 36rpx;
 	border-radius: 999rpx;
 	background: rgba(243, 247, 252, 0.96);
 	box-shadow: inset 0 0 0 1rpx rgba(227, 233, 241, 0.96);
 }
 
-.favorite-page__stem-toggle-text {
-	font-size: 21rpx;
-	line-height: 1;
-	font-weight: 600;
-	color: #6e7b8f;
-}
-
 .favorite-page__meta-row {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 10rpx;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12rpx;
 	margin-top: 16rpx;
 }
 
 .favorite-page__meta-pill {
 	display: inline-flex;
+	min-width: 0;
 	align-items: center;
 	gap: 8rpx;
 	min-height: 44rpx;
@@ -546,50 +489,31 @@ export default defineComponent({
 	box-shadow: inset 0 0 0 1rpx rgba(227, 233, 241, 0.96);
 }
 
-.favorite-page__meta-pill-text,
-.favorite-page__foot-tip {
+.favorite-page__meta-pill-text {
 	font-size: 22rpx;
 	line-height: 1.6;
 	color: #7c8796;
 }
 
-.favorite-page__card-foot {
-	align-items: center;
-	margin-top: 18rpx;
-	padding-top: 18rpx;
-	border-top: 1rpx solid rgba(224, 231, 239, 0.84);
-}
-
-.favorite-page__foot-tip {
-	flex: 1;
-	min-width: 0;
-}
-
 .favorite-page__retry-button,
-.favorite-page__ghost-button,
 .favorite-page__empty-button {
 	margin: 0;
-	padding: 0 24rpx;
-	height: 74rpx;
-	line-height: 74rpx;
-	border-radius: 24rpx;
-	font-size: 24rpx;
+	padding: 0 20rpx;
+	height: 54rpx;
+	line-height: 54rpx;
+	border-radius: 18rpx;
+	font-size: 22rpx;
 	font-weight: 600;
 }
 
 .favorite-page__retry-button {
+	flex-shrink: 0;
 	background: linear-gradient(135deg, #545e76 0%, #7f8ca7 100%);
 	color: #ffffff;
-	box-shadow: 0 16rpx 30rpx rgba(84, 94, 118, 0.18);
-}
-
-.favorite-page__ghost-button {
-	background: rgba(244, 247, 251, 0.96);
-	color: #7a8799;
+	box-shadow: 0 12rpx 22rpx rgba(84, 94, 118, 0.14);
 }
 
 .favorite-page__retry-button::after,
-.favorite-page__ghost-button::after,
 .favorite-page__empty-button::after {
 	border: 0;
 }

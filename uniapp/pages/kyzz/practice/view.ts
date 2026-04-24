@@ -16,6 +16,7 @@ import type {
 	KyzzPracticeReviewViewResult,
 	KyzzPracticeSessionResponse,
 	KyzzPracticeSessionState,
+	KyzzPracticeSourceType,
 	KyzzPracticeUiState
 } from '@/pages/kyzz/practice/types'
 
@@ -71,7 +72,9 @@ export function createEmptyPracticeSession(): KyzzPracticeSessionState {
 		question: null,
 		previousQuestionId: null,
 		previousQuestionIndex: 0,
-		reviewResult: null
+		reviewResult: null,
+		sourceType: 'bank',
+		sourceTitle: '题库练习'
 	}
 }
 
@@ -159,13 +162,19 @@ export function normalizePracticeSession(result: KyzzPracticeSessionResponse): K
 			: null,
 		previousQuestionId: result?.previousQuestionId ?? null,
 		previousQuestionIndex: toNumber(result?.previousQuestionIndex),
-		reviewResult: result?.reviewResult ? normalizePracticeReviewResult(result.reviewResult) : null
+		reviewResult: result?.reviewResult ? normalizePracticeReviewResult(result.reviewResult) : null,
+		sourceType: normalizePracticeSourceType(result?.sourceType),
+		sourceTitle: result?.sourceTitle || sourceTypeLabel(normalizePracticeSourceType(result?.sourceType))
 	}
 }
 
 export function normalizePracticeReviewResult(result: KyzzPracticeReviewResponse): KyzzPracticeReviewViewResult {
+	const sourceType = normalizePracticeSourceType(result.sourceType)
 	return {
 		...result,
+		sourceType,
+		sourceTitle: result.sourceTitle || sourceTypeLabel(sourceType),
+		completedSource: Boolean(result.completedSource),
 		updatedBank: result.updatedBank ? normalizePracticeBankRecord(result.updatedBank) : null,
 		nextQuestionIndex: toNumber(result.nextQuestionIndex)
 	}
@@ -199,6 +208,23 @@ export function normalizePracticeCommentPage(result: KyzzPracticeCommentPageResp
 		hasMore: Boolean(result?.hasMore),
 		total: toNumber(result?.total)
 	}
+}
+
+export function normalizePracticeSourceType(value: unknown): KyzzPracticeSourceType {
+	if (value === 'wrong_book' || value === 'favorite') {
+		return value
+	}
+	return 'bank'
+}
+
+export function sourceTypeLabel(value: KyzzPracticeSourceType): string {
+	if (value === 'wrong_book') {
+		return '错题本练习'
+	}
+	if (value === 'favorite') {
+		return '收藏练习'
+	}
+	return '题库练习'
 }
 
 export function difficultyLabel(level: number): string {

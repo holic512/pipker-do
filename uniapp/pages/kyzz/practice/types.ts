@@ -4,6 +4,8 @@ export type KyzzPracticeResumeStatus = 'not_started' | 'in_progress' | 'complete
 export type KyzzPracticeQuestionType = 'single' | 'multiple' | 'short'
 export type KyzzPracticeNoticeVariant = 'default' | 'accent' | 'success'
 export type KyzzPracticeEmptyState = 'no_bank' | 'no_question'
+export type KyzzPracticeSourceType = 'bank' | 'wrong_book' | 'favorite'
+export type KyzzPracticeSourceStatus = 'all' | 'active' | 'mastered'
 
 export interface KyzzPracticeBankRecordResponse {
 	bankId: number
@@ -89,6 +91,8 @@ export interface KyzzPracticeSessionResponse {
 	previousQuestionId: number | null
 	previousQuestionIndex: number | string | null
 	reviewResult: KyzzPracticeReviewResponse | null
+	sourceType: KyzzPracticeSourceType | string | null
+	sourceTitle: string | null
 }
 
 export interface KyzzPracticeSessionState {
@@ -99,18 +103,26 @@ export interface KyzzPracticeSessionState {
 	previousQuestionId: number | null
 	previousQuestionIndex: number
 	reviewResult: KyzzPracticeReviewViewResult | null
+	sourceType: KyzzPracticeSourceType
+	sourceTitle: string
 }
 
 export interface KyzzPracticeSessionQuery {
 	bankId?: number | null
 	questionId?: number | null
 	freshAttempt?: boolean | null
+	sourceType?: KyzzPracticeSourceType | null
+	sourceStatus?: KyzzPracticeSourceStatus | null
+	keyword?: string | null
 }
 
 export interface KyzzPracticeLaunchTarget {
 	bankId?: number | null
 	questionId?: number | null
 	freshAttempt?: boolean | null
+	sourceType?: KyzzPracticeSourceType | null
+	sourceStatus?: KyzzPracticeSourceStatus | null
+	keyword?: string | null
 }
 
 export interface KyzzPracticeReviewRequest {
@@ -118,6 +130,9 @@ export interface KyzzPracticeReviewRequest {
 	selectedOptionKeys?: string[]
 	answerText?: string
 	usedSeconds: number
+	sourceType?: KyzzPracticeSourceType | null
+	sourceStatus?: KyzzPracticeSourceStatus | null
+	keyword?: string | null
 }
 
 export interface KyzzPracticeSelfJudgementRequest extends KyzzPracticeReviewRequest {
@@ -139,6 +154,9 @@ export interface KyzzPracticeReviewResponse {
 	nextQuestionId: number | null
 	nextQuestionIndex: number | string | null
 	completedBank: boolean
+	sourceType: KyzzPracticeSourceType | string | null
+	sourceTitle: string | null
+	completedSource: boolean | null
 }
 
 export interface KyzzPracticeReviewViewResult extends Omit<KyzzPracticeReviewResponse, 'updatedBank' | 'nextQuestionIndex'> {

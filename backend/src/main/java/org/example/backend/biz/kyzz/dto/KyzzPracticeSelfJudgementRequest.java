@@ -18,5 +18,11 @@ public class KyzzPracticeSelfJudgementRequest {
 
     private Integer usedSeconds;
 
+    private String sourceType;
+
+    private String sourceStatus;
+
+    private String keyword;
+
     private Boolean selfJudgedCorrect;
 }
