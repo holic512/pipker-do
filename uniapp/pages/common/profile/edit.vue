@@ -96,6 +96,7 @@
 <script>
 import { bootstrapAuth, getSessionSnapshot, setCurrentUser } from '@/shared/session/session'
 import { updateProfile, uploadAvatar } from '@/shared/api/user'
+import { cacheLocalAvatar, resolveAvatarUserKey, resolveDisplayAvatarUrl, warmAvatarCache } from '@/shared/media/avatar-cache'
 import { resolveWechatAvatarPath, resolveWechatNickname, supportsWechatNativeProfile } from '@/shared/platform/wechat-profile'
 
 export default {
@@ -108,6 +109,7 @@ export default {
 			form: {
 				nickname: '',
 				avatarUrl: '',
+				avatarRemoteUrl: '',
 				avatarStorageKey: '',
 				gender: 0,
 				bio: ''
@@ -143,12 +145,27 @@ export default {
 	methods: {
 		initForm() {
 			const currentUser = getSessionSnapshot().currentUser
+			const avatarRemoteUrl = currentUser && currentUser.avatarUrl ? currentUser.avatarUrl : ''
+			const avatarUserKey = resolveAvatarUserKey(currentUser)
 			this.form = {
 				nickname: currentUser && currentUser.nickname ? currentUser.nickname : '',
-				avatarUrl: currentUser && currentUser.avatarUrl ? currentUser.avatarUrl : '',
+				avatarUrl: resolveDisplayAvatarUrl(avatarRemoteUrl, avatarUserKey),
+				avatarRemoteUrl,
 				avatarStorageKey: '',
 				gender: currentUser && typeof currentUser.gender === 'number' ? currentUser.gender : 0,
 				bio: currentUser && currentUser.bio ? currentUser.bio : ''
+			}
+			this.refreshAvatarCache(avatarRemoteUrl, avatarUserKey)
+		},
+		async refreshAvatarCache(remoteUrl, userKey) {
+			if (!remoteUrl) return
+			try {
+				const localPath = await warmAvatarCache(remoteUrl, userKey)
+				if (localPath && !this.form.avatarStorageKey && this.form.avatarUrl !== localPath) {
+					this.form.avatarUrl = localPath
+				}
+			} catch (error) {
+				console.warn('[avatar] profile cache refresh failed', error)
 			}
 		},
 		handleGenderChange(event) {
@@ -193,7 +210,8 @@ export default {
 			uni.showLoading({ title: '上传中...' })
 			try {
 				const uploadResult = await uploadAvatar(filePath)
-				this.form.avatarUrl = uploadResult.url
+				this.form.avatarUrl = filePath || uploadResult.url
+				this.form.avatarRemoteUrl = uploadResult.url
 				this.form.avatarStorageKey = uploadResult.storageKey
 				uni.showToast({
 					title: '头像上传成功',
@@ -223,10 +241,15 @@ export default {
 			try {
 				const user = await updateProfile({
 					nickname: this.form.nickname,
-					avatarUrl: this.form.avatarStorageKey || this.form.avatarUrl,
+					avatarUrl: this.form.avatarStorageKey || this.form.avatarRemoteUrl || this.form.avatarUrl,
 					gender: this.form.gender,
 					bio: this.form.bio
 				})
+				if (this.form.avatarStorageKey) {
+					await cacheLocalAvatar(user && user.avatarUrl ? user.avatarUrl : '', resolveAvatarUserKey(user), this.form.avatarUrl).catch((error) => {
+						console.warn('[avatar] cache local uploaded avatar failed', error)
+					})
+				}
 				setCurrentUser(user)
 				uni.showToast({
 					title: '资料已更新',

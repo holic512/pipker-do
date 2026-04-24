@@ -100,6 +100,7 @@
 <script>
 import { bootstrapAuth, getSessionSnapshot, setCurrentUser, subscribeSession } from '@/shared/session/session'
 import { getVipStatus, redeemVipKey } from '@/shared/api/vip'
+import { resolveAvatarUserKey, resolveDisplayAvatarUrl, warmAvatarCache } from '@/shared/media/avatar-cache'
 
 const VIP_TYPE_TEXT = {
 	month: '月卡会员',
@@ -167,15 +168,32 @@ export default {
 			const isVip = !!(vipInfo && (vipInfo.isVip || vipInfo.vip))
 			const vipType = vipInfo && vipInfo.vipType ? vipInfo.vipType : ''
 			const expireAt = vipInfo && vipInfo.expireAt ? vipInfo.expireAt : ''
+			const avatarRemoteUrl = currentUser && currentUser.avatarUrl ? currentUser.avatarUrl : ''
+			const avatarUserKey = resolveAvatarUserKey(currentUser)
 			this.user = {
 				name: currentUser && currentUser.nickname ? currentUser.nickname : '微信用户',
-				avatarUrl: currentUser && currentUser.avatarUrl ? currentUser.avatarUrl : '',
+				avatarUrl: resolveDisplayAvatarUrl(avatarRemoteUrl, avatarUserKey),
 				isVip,
 				vipType,
 				vipTitle: isVip ? (VIP_TYPE_TEXT[vipType] || 'VIP会员') : 'VIP会员',
 				vipDescription: isVip
 					? `有效期至 ${expireAt || '长期有效'}`
 					: '未开通，兑换后可解锁完整会员权益'
+			}
+			this.refreshAvatarCache(avatarRemoteUrl, avatarUserKey)
+		},
+		async refreshAvatarCache(remoteUrl, userKey) {
+			if (!remoteUrl) return
+			try {
+				const localPath = await warmAvatarCache(remoteUrl, userKey)
+				if (localPath && this.user.avatarUrl !== localPath) {
+					this.user = {
+						...this.user,
+						avatarUrl: localPath
+					}
+				}
+			} catch (error) {
+				console.warn('[avatar] cache refresh failed', error)
 			}
 		},
 		goProfile() {
