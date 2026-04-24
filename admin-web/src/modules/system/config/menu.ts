@@ -74,10 +74,26 @@ export function buildAdminMenus(projectCode: string | null, currentRoles: string
         },
         {
           key: 'system-users',
-          label: '用户管理',
+          label: '用户VIP',
           route: '/system/users',
           icon: User,
           iconTone: '#2563eb',
+          roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN']
+        },
+        {
+          key: 'system-vip-card-groups',
+          label: '会员卡组',
+          route: '/system/vip-card-groups',
+          icon: Ticket,
+          iconTone: '#0891b2',
+          roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN']
+        },
+        {
+          key: 'system-vip-card-keys',
+          label: '兑换Key',
+          route: '/system/vip-card-keys',
+          icon: PriceTag,
+          iconTone: '#db2777',
           roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN']
         },
         {

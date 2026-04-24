@@ -28,13 +28,13 @@
 			</view>
 		</view>
 
-		<view class="mine-page__vip-card">
+		<view class="mine-page__vip-card" :class="{ 'mine-page__vip-card--inactive': !user.isVip }">
 			<view class="mine-page__vip-header">
 				<view>
-					<text class="mine-page__vip-title">VIP会员</text>
-					<text class="mine-page__vip-expire">到期时间: {{ user.vipExpireAt }}</text>
+					<text class="mine-page__vip-title">{{ user.vipTitle }}</text>
+					<text class="mine-page__vip-expire">{{ user.vipDescription }}</text>
 				</view>
-				<view class="mine-page__vip-badge">
+				<view class="mine-page__vip-badge" :class="{ 'mine-page__vip-badge--active': user.isVip }">
 					<uni-icons type="star-filled" size="15" color="#dfe7ff" />
 				</view>
 			</view>
@@ -67,11 +67,45 @@
 				<uni-icons type="right" size="16" color="#c3cad7" />
 			</view>
 		</view>
+
+		<view v-if="redeemVisible" class="mine-page__redeem-mask" @tap="closeRedeemPopup">
+			<view class="mine-page__redeem-dialog" @tap.stop>
+				<view class="mine-page__redeem-header">
+					<view>
+						<text class="mine-page__redeem-title">兑换会员</text>
+						<text class="mine-page__redeem-subtitle">请输入后台生成的兑换 Key</text>
+					</view>
+					<view class="mine-page__redeem-close" @tap="closeRedeemPopup">
+						<uni-icons type="closeempty" size="24" color="#7b8494" />
+					</view>
+				</view>
+				<input
+					v-model="redeemForm.key"
+					class="mine-page__redeem-input"
+					maxlength="40"
+					placeholder="例如 VIPXXXXXXXXXXXX"
+					placeholder-class="mine-page__redeem-placeholder"
+					:auto-focus="redeemVisible"
+					@input="handleRedeemInput"
+				/>
+				<text class="mine-page__redeem-tip">兑换成功后，会员将自动按当前到期时间顺延。</text>
+				<button class="mine-page__redeem-submit" :disabled="redeeming" @tap="submitRedeem">
+					{{ redeeming ? '兑换中...' : '立即兑换' }}
+				</button>
+			</view>
+		</view>
 	</page-shell>
 </template>
 
 <script>
-import { bootstrapAuth, getSessionSnapshot, subscribeSession } from '@/shared/session/session'
+import { bootstrapAuth, getSessionSnapshot, setCurrentUser, subscribeSession } from '@/shared/session/session'
+import { getVipStatus, redeemVipKey } from '@/shared/api/vip'
+
+const VIP_TYPE_TEXT = {
+	month: '月卡会员',
+	year: '年卡会员',
+	lifetime: '永久会员'
+}
 
 export default {
 	name: 'MinePage',
@@ -80,7 +114,15 @@ export default {
 			user: {
 				name: '微信用户',
 				avatarUrl: '',
-				vipExpireAt: '未开通'
+				isVip: false,
+				vipType: '',
+				vipTitle: 'VIP会员',
+				vipDescription: '未开通，兑换后可解锁完整会员权益'
+			},
+			redeemVisible: false,
+			redeeming: false,
+			redeemForm: {
+				key: ''
 			},
 			unsubscribeSession: null,
 			vipFeatures: [
@@ -104,7 +146,11 @@ export default {
 		})
 	},
 	onShow() {
-		bootstrapAuth({ silent: true }).catch((error) => {
+		bootstrapAuth({ silent: true }).then(() => {
+			this.refreshVipStatus({ silent: true }).catch((error) => {
+				console.warn('[mine] refresh vip status failed', error)
+			})
+		}).catch((error) => {
 			console.warn('[mine] bootstrap failed', error)
 		})
 	},
@@ -117,12 +163,19 @@ export default {
 	methods: {
 		syncUser(snapshot) {
 			const currentUser = snapshot && snapshot.currentUser ? snapshot.currentUser : null
+			const vipInfo = currentUser && currentUser.vipInfo ? currentUser.vipInfo : null
+			const isVip = !!(vipInfo && (vipInfo.isVip || vipInfo.vip))
+			const vipType = vipInfo && vipInfo.vipType ? vipInfo.vipType : ''
+			const expireAt = vipInfo && vipInfo.expireAt ? vipInfo.expireAt : ''
 			this.user = {
 				name: currentUser && currentUser.nickname ? currentUser.nickname : '微信用户',
 				avatarUrl: currentUser && currentUser.avatarUrl ? currentUser.avatarUrl : '',
-				vipExpireAt: currentUser && currentUser.vipInfo && currentUser.vipInfo.isVip
-					? (currentUser.vipInfo.expireAt || '长期有效')
-					: '未开通'
+				isVip,
+				vipType,
+				vipTitle: isVip ? (VIP_TYPE_TEXT[vipType] || 'VIP会员') : 'VIP会员',
+				vipDescription: isVip
+					? `有效期至 ${expireAt || '长期有效'}`
+					: '未开通，兑换后可解锁完整会员权益'
 			}
 		},
 		goProfile() {
@@ -131,6 +184,10 @@ export default {
 			})
 		},
 		handleAction(key) {
+			if (key === 'redeem') {
+				this.openRedeemPopup()
+				return
+			}
 			const actionTextMap = {
 				profile: '更新资料',
 				redeem: '激活兑换码',
@@ -144,6 +201,81 @@ export default {
 				title: `${actionTextMap[key] || '功能'}开发中`,
 				icon: 'none'
 			});
+		},
+		openRedeemPopup() {
+			this.redeemVisible = true
+			this.refreshVipStatus({ silent: true }).catch((error) => {
+				console.warn('[mine] refresh vip status failed', error)
+			})
+		},
+		closeRedeemPopup() {
+			if (this.redeeming) return
+			this.redeemVisible = false
+		},
+		handleRedeemInput(event) {
+			const value = event && event.detail ? event.detail.value : this.redeemForm.key
+			this.redeemForm.key = String(value || '').toUpperCase().replace(/\s+/g, '')
+		},
+		async submitRedeem() {
+			if (this.redeeming) return
+			const key = String(this.redeemForm.key || '').trim().toUpperCase()
+			if (!key) {
+				uni.showToast({
+					title: '请输入兑换码',
+					icon: 'none'
+				})
+				return
+			}
+
+			this.redeeming = true
+			uni.showLoading({ title: '兑换中...' })
+			try {
+				const record = await redeemVipKey({ key })
+				await this.refreshVipStatus({ silent: true }).catch((error) => {
+					console.warn('[mine] refresh vip status after redeem failed', error)
+				})
+				this.redeemVisible = false
+				this.redeemForm.key = ''
+				uni.hideLoading()
+				uni.showToast({
+					title: record && record.endTime ? `兑换成功，有效期至 ${record.endTime.slice(0, 10)}` : '兑换成功',
+					icon: 'none',
+					duration: 2200
+				})
+			} catch (error) {
+				uni.hideLoading()
+				uni.showToast({
+					title: error.message || '兑换失败',
+					icon: 'none'
+				})
+			} finally {
+				this.redeeming = false
+			}
+		},
+		async refreshVipStatus(options = {}) {
+			try {
+				const vipInfo = await getVipStatus()
+				const snapshot = getSessionSnapshot()
+				const currentUser = snapshot && snapshot.currentUser ? snapshot.currentUser : {}
+				const nextUser = {
+					...currentUser,
+					vipInfo
+				}
+				setCurrentUser(nextUser)
+				this.syncUser({
+					...snapshot,
+					currentUser: nextUser
+				})
+				return vipInfo
+			} catch (error) {
+				if (!options.silent) {
+					uni.showToast({
+						title: error.message || '会员状态刷新失败',
+						icon: 'none'
+					})
+				}
+				throw error
+			}
 		}
 	}
 };
@@ -249,6 +381,10 @@ export default {
 	box-shadow: 0 20rpx 44rpx rgba(37, 43, 48, 0.16);
 }
 
+.mine-page__vip-card--inactive {
+	background: linear-gradient(115deg, #64748b 0%, #334155 100%);
+}
+
 .mine-page__vip-header {
 	display: flex;
 	align-items: flex-start;
@@ -279,6 +415,10 @@ export default {
 	height: 40rpx;
 	border-radius: 12rpx 12rpx 8rpx 8rpx;
 	background: linear-gradient(180deg, rgba(111, 123, 143, 0.6) 0%, rgba(82, 92, 108, 0.3) 100%);
+}
+
+.mine-page__vip-badge--active {
+	background: linear-gradient(180deg, rgba(238, 196, 110, 0.88) 0%, rgba(196, 137, 54, 0.66) 100%);
 }
 
 .mine-page__vip-features {
@@ -347,5 +487,98 @@ export default {
 	line-height: 1.2;
 	font-weight: 600;
 	color: #2f343a;
+}
+
+.mine-page__redeem-mask {
+	position: fixed;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 10000;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	padding: 32rpx 24rpx calc(env(safe-area-inset-bottom) + 32rpx);
+	background: rgba(15, 23, 42, 0.42);
+}
+
+.mine-page__redeem-dialog {
+	width: 100%;
+	padding: 34rpx 30rpx 30rpx;
+	border-radius: 28rpx;
+	background: #ffffff;
+	box-shadow: 0 24rpx 70rpx rgba(15, 23, 42, 0.2);
+}
+
+.mine-page__redeem-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+}
+
+.mine-page__redeem-title {
+	display: block;
+	font-size: 32rpx;
+	font-weight: 800;
+	color: #1f2937;
+}
+
+.mine-page__redeem-subtitle {
+	display: block;
+	margin-top: 10rpx;
+	font-size: 23rpx;
+	color: #7b8494;
+}
+
+.mine-page__redeem-close {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 54rpx;
+	height: 54rpx;
+	border-radius: 50%;
+	background: #f4f6f9;
+}
+
+.mine-page__redeem-input {
+	margin-top: 30rpx;
+	height: 92rpx;
+	padding: 0 28rpx;
+	border-radius: 18rpx;
+	background: #f6f8fb;
+	font-size: 28rpx;
+	font-weight: 700;
+	letter-spacing: 1rpx;
+	color: #1f2937;
+}
+
+.mine-page__redeem-placeholder {
+	font-weight: 400;
+	letter-spacing: 0;
+	color: #a8b0bd;
+}
+
+.mine-page__redeem-tip {
+	display: block;
+	margin-top: 16rpx;
+	font-size: 22rpx;
+	line-height: 1.5;
+	color: #7b8494;
+}
+
+.mine-page__redeem-submit {
+	margin-top: 30rpx;
+	height: 84rpx;
+	border-radius: 999rpx;
+	background: #20272e;
+	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 700;
+	line-height: 84rpx;
+}
+
+.mine-page__redeem-submit[disabled] {
+	opacity: 0.72;
 }
 </style>

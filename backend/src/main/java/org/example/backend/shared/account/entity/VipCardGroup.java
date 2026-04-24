@@ -6,37 +6,29 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * AI 索引: VIP 兑换卡组实体，后台按卡组批量生成兑换 Key。
+ */
 @Data
-@TableName("app_user_vip")
-public class AppUserVip implements Serializable {
+@TableName("vip_card_group")
+public class VipCardGroup implements Serializable {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private Long userId;
+    private String groupName;
 
     private String vipType;
 
-    private Integer vipStatus;
+    private Integer durationDays;
 
-    private String sourceType;
+    private Integer status;
 
-    private Long sourceRefId;
+    private String remark;
 
-    private BigDecimal amount;
-
-    private LocalDateTime startTime;
-
-    private LocalDateTime endTime;
-
-    private String invalidReason;
-
-    private LocalDateTime invalidAt;
-
-    private Long invalidBy;
+    private Long createdBy;
 
     private LocalDateTime createdAt;
 

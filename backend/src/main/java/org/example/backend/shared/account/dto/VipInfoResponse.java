@@ -1,5 +1,6 @@
 package org.example.backend.shared.account.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -7,7 +8,8 @@ import lombok.Data;
 @AllArgsConstructor
 public class VipInfoResponse {
 
-    private boolean isVip;
+    @JsonProperty("isVip")
+    private boolean vip;
 
     private String vipType;
 

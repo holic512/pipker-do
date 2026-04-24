@@ -345,3 +345,95 @@ export interface KyzzUserQuestionBankSelectionUpdateResponse {
   selected: boolean
   record: KyzzUserQuestionBankAdminSelectedBank | null
 }
+
+export interface VipCardGroup {
+  id: number
+  groupName: string
+  vipType: string
+  durationDays: number
+  status: number
+  remark: string | null
+  createdBy: number | null
+  createdByName: string | null
+  totalKeyCount: number
+  unusedKeyCount: number
+  redeemedKeyCount: number
+  voidedKeyCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface VipCardKey {
+  id: number
+  groupId: number
+  groupName: string | null
+  vipType: string | null
+  durationDays: number | null
+  cardKey: string
+  batchNo: string | null
+  status: number
+  redeemedUserId: number | null
+  redeemedUserName: string | null
+  redeemedAt: string | null
+  voidedAt: string | null
+  voidReason: string | null
+  createdBy: number | null
+  createdByName: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface VipCardKeyBatchCreateResponse {
+  groupId: number
+  batchNo: string
+  count: number
+  keys: VipCardKey[]
+}
+
+export interface VipCardKeyBatch {
+  batchNo: string
+  groupId: number
+  totalKeyCount: number
+  unusedKeyCount: number
+  redeemedKeyCount: number
+  voidedKeyCount: number
+  createdAt: string | null
+}
+
+export interface VipCardKeyBatchVoidResponse {
+  batchNo: string
+  voidedCount: number
+  skippedCount: number
+}
+
+export interface AdminVipUser {
+  userId: number
+  nickname: string
+  username: string | null
+  phone: string | null
+  email: string | null
+  status: number
+  isVip: boolean
+  vipType: string | null
+  vipExpireAt: string | null
+  vipRecordCount: number
+  lastLoginAt: string | null
+  createdAt: string
+}
+
+export interface AdminVipRecord {
+  id: number
+  userId: number
+  vipType: string
+  vipStatus: number
+  sourceType: string
+  sourceRefId: number | null
+  amount: number
+  startTime: string
+  endTime: string
+  invalidReason: string | null
+  invalidAt: string | null
+  invalidBy: number | null
+  createdAt: string
+  updatedAt: string
+}

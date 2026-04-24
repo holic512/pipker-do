@@ -110,7 +110,8 @@ public class UserProfileService {
         return user;
     }
 
-    private VipInfoResponse getVipInfo(Long userId) {
+    public VipInfoResponse getVipInfo(Long userId) {
+        requireUser(userId);
         AppUserVip vip = appUserVipMapper.selectOne(new LambdaQueryWrapper<AppUserVip>()
                 .eq(AppUserVip::getUserId, userId)
                 .eq(AppUserVip::getVipStatus, 1)

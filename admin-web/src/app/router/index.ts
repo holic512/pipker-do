@@ -47,6 +47,18 @@ const router = createRouter({
           meta: { roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] }
         },
         {
+          path: '/system/vip-card-groups',
+          name: 'system-vip-card-groups',
+          component: () => import('@/modules/system/pages/VipCardGroupManagementPage.vue'),
+          meta: { roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] }
+        },
+        {
+          path: '/system/vip-card-keys',
+          name: 'system-vip-card-keys',
+          component: () => import('@/modules/system/pages/VipCardKeyManagementPage.vue'),
+          meta: { roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] }
+        },
+        {
           path: '/project/:projectCode/question-banks',
           name: 'project-question-banks',
           component: () => import('@/modules/kyzz/pages/QuestionBankManagementPage.vue')
