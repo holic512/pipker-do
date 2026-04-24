@@ -22,6 +22,8 @@ jobs:
   build-and-release:
     name: Build backend and publish release
     runs-on: ubuntu-latest
+    env:
+      SPRING_PROFILES_ACTIVE: prod
 
     steps:
       - name: Checkout source
@@ -34,8 +36,8 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Build jar package
-        run: mvn -f backend/pom.xml -B clean package -DskipTests
+      - name: Build prod jar package
+        run: mvn -f backend/pom.xml -B -ntp clean package -DskipTests -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE}
 
       - name: Prepare release bundle
         id: prepare
@@ -58,6 +60,10 @@ jobs:
           ASSET_NAME="backend-${VERSION}-${SHORT_SHA}.jar"
           cp "${JAR_PATH}" "dist/${ASSET_NAME}"
           sha256sum "dist/${ASSET_NAME}" > "dist/${ASSET_NAME}.sha256"
+          cat <<EOF > "dist/${ASSET_NAME}.profile.txt"
+          spring.profiles.active=${SPRING_PROFILES_ACTIVE}
+          java -jar ${ASSET_NAME} --spring.profiles.active=${SPRING_PROFILES_ACTIVE}
+          EOF
 
           {
             echo "tag_name=${TAG_NAME}"
@@ -65,6 +71,7 @@ jobs:
             echo "version=${VERSION}"
             echo "asset_path=dist/${ASSET_NAME}"
             echo "checksum_path=dist/${ASSET_NAME}.sha256"
+            echo "profile_path=dist/${ASSET_NAME}.profile.txt"
           } >> "${GITHUB_OUTPUT}"
 
       - name: Upload workflow artifact
@@ -74,6 +81,7 @@ jobs:
           path: |
             ${{ steps.prepare.outputs.asset_path }}
             ${{ steps.prepare.outputs.checksum_path }}
+            ${{ steps.prepare.outputs.profile_path }}
 
       - name: Create GitHub release
         env:
@@ -83,6 +91,7 @@ jobs:
           RELEASE_NAME: ${{ steps.prepare.outputs.release_name }}
           ASSET_PATH: ${{ steps.prepare.outputs.asset_path }}
           CHECKSUM_PATH: ${{ steps.prepare.outputs.checksum_path }}
+          PROFILE_PATH: ${{ steps.prepare.outputs.profile_path }}
         shell: bash
         run: |
           set -euo pipefail
@@ -95,6 +104,7 @@ jobs:
           gh release create "${TAG_NAME}" \
             "${ASSET_PATH}" \
             "${CHECKSUM_PATH}" \
+            "${PROFILE_PATH}" \
             --title "${RELEASE_NAME}" \
             --generate-notes \
             "${EXTRA_ARGS[@]}"

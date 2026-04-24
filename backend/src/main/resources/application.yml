@@ -1,48 +1,29 @@
+# ai-index: spring boot common configuration shared by dev and prod profiles
 server:
   port: 8080
 
 spring:
   application:
     name: pipkerdo
-
-  datasource:
-    url: jdbc:mysql://localhost:3306/pipkerdo?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-    username: root
-    password: 123456
-    driver-class-name: com.mysql.cj.jdbc.Driver
-
+  profiles:
+    default: dev
   servlet:
     multipart:
       max-file-size: 5MB
       max-request-size: 5MB
-  data:
-    redis:
-      database: 1
-      host: 127.0.0.1
-      port: 6379
-      timeout: 10s
-#      password:
-
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   type-aliases-package: org.example.backend.shared.account.entity,org.example.backend.shared.admin.entity,org.example.backend.biz.kyzz.entity
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       id-type: auto
       table-underline: true
 
-logging:
-  level:
-    org.example.backend.mapper: debug
-
 storage:
   local:
-    base-path: /Volumes/HARDDRIVE1/project/private/pipker-do/file
-    public-base-url: http://localhost:8080/static/files
     temp-dir: .tmp
     hash-algorithm: SHA-256
     shard-depth: 2
@@ -62,8 +43,10 @@ sa-token:
 
 wechat:
   miniapp:
-    app-id: ${WECHAT_MINIAPP_APP_ID:wx8f51a19f388f49ef}
-    app-secret: ${WECHAT_MINIAPP_APP_SECRET:76b1c77f1a22c7fcc3be9ded6f8468de}
+    app-id: ${WECHAT_MINIAPP_APP_ID:}
+    app-secret: ${WECHAT_MINIAPP_APP_SECRET:}
+    connect-timeout: ${WECHAT_MINIAPP_CONNECT_TIMEOUT:3s}
+    read-timeout: ${WECHAT_MINIAPP_READ_TIMEOUT:5s}
 
 anti-crawler:
   enabled: true

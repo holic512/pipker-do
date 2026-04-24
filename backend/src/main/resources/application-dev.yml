@@ -1,0 +1,31 @@
+# ai-index: spring boot dev profile configuration local datasource redis sql logging
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/pipkerdo?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      database: 1
+      host: 127.0.0.1
+      port: 6379
+      timeout: 10s
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    org.example.backend.mapper: debug
+
+storage:
+  local:
+    base-path: /Volumes/HARDDRIVE1/project/private/pipker-do/file
+    public-base-url: http://localhost:8080/static/files
+
+wechat:
+  miniapp:
+    app-id: ${WECHAT_MINIAPP_APP_ID:wx8f51a19f388f49ef}
+    app-secret: ${WECHAT_MINIAPP_APP_SECRET:76b1c77f1a22c7fcc3be9ded6f8468de}

@@ -1,17 +1,22 @@
 package org.example.backend.shared.auth.service;
 
-import org.example.backend.shared.auth.config.WechatMiniappProperties;
-import org.example.backend.shared.auth.dto.WechatCode2SessionResponse;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
+import org.example.backend.shared.auth.config.WechatMiniappProperties;
+import org.example.backend.shared.auth.dto.WechatCode2SessionResponse;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.boot.json.JsonParserFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 
+import java.net.http.HttpClient;
 import java.util.Map;
 
+/**
+ * AI 索引: 微信登录客户端，生产环境使用可配置连接超时和读取超时。
+ */
 @Component
 public class WechatAuthClient {
 
@@ -20,8 +25,15 @@ public class WechatAuthClient {
 
     public WechatAuthClient(WechatMiniappProperties properties) {
         this.properties = properties;
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(properties.getConnectTimeout())
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(properties.getReadTimeout());
+        requestFactory.enableCompression(true);
         this.restClient = RestClient.builder()
                 .baseUrl("https://api.weixin.qq.com")
+                .requestFactory(requestFactory)
                 .build();
     }
 
