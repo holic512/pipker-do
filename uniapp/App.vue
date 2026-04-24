@@ -1,14 +1,21 @@
 <script>
+	// AI 索引: 小程序全局启动链路与冷启动状态入口。
+	import { hasCompletedLaunchBootstrap, startLaunchBootstrap } from '@/shared/launch'
 	import { bootstrapAuth } from '@/shared/session/session'
 
 	export default {
 		onLaunch: function() {
-			bootstrapAuth().catch((error) => {
-				console.warn('[auth] bootstrap onLaunch failed', error)
+			uni.hideTabBar({ animation: false }).catch(() => {})
+			startLaunchBootstrap().catch((error) => {
+				console.warn('[launch] bootstrap onLaunch failed', error)
 			})
 		},
 		onShow: function() {
-			bootstrapAuth().catch((error) => {
+			uni.hideTabBar({ animation: false }).catch(() => {})
+			if (!hasCompletedLaunchBootstrap()) {
+				return
+			}
+			bootstrapAuth({ silent: true }).catch((error) => {
 				console.warn('[auth] bootstrap onShow failed', error)
 			})
 		},

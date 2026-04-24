@@ -1,4 +1,5 @@
 <template>
+	<!-- AI 索引: 小程序页面壳与冷启动覆盖层挂载点。 -->
 	<view class="page-shell" :class="rootClass" :style="rootStyle">
 		<custom-navbar @menu-click="$emit('menu-click')" />
 		<view class="page-shell__content" :class="contentClass" :style="contentStyle">
@@ -9,6 +10,7 @@
 			:current="current"
 			:items="items"
 		/>
+		<launch-overlay />
 	</view>
 </template>
 

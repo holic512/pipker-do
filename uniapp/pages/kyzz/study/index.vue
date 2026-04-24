@@ -27,33 +27,48 @@
 
       <view class="study-page__hero-shell">
         <view class="study-page__hero">
-          <text class="study-page__hero-en">ACADEMIC QUEST</text>
-          <text class="study-page__hero-title">{{ heroTitle }}</text>
-          <view class="study-page__hero-divider"></view>
-          <text class="study-page__hero-bank">{{ heroBankName }}</text>
+          <template v-if="!isInitialLoading">
+            <text class="study-page__hero-en">ACADEMIC QUEST</text>
+            <text class="study-page__hero-title">{{ heroTitle }}</text>
+            <view class="study-page__hero-divider"></view>
+            <text class="study-page__hero-bank">{{ heroBankName }}</text>
 
-          <!-- 优化: 环绕进度边框 + 脉冲动效按钮 -->
-          <view class="study-page__hero-action">
-            <button
-                class="study-page__hero-button-wrapper"
-                :class="{ 'is-progress-active': recommendedBank }"
-                :style="progressStyle"
-                @tap="handleStartPractice"
-            >
-              <view class="study-page__hero-button-inner">
-                <text class="study-page__hero-btn-text">{{ heroButtonText }}</text>
-                <view v-if="recommendedBank" class="study-page__hero-btn-pct">
-                  <view class="study-page__hero-btn-dot"></view>
-                  <text>{{ formatProgress(recommendedBank.currentProgress) }}</text>
+            <view class="study-page__hero-action">
+              <button
+                  class="study-page__hero-button-wrapper"
+                  :class="{ 'is-progress-active': recommendedBank }"
+                  :style="progressStyle"
+                  @tap="handleStartPractice"
+              >
+                <view class="study-page__hero-button-inner">
+                  <text class="study-page__hero-btn-text">{{ heroButtonText }}</text>
+                  <view v-if="recommendedBank" class="study-page__hero-btn-pct">
+                    <view class="study-page__hero-btn-dot"></view>
+                    <text>{{ formatProgress(recommendedBank.currentProgress) }}</text>
+                  </view>
                 </view>
-              </view>
-            </button>
-          </view>
+              </button>
+            </view>
+          </template>
+
+          <template v-else>
+            <view class="study-page__hero-skeleton-mark study-page__skeleton-shimmer"></view>
+            <view class="study-page__hero-skeleton-title study-page__skeleton-shimmer"></view>
+            <view class="study-page__hero-skeleton-divider study-page__skeleton-shimmer"></view>
+            <view class="study-page__hero-skeleton-text study-page__skeleton-shimmer"></view>
+            <view class="study-page__hero-skeleton-button study-page__skeleton-shimmer"></view>
+          </template>
         </view>
 
-        <view class="study-page__streak">
-          <uni-icons type="fire-filled" size="14" color="#ffffff" />
-          <text class="study-page__streak-text">{{ studyDaysLabel }}</text>
+        <view class="study-page__streak" :class="{ 'is-skeleton': isInitialLoading }">
+          <template v-if="!isInitialLoading">
+            <uni-icons type="fire-filled" size="14" color="#ffffff" />
+            <text class="study-page__streak-text">{{ studyDaysLabel }}</text>
+          </template>
+          <template v-else>
+            <view class="study-page__streak-dot"></view>
+            <text class="study-page__streak-text">正在同步进度</text>
+          </template>
         </view>
       </view>
 
@@ -67,23 +82,39 @@
         </view>
 
         <view class="study-page__shortcut-grid">
-          <view
-              v-for="item in shortcutItems"
-              :key="item.key"
-              class="study-page__shortcut-item"
-              @tap="openShortcut(item.pagePath)"
-          >
-            <view class="study-page__shortcut-card">
-              <view class="study-page__shortcut-icon">
-                <uni-icons :type="item.icon" size="29" :color="item.iconColor" />
+          <template v-if="!isInitialLoading">
+            <view
+                v-for="item in shortcutItems"
+                :key="item.key"
+                class="study-page__shortcut-item"
+                @tap="openShortcut(item.pagePath)"
+            >
+              <view class="study-page__shortcut-card">
+                <view class="study-page__shortcut-icon">
+                  <uni-icons :type="item.icon" size="29" :color="item.iconColor" />
+                </view>
               </view>
+              <text class="study-page__shortcut-card-title">{{ item.title }}</text>
             </view>
-            <text class="study-page__shortcut-card-title">{{ item.title }}</text>
-          </view>
+          </template>
+          <template v-else>
+            <view
+                v-for="item in shortcutItems"
+                :key="`${item.key}-skeleton`"
+                class="study-page__shortcut-item"
+            >
+              <view class="study-page__shortcut-card study-page__shortcut-card--skeleton study-page__skeleton-shimmer"></view>
+              <view class="study-page__shortcut-title-skeleton study-page__skeleton-shimmer"></view>
+            </view>
+          </template>
         </view>
       </view>
 
-      <study-garden />
+      <study-garden v-if="!isInitialLoading" />
+      <view v-else class="study-page__garden-skeleton">
+        <view class="study-page__garden-skeleton-card study-page__skeleton-shimmer"></view>
+        <view class="study-page__garden-skeleton-card study-page__garden-skeleton-card--wide study-page__skeleton-shimmer"></view>
+      </view>
     </view>
   </page-shell>
 </template>
@@ -166,6 +197,9 @@ export default defineComponent({
     }
   },
   computed: {
+    isInitialLoading(): boolean {
+      return this.loading && !this.loadedOnce
+    },
     recommendedBank(): KyzzPracticeBankViewRecord | null {
       return this.dashboard.records.find((item) => item.bankId === this.dashboard.recommendedBankId) || this.dashboard.records[0] || null
     },
@@ -472,6 +506,50 @@ export default defineComponent({
   text-overflow: ellipsis;
 }
 
+.study-page__hero-skeleton-mark,
+.study-page__hero-skeleton-title,
+.study-page__hero-skeleton-divider,
+.study-page__hero-skeleton-text,
+.study-page__hero-skeleton-button,
+.study-page__shortcut-title-skeleton,
+.study-page__garden-skeleton-card {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.28) 50%, rgba(255, 255, 255, 0.12) 100%);
+  background-size: 200% 100%;
+}
+
+.study-page__hero-skeleton-mark {
+  width: 220rpx;
+  height: 24rpx;
+  border-radius: 999rpx;
+}
+
+.study-page__hero-skeleton-title {
+  width: 330rpx;
+  height: 72rpx;
+  margin-top: 28rpx;
+  border-radius: 24rpx;
+}
+
+.study-page__hero-skeleton-divider {
+  width: 96rpx;
+  height: 6rpx;
+  margin: 34rpx 0 36rpx;
+  border-radius: 999rpx;
+}
+
+.study-page__hero-skeleton-text {
+  width: 320rpx;
+  height: 28rpx;
+  border-radius: 999rpx;
+}
+
+.study-page__hero-skeleton-button {
+  width: 250rpx;
+  height: 88rpx;
+  margin-top: 34rpx;
+  border-radius: 999rpx;
+}
+
 /* 进度环绕脉冲按钮样式 ==================== */
 .study-page__hero-action {
   margin-top: 28rpx;
@@ -565,6 +643,18 @@ export default defineComponent({
   transform: translateX(14rpx);
 }
 
+.study-page__streak.is-skeleton {
+  background: linear-gradient(180deg, rgba(122, 131, 153, 0.92) 0%, rgba(108, 119, 141, 0.92) 100%);
+}
+
+.study-page__streak-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  animation: dot-pulse 1.4s infinite alternate;
+}
+
 .study-page__streak-text {
   font-size: 22rpx;
   line-height: 1;
@@ -637,6 +727,13 @@ export default defineComponent({
     inset 0 0 0 1rpx rgba(232, 237, 244, 0.9);
 }
 
+.study-page__shortcut-card--skeleton {
+  background-color: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 16rpx 34rpx rgba(43, 52, 55, 0.04),
+    inset 0 0 0 1rpx rgba(232, 237, 244, 0.8);
+}
+
 .study-page__shortcut-icon {
   position: absolute;
   inset: 0;
@@ -653,6 +750,36 @@ export default defineComponent({
   font-weight: 600;
   text-align: center;
   color: #5c6678;
+}
+
+.study-page__shortcut-title-skeleton {
+  width: 84rpx;
+  height: 24rpx;
+  margin: 14rpx auto 0;
+  border-radius: 999rpx;
+}
+
+.study-page__garden-skeleton {
+  display: grid;
+  gap: 20rpx;
+  margin: 34rpx 18rpx 0;
+}
+
+.study-page__garden-skeleton-card {
+  height: 220rpx;
+  border-radius: 30rpx;
+  background-color: rgba(255, 255, 255, 0.82);
+  box-shadow:
+    0 18rpx 34rpx rgba(43, 52, 55, 0.05),
+    inset 0 0 0 1rpx rgba(232, 237, 244, 0.8);
+}
+
+.study-page__garden-skeleton-card--wide {
+  height: 180rpx;
+}
+
+.study-page__skeleton-shimmer {
+  animation: study-skeleton-shimmer 1.4s ease-in-out infinite;
 }
 
 /* =======================================
@@ -698,6 +825,11 @@ export default defineComponent({
 @keyframes dot-pulse {
   0% { opacity: 0.4; transform: scale(0.8); }
   100% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes study-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 @media screen and (max-width: 375px) {

@@ -30,43 +30,8 @@
 </template>
 
 <script>
-const DEFAULT_ITEMS = [
-	{
-		key: 'study',
-		text: '学习',
-		pagePath: '/pages/kyzz/study/index',
-		icon: 'home',
-		activeIcon: 'home-filled'
-	},
-	{
-		key: 'question-bank',
-		text: '题库',
-		pagePath: '/pages/kyzz/question-bank/index',
-		icon: 'compose',
-		activeIcon: 'compose'
-	},
-	{
-		key: 'practice',
-		text: '练习',
-		pagePath: '/pages/kyzz/practice/index',
-		icon: 'plusempty',
-		activeIcon: 'plusempty'
-	},
-	{
-		key: 'exam',
-		text: '考试',
-		pagePath: '/pages/kyzz/exam/index',
-		icon: 'medal',
-		activeIcon: 'medal-filled'
-	},
-	{
-		key: 'mine',
-		text: '我的',
-		pagePath: '/pages/common/mine/index',
-		icon: 'person',
-		activeIcon: 'person-filled'
-	}
-];
+// AI 索引: 小程序自定义底部导航与共享菜单配置。
+import { createDefaultTabbarItems } from '@/shared/navigation/tabbar'
 
 export default {
 	name: 'CustomTabbar',
@@ -77,12 +42,12 @@ export default {
 		},
 		items: {
 			type: Array,
-			default: () => DEFAULT_ITEMS
+			default: () => createDefaultTabbarItems()
 		}
 	},
 	computed: {
 		mergedItems() {
-			const sourceItems = this.items && this.items.length ? this.items : DEFAULT_ITEMS;
+			const sourceItems = this.items && this.items.length ? this.items : createDefaultTabbarItems();
 			return sourceItems.map(item => ({
 				...item,
 				size: item.size || 24,

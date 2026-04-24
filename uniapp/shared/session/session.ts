@@ -15,6 +15,8 @@ import {
 interface SessionState {
 	token: string
 	currentUser: unknown | null
+	initialized: boolean
+	validatedAt: number
 	bootstrappingPromise: Promise<unknown> | null
 }
 
@@ -27,6 +29,8 @@ export interface SessionSnapshot<TUser = unknown> {
 	token: string
 	currentUser: TUser | null
 	isAuthenticated: boolean
+	initialized: boolean
+	validatedAt: number
 }
 
 export interface BootstrapAuthOptions {
@@ -53,6 +57,8 @@ const listeners = new Set<SessionListener>()
 const state: SessionState = {
 	token: getToken(),
 	currentUser: getCachedUser(),
+	initialized: false,
+	validatedAt: 0,
 	bootstrappingPromise: null
 }
 
@@ -127,9 +133,26 @@ function resolveMessage(payload: unknown, fallback: string): string {
 	return fallback
 }
 
-function setSession(token: string, user: unknown): void {
+function setSession(
+	token: string,
+	user: unknown,
+	options: {
+		initialized?: boolean
+		preserveValidation?: boolean
+	} = {}
+): void {
 	state.token = token || ''
 	state.currentUser = user || null
+	if (!state.token || !state.currentUser) {
+		state.initialized = false
+		state.validatedAt = 0
+	} else if (options.initialized) {
+		state.initialized = true
+		state.validatedAt = Date.now()
+	} else if (!options.preserveValidation) {
+		state.initialized = false
+		state.validatedAt = 0
+	}
 	if (state.token) {
 		setToken(state.token)
 	} else {
@@ -143,7 +166,9 @@ export function getSessionSnapshot<TUser = unknown>(): SessionSnapshot<TUser> {
 	return {
 		token: state.token,
 		currentUser: state.currentUser as TUser | null,
-		isAuthenticated: !!state.token
+		isAuthenticated: !!state.token,
+		initialized: state.initialized,
+		validatedAt: state.validatedAt
 	}
 }
 
@@ -155,6 +180,8 @@ export function subscribeSession(listener: SessionListener): () => boolean {
 export function clearSession(options: { notify?: boolean } = {}): void {
 	state.token = ''
 	state.currentUser = null
+	state.initialized = false
+	state.validatedAt = 0
 	clearToken()
 	clearCachedUser()
 	if (options.notify !== false) {
@@ -163,7 +190,7 @@ export function clearSession(options: { notify?: boolean } = {}): void {
 }
 
 export function setCurrentUser(user: unknown): void {
-	setSession(state.token, user)
+	setSession(state.token, user, { preserveValidation: true })
 }
 
 export async function fetchCurrentUser<TUser = unknown>(): Promise<TUser> {
@@ -194,7 +221,7 @@ export async function fetchCurrentUser<TUser = unknown>(): Promise<TUser> {
 		throw new Error(resolveMessage(payload, '获取用户信息失败'))
 	}
 
-	setSession(state.token, apiEnvelope.data)
+	setSession(state.token, apiEnvelope.data, { initialized: true })
 	return apiEnvelope.data as TUser
 }
 
@@ -235,11 +262,15 @@ async function performWechatSilentLogin<TUser = unknown>(): Promise<TUser> {
 		throw new Error(resolveMessage(payload, '静默登录失败'))
 	}
 	const loginData = (apiEnvelope.data || {}) as { token?: string; user?: unknown }
-	setSession(loginData.token || '', loginData.user)
+	setSession(loginData.token || '', loginData.user, { initialized: true })
 	return loginData.user as TUser
 }
 
 export async function bootstrapAuth<TUser = unknown>(options: BootstrapAuthOptions = {}): Promise<TUser> {
+	if (state.initialized && state.token && state.currentUser && !options.force) {
+		return Promise.resolve(state.currentUser as TUser)
+	}
+
 	if (state.bootstrappingPromise && !options.force) {
 		return state.bootstrappingPromise as Promise<TUser>
 	}
