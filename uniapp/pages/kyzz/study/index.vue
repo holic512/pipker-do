@@ -62,7 +62,7 @@
 
         <view class="study-page__streak" :class="{ 'is-skeleton': isInitialLoading }">
           <template v-if="!isInitialLoading">
-            <uni-icons type="fire-filled" size="14" color="#ffffff" />
+            <uni-icons type="fire-filled" size="14" color="#ff9f2e" />
             <text class="study-page__streak-text">{{ studyDaysLabel }}</text>
           </template>
           <template v-else>
@@ -90,11 +90,18 @@
                 @tap="openShortcut(item.pagePath)"
             >
               <view class="study-page__shortcut-card">
+                <view class="study-page__shortcut-card-glow"></view>
                 <view class="study-page__shortcut-icon">
                   <uni-icons :type="item.icon" size="29" :color="item.iconColor" />
                 </view>
+                <view class="study-page__shortcut-copy">
+                  <text class="study-page__shortcut-card-title">{{ item.title }}</text>
+                  <text class="study-page__shortcut-card-desc">{{ item.description }}</text>
+                </view>
+                <view class="study-page__shortcut-arrow">
+                  <uni-icons type="right" size="13" color="#8e98aa" />
+                </view>
               </view>
-              <text class="study-page__shortcut-card-title">{{ item.title }}</text>
             </view>
           </template>
           <template v-else>
@@ -130,6 +137,7 @@ import { createEmptyPracticeDashboard, formatProgress, normalizePracticeDashboar
 interface StudyShortcutItem {
   key: string
   title: string
+  description: string
   icon: string
   iconColor: string
   pagePath: string
@@ -168,29 +176,33 @@ export default defineComponent({
         {
           key: 'favorite',
           title: '收藏',
+          description: '高频重点',
           icon: 'star-filled',
-          iconColor: '#6f7890',
+          iconColor: '#5d6678',
           pagePath: '/pages/kyzz/favorite/index'
         },
         {
           key: 'wrong-book',
           title: '错题库',
+          description: '错因复盘',
           icon: 'help',
-          iconColor: '#6f7890',
+          iconColor: '#5d6678',
           pagePath: '/pages/kyzz/wrong-book/index'
         },
         {
           key: 'note',
           title: '笔记',
+          description: '知识沉淀',
           icon: 'compose',
-          iconColor: '#6f7890',
+          iconColor: '#5d6678',
           pagePath: '/pages/kyzz/note/index'
         },
         {
           key: 'leaderboard',
           title: '排行榜',
+          description: '阶段坐标',
           icon: 'medal-filled',
-          iconColor: '#6f7890',
+          iconColor: '#5d6678',
           pagePath: '/pages/kyzz/leaderboard/index'
         }
       ]
@@ -672,7 +684,7 @@ export default defineComponent({
 .study-page__shortcut-shell {
   position: relative;
   z-index: 2;
-  margin: 44rpx 18rpx 0;
+  margin: 40rpx 18rpx 0;
 }
 
 .study-page__shortcut-title {
@@ -710,9 +722,9 @@ export default defineComponent({
 
 .study-page__shortcut-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12rpx;
-  margin-top: 22rpx;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  margin-top: 24rpx;
 }
 
 .study-page__shortcut-item {
@@ -723,14 +735,39 @@ export default defineComponent({
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   width: 100%;
-  padding-top: 100%;
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.9);
+  min-height: 136rpx;
+  padding: 26rpx 58rpx 26rpx 22rpx;
+  border-radius: 30rpx;
+  overflow: hidden;
+  box-sizing: border-box;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(249, 251, 254, 0.9) 52%, rgba(238, 243, 248, 0.86) 100%);
   box-shadow:
-    0 16rpx 34rpx rgba(43, 52, 55, 0.06),
-    inset 0 0 0 1rpx rgba(232, 237, 244, 0.9);
+    0 18rpx 42rpx rgba(43, 52, 55, 0.075),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1rpx rgba(220, 227, 236, 0.72);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.study-page__shortcut-card:active {
+  transform: scale(0.975) translateY(2rpx);
+  box-shadow:
+    0 10rpx 26rpx rgba(43, 52, 55, 0.06),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1rpx rgba(210, 218, 229, 0.82);
+}
+
+.study-page__shortcut-card-glow {
+  position: absolute;
+  top: -54rpx;
+  right: -48rpx;
+  width: 146rpx;
+  height: 146rpx;
+  border-radius: 999rpx;
+  background: radial-gradient(circle, rgba(215, 226, 255, 0.72) 0%, rgba(215, 226, 255, 0) 68%);
+  pointer-events: none;
 }
 
 .study-page__shortcut-card--skeleton {
@@ -741,21 +778,64 @@ export default defineComponent({
 }
 
 .study-page__shortcut-icon {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 58rpx;
+  height: 58rpx;
+  flex: 0 0 58rpx;
+  border-radius: 20rpx;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(242, 246, 250, 0.9) 100%);
+  box-shadow:
+    0 10rpx 20rpx rgba(93, 102, 120, 0.12),
+    inset 0 0 0 1rpx rgba(218, 225, 235, 0.88);
+}
+
+.study-page__shortcut-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-left: 18rpx;
 }
 
 .study-page__shortcut-card-title {
   display: block;
-  margin-top: 12rpx;
-  font-size: 22rpx;
-  line-height: 1.4;
-  font-weight: 600;
-  text-align: center;
-  color: #5c6678;
+  font-size: 26rpx;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #273247;
+}
+
+.study-page__shortcut-card-desc {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  line-height: 1.25;
+  font-weight: 500;
+  color: rgba(102, 113, 132, 0.72);
+  white-space: nowrap;
+}
+
+.study-page__shortcut-arrow {
+  position: absolute;
+  right: 20rpx;
+  top: 50%;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: 999rpx;
+  background: rgba(242, 246, 250, 0.72);
+  transform: translateY(-50%);
+  box-shadow: inset 0 0 0 1rpx rgba(219, 226, 236, 0.72);
 }
 
 .study-page__shortcut-title-skeleton {
