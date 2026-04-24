@@ -43,8 +43,9 @@ export interface RuntimeEnv {
 
 const ENV_MAP: Record<RuntimeEnvName, RuntimeEnvPreset> = {
 	development: {
-		// 本地开发地址。真机调试时不要继续使用 127.0.0.1，应改成电脑局域网 IP 或可访问的开发域名。
-		apiBaseUrl: 'https://do.pipker.com',
+		// 本地开发地址。真机调试时不要继续使用 http://127.0.0.1:8080，应改成电脑局域网 IP 或可访问的开发域名。
+		// apiBaseUrl: 'https://do.pipker.com',
+		apiBaseUrl: 'http://127.0.0.1:8080',
 		timeout: 15000
 	},
 	test: {
