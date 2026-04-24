@@ -64,6 +64,7 @@ public class KyzzPracticeUserService {
     private final KyzzUserAnswerMapper kyzzUserAnswerMapper;
     private final KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper;
     private final KyzzPracticeSupport kyzzPracticeSupport;
+    private final KyzzFavoriteQuestionUserService kyzzFavoriteQuestionUserService;
     private final AntiCrawlerSecurityService antiCrawlerSecurityService;
     private final KyzzCacheService kyzzCacheService;
 
@@ -72,6 +73,7 @@ public class KyzzPracticeUserService {
                                    KyzzUserAnswerMapper kyzzUserAnswerMapper,
                                    KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper,
                                    KyzzPracticeSupport kyzzPracticeSupport,
+                                   KyzzFavoriteQuestionUserService kyzzFavoriteQuestionUserService,
                                    AntiCrawlerSecurityService antiCrawlerSecurityService,
                                    KyzzCacheService kyzzCacheService) {
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
@@ -79,6 +81,7 @@ public class KyzzPracticeUserService {
         this.kyzzUserAnswerMapper = kyzzUserAnswerMapper;
         this.kyzzUserWrongQuestionMapper = kyzzUserWrongQuestionMapper;
         this.kyzzPracticeSupport = kyzzPracticeSupport;
+        this.kyzzFavoriteQuestionUserService = kyzzFavoriteQuestionUserService;
         this.antiCrawlerSecurityService = antiCrawlerSecurityService;
         this.kyzzCacheService = kyzzCacheService;
     }
@@ -140,7 +143,7 @@ public class KyzzPracticeUserService {
                 activeBank,
                 context.records(),
                 new KyzzPracticeSessionProgressResponse(currentQuestionIndex, questions.size()),
-                toQuestionResponse(targetQuestion, optionMap.getOrDefault(targetQuestion.getId(), List.of())),
+                toQuestionResponse(userId, targetQuestion, optionMap.getOrDefault(targetQuestion.getId(), List.of())),
                 previousQuestion == null ? null : previousQuestion.getId(),
                 previousQuestion == null ? null : currentQuestionIndex - 1,
                 Boolean.TRUE.equals(freshAttempt)
@@ -585,7 +588,8 @@ public class KyzzPracticeUserService {
         );
     }
 
-    private KyzzPracticeQuestionResponse toQuestionResponse(KyzzQuestion question,
+    private KyzzPracticeQuestionResponse toQuestionResponse(Long userId,
+                                                            KyzzQuestion question,
                                                             List<KyzzQuestionOption> options) {
         List<KyzzPracticeQuestionOptionResponse> optionResponses = options.stream()
                 .map(option -> new KyzzPracticeQuestionOptionResponse(
@@ -602,6 +606,7 @@ public class KyzzPracticeUserService {
                 question.getSortNo(),
                 question.getSourceName(),
                 question.getYearNo(),
+                kyzzFavoriteQuestionUserService.isFavorite(userId, question.getId()),
                 optionResponses
         );
     }

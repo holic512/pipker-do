@@ -7,9 +7,19 @@
 					<text v-if="currentBank.bankName" class="practice-question-panel__summary-bank-tag">{{ currentBank.bankName }}</text>
 				</view>
 			</view>
-			<view class="practice-question-panel__switcher" @tap="$emit('open-switcher')">
-				<text class="practice-question-panel__switcher-text">切换题库</text>
-				<uni-icons type="right" size="12" color="#49566e" />
+			<view class="practice-question-panel__summary-actions">
+				<button
+					class="practice-question-panel__favorite-button"
+					:class="{ 'is-active': isFavorite }"
+					@tap="$emit('toggle-favorite')"
+				>
+					<uni-icons :type="isFavorite ? 'star-filled' : 'star'" size="18" :color="isFavorite ? '#bd7a36' : '#667286'" />
+				</button>
+
+				<view class="practice-question-panel__switcher" @tap="$emit('open-switcher')">
+					<text class="practice-question-panel__switcher-text">切换题库</text>
+					<uni-icons type="right" size="12" color="#49566e" />
+				</view>
 			</view>
 		</view>
 
@@ -90,9 +100,13 @@ export default defineComponent({
 		reviewResult: {
 			type: Object as PropType<KyzzPracticeReviewViewResult | null>,
 			default: null
+		},
+		isFavorite: {
+			type: Boolean,
+			default: false
 		}
 	},
-	emits: ['select-option', 'change-answer-text', 'open-switcher'],
+	emits: ['select-option', 'change-answer-text', 'open-switcher', 'toggle-favorite'],
 	methods: {
 		difficultyLabel,
 		difficultyTagClass,
@@ -129,6 +143,13 @@ export default defineComponent({
 .practice-question-panel__summary-main {
 	min-width: 0;
 	flex: 1;
+}
+
+.practice-question-panel__summary-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 12rpx;
+	flex-shrink: 0;
 }
 
 .practice-question-panel__summary-heading {
@@ -182,6 +203,30 @@ export default defineComponent({
 	line-height: 1;
 	font-weight: 600;
 	color: #4a566c;
+}
+
+.practice-question-panel__favorite-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 58rpx;
+	height: 58rpx;
+	margin: 0;
+	padding: 0;
+	border-radius: 999rpx;
+	background: rgba(240, 244, 249, 0.96);
+	box-shadow: inset 0 0 0 1rpx rgba(202, 212, 228, 0.82);
+}
+
+.practice-question-panel__favorite-button::after {
+	border: 0;
+}
+
+.practice-question-panel__favorite-button.is-active {
+	background: rgba(255, 244, 229, 0.98);
+	box-shadow:
+		0 10rpx 22rpx rgba(189, 122, 54, 0.12),
+		inset 0 0 0 1rpx rgba(237, 205, 165, 0.9);
 }
 
 .practice-question-panel__meta-row {

@@ -60,6 +60,10 @@ public class KyzzCacheService {
         return "kyzz:user:" + userId + ":wrong:" + normalizeKeyPart(status) + ":" + normalizeKeyPart(keyword);
     }
 
+    public String userFavoriteQuestionsKey(Long userId, String keyword) {
+        return "kyzz:user:" + userId + ":favorite:" + normalizeKeyPart(keyword);
+    }
+
     public String questionCommentsKey(Long questionId, Long userId, long pageNo, long pageSize) {
         return "kyzz:question:" + questionId + ":comments:p" + pageNo + ":s" + pageSize + ":uid:" + userId;
     }
@@ -147,6 +151,14 @@ public class KyzzCacheService {
         delete(userMineBanksKey(userId));
         delete(userDashboardKey(userId));
         deleteByPattern("kyzz:user:" + userId + ":wrong:*");
+        evictUserFavoriteCaches(userId);
+    }
+
+    public void evictUserFavoriteCaches(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        deleteByPattern("kyzz:user:" + userId + ":favorite:*");
     }
 
     public void evictQuestionCommentCaches(Long questionId) {

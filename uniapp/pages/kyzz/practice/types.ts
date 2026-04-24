@@ -60,13 +60,15 @@ export interface KyzzPracticeQuestionResponse {
 	sortNo: number | string | null
 	sourceName: string | null
 	yearNo: number | string | null
+	isFavorite: boolean | number | string | null
 	options: KyzzPracticeQuestionOptionResponse[]
 }
 
-export interface KyzzPracticeQuestionView extends Omit<KyzzPracticeQuestionResponse, 'score' | 'sortNo' | 'yearNo'> {
+export interface KyzzPracticeQuestionView extends Omit<KyzzPracticeQuestionResponse, 'score' | 'sortNo' | 'yearNo' | 'isFavorite'> {
 	score: number
 	sortNo: number
 	yearNo: number | null
+	isFavorite: boolean
 }
 
 export interface KyzzPracticeSessionProgressResponse {

@@ -39,6 +39,19 @@ export function toNumber(value: unknown, fallback = 0): number {
 	return Number.isFinite(parsed) ? parsed : fallback
 }
 
+export function toBoolean(value: unknown, fallback = false): boolean {
+	if (value === true || value === false) {
+		return value
+	}
+	if (value === 1 || value === '1' || value === 'true') {
+		return true
+	}
+	if (value === 0 || value === '0' || value === 'false') {
+		return false
+	}
+	return fallback
+}
+
 export function createEmptyPracticeDashboard(): KyzzPracticeDashboardState {
 	return {
 		recommendedBankId: null,
@@ -140,7 +153,8 @@ export function normalizePracticeSession(result: KyzzPracticeSessionResponse): K
 				sortNo: toNumber(result.question.sortNo),
 				yearNo: result.question.yearNo === null || result.question.yearNo === undefined || result.question.yearNo === ''
 					? null
-					: toNumber(result.question.yearNo, 0)
+					: toNumber(result.question.yearNo, 0),
+				isFavorite: toBoolean(result.question.isFavorite)
 			}
 			: null,
 		previousQuestionId: result?.previousQuestionId ?? null,

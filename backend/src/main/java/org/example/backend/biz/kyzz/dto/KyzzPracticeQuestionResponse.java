@@ -30,5 +30,7 @@ public class KyzzPracticeQuestionResponse implements Serializable {
 
     private Integer yearNo;
 
+    private Boolean isFavorite;
+
     private List<KyzzPracticeQuestionOptionResponse> options;
 }

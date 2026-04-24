@@ -29,12 +29,14 @@
 					:current-bank="currentBank"
 					:progress="sessionState.progress"
 					:question="question"
+					:is-favorite="isCurrentQuestionFavorite"
 					:selected-option-keys="answerDraft.selectedOptionKeys"
 					:answer-text="answerDraft.answerText"
 					:review-result="reviewState.result"
 					@select-option="handleOptionTap"
 					@change-answer-text="handleAnswerTextChange"
 					@open-switcher="openSwitchPopup"
+					@toggle-favorite="handleToggleFavorite"
 				/>
 
 				<practice-review-panel
@@ -150,6 +152,7 @@ import PracticeFooterActions from '@/components/kyzz/practice/PracticeFooterActi
 import PracticeBankSwitcher from '@/components/kyzz/practice/PracticeBankSwitcher.vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getPracticeSession, reviewPracticeQuestion, selfJudgePracticeQuestion } from '@/pages/kyzz/api/practice'
+import { favoriteQuestion, unfavoriteQuestion } from '@/pages/kyzz/api/favorite'
 import { createPracticeQuestionComment, getPracticeQuestionComments } from '@/pages/kyzz/api/comment'
 import { consumePracticeLaunchTarget } from '@/pages/kyzz/practice/navigation'
 import type {
@@ -299,6 +302,9 @@ export default defineComponent({
 		},
 		question() {
 			return this.sessionState.question
+		},
+		isCurrentQuestionFavorite(): boolean {
+			return Boolean(this.question && this.question.isFavorite)
 		},
 		awaitingSelfJudgement(): boolean {
 			return Boolean(this.reviewState.result && this.reviewState.result.requiresSelfJudgement && this.reviewState.result.isCorrect === null)
@@ -694,6 +700,43 @@ export default defineComponent({
 				this.commentState.submitting = false
 				uni.showToast({
 					title: resolveErrorMessage(error, '评论发布失败'),
+					icon: 'none'
+				})
+			}
+		},
+		async handleToggleFavorite(): Promise<void> {
+			if (!this.question || this.uiState.submitting) {
+				return
+			}
+			const questionId = this.question.id
+			const willFavorite = !this.question.isFavorite
+			this.sessionState.question = {
+				...this.question,
+				isFavorite: willFavorite
+			}
+			try {
+				const result = willFavorite
+					? await favoriteQuestion(questionId)
+					: await unfavoriteQuestion(questionId)
+				if (this.sessionState.question && this.sessionState.question.id === questionId) {
+					this.sessionState.question = {
+						...this.sessionState.question,
+						isFavorite: Boolean(result.isFavorite)
+					}
+				}
+				uni.showToast({
+					title: result.isFavorite ? '已收藏' : '已取消收藏',
+					icon: 'none'
+				})
+			} catch (error) {
+				if (this.sessionState.question && this.sessionState.question.id === questionId) {
+					this.sessionState.question = {
+						...this.sessionState.question,
+						isFavorite: !willFavorite
+					}
+				}
+				uni.showToast({
+					title: resolveErrorMessage(error, willFavorite ? '收藏失败' : '取消收藏失败'),
 					icon: 'none'
 				})
 			}

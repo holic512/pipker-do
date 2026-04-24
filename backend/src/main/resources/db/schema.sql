@@ -256,9 +256,11 @@ CREATE TABLE IF NOT EXISTS kyzz_user_favorite (
     target_id BIGINT UNSIGNED NOT NULL COMMENT '目标ID',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_user_favorite_user_target (user_id, target_id),
     KEY idx_kyzz_user_favorite_user_id (user_id),
     KEY idx_kyzz_user_favorite_target_id (target_id),
-    CONSTRAINT fk_kyzz_user_favorite_user_id FOREIGN KEY (user_id) REFERENCES app_user (id)
+    CONSTRAINT fk_kyzz_user_favorite_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
+    CONSTRAINT fk_kyzz_user_favorite_target_id FOREIGN KEY (target_id) REFERENCES kyzz_question (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='收藏表';
 
 CREATE TABLE IF NOT EXISTS kyzz_user_wrong_question (
