@@ -1,12 +1,16 @@
 import type { Component } from 'vue'
 import {
+  Collection,
   DataAnalysis,
-  Document,
-  FolderOpened,
+  EditPen,
+  Guide,
   House,
   Lock,
+  Management,
   Medal,
+  PriceTag,
   Setting,
+  Ticket,
   User,
   UserFilled
 } from '@element-plus/icons-vue'
@@ -16,6 +20,7 @@ export interface MenuItem {
   label: string
   route: string
   icon: Component
+  iconTone?: string
   projectScoped?: boolean
   roles?: string[]
 }
@@ -24,6 +29,7 @@ export interface MenuSection {
   key: 'workspace' | 'system' | 'project'
   label: string
   icon: Component
+  iconTone?: string
   items: MenuItem[]
 }
 
@@ -42,12 +48,14 @@ export function buildAdminMenus(projectCode: string | null, currentRoles: string
       key: 'workspace',
       label: '工作台',
       icon: House,
+      iconTone: '#3b82f6',
       items: [
         {
           key: 'workspace',
           label: '工作台',
           route: '/workspace',
-          icon: DataAnalysis
+          icon: DataAnalysis,
+          iconTone: '#3b82f6'
         }
       ]
     },
@@ -55,18 +63,21 @@ export function buildAdminMenus(projectCode: string | null, currentRoles: string
       key: 'system',
       label: '通用管理',
       icon: Setting,
+      iconTone: '#64748b',
       items: [
         {
           key: 'system-profile',
           label: '个人资料',
           route: '/system/profile',
-          icon: Lock
+          icon: Lock,
+          iconTone: '#0f766e'
         },
         {
           key: 'system-users',
           label: '用户管理',
           route: '/system/users',
           icon: User,
+          iconTone: '#2563eb',
           roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN']
         },
         {
@@ -74,6 +85,7 @@ export function buildAdminMenus(projectCode: string | null, currentRoles: string
           label: '管理员管理',
           route: '/system/admins',
           icon: UserFilled,
+          iconTone: '#7c3aed',
           roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN']
         },
         {
@@ -81,6 +93,7 @@ export function buildAdminMenus(projectCode: string | null, currentRoles: string
           label: '角色管理',
           route: '/system/admin-roles',
           icon: Medal,
+          iconTone: '#d97706',
           roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN']
         }
       ]
@@ -88,7 +101,8 @@ export function buildAdminMenus(projectCode: string | null, currentRoles: string
     {
       key: 'project',
       label: '业务管理',
-      icon: FolderOpened,
+      icon: Management,
+      iconTone: '#475569',
       items: [
         ...(currentProjectCode === 'kyzz'
           ? [
@@ -96,35 +110,40 @@ export function buildAdminMenus(projectCode: string | null, currentRoles: string
                 key: 'project-kyzz-question-banks',
                 label: '题库管理',
                 route: `/project/${currentProjectCode}/question-banks`,
-                icon: Document,
+                icon: Collection,
+                iconTone: '#2563eb',
                 projectScoped: true
               } satisfies MenuItem,
               {
                 key: 'project-kyzz-questions',
                 label: '题目管理',
                 route: `/project/${currentProjectCode}/questions`,
-                icon: Document,
+                icon: EditPen,
+                iconTone: '#16a34a',
                 projectScoped: true
               } satisfies MenuItem,
               {
                 key: 'project-kyzz-question-tags',
                 label: '标签管理',
                 route: `/project/${currentProjectCode}/question-tags`,
-                icon: Document,
+                icon: PriceTag,
+                iconTone: '#db2777',
                 projectScoped: true
               } satisfies MenuItem,
               {
                 key: 'project-kyzz-question-bank-categories',
                 label: '题库分类',
                 route: `/project/${currentProjectCode}/question-bank-categories`,
-                icon: Document,
+                icon: Guide,
+                iconTone: '#ea580c',
                 projectScoped: true
               } satisfies MenuItem,
               {
                 key: 'project-kyzz-user-question-banks',
                 label: '用户题库选择',
                 route: `/project/${currentProjectCode}/user-question-banks`,
-                icon: Document,
+                icon: Ticket,
+                iconTone: '#0891b2',
                 projectScoped: true
               } satisfies MenuItem
             ]

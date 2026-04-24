@@ -59,98 +59,122 @@
                 @keyup.enter="handleSearch"
                 @clear="handleSearch"
               />
-              <el-select
-                v-model="filters.questionBankId"
-                clearable
-                filterable
-                placeholder="全部题库"
-                class="bank-select"
-                @change="handleSearch"
-              >
-                <el-option
-                  v-for="bank in questionBankOptions"
-                  :key="bank.id"
-                  :label="formatBankLabel(bank)"
-                  :value="bank.id"
-                />
-              </el-select>
-              <el-select
-                v-model="filters.categoryId"
-                clearable
-                filterable
-                placeholder="全部分类"
-                class="category-select"
-                @change="handleSearch"
-              >
-                <el-option
-                  v-for="category in categoryOptions"
-                  :key="category.id"
-                  :label="formatCategoryLabel(category)"
-                  :value="category.id"
-                />
-              </el-select>
-              <el-select
-                v-model="filters.tagId"
-                clearable
-                filterable
-                placeholder="全部标签"
-                class="tag-select"
-                @change="handleSearch"
-              >
-                <el-option
-                  v-for="tag in questionTagOptions"
-                  :key="tag.id"
-                  :label="formatTagOptionLabel(tag)"
-                  :value="tag.id"
-                />
-              </el-select>
-              <el-select
-                v-model="filters.questionType"
-                clearable
-                placeholder="全部题型"
-                class="type-select"
-                @change="handleSearch"
-              >
-                <el-option
-                  v-for="option in questionTypeOptions"
-                  :key="option.value"
-                  :label="option.label"
-                  :value="option.value"
-                />
-              </el-select>
-              <el-select
-                v-model="filters.status"
-                clearable
-                placeholder="全部状态"
-                class="status-select"
-                @change="handleSearch"
-              >
-                <el-option label="启用中" :value="1" />
-                <el-option label="已停用" :value="0" />
-              </el-select>
-              <el-select
-                v-model="filters.difficultyLevel"
-                clearable
-                placeholder="全部难度"
-                class="difficulty-select"
-                @change="handleSearch"
-              >
-                <el-option
-                  v-for="option in difficultyOptions"
-                  :key="option.value"
-                  :label="option.label"
-                  :value="option.value"
-                />
-              </el-select>
-              <el-input
-                v-model="filters.yearNoText"
-                clearable
-                placeholder="年份"
-                class="year-input"
-                @keyup.enter="handleSearch"
-                @clear="handleSearch"
-              />
               <el-button type="primary" plain :icon="Search" @click="handleSearch">查询</el-button>
+              <el-popover
+                v-model:visible="advancedFiltersVisible"
+                placement="bottom-start"
+                trigger="click"
+                :width="720"
+                popper-class="kyzz-question-page__filter-popper"
+              >
+                <template #reference>
+                  <el-button :icon="Filter">
+                    高级筛选
+                    <el-badge v-if="advancedFilterCount" :value="advancedFilterCount" class="kyzz-question-page__filter-badge" />
+                    <el-icon class="kyzz-question-page__filter-arrow"><ArrowDown /></el-icon>
+                  </el-button>
+                </template>
+
+                <div class="kyzz-question-page__advanced-filter">
+                  <div class="kyzz-question-page__advanced-filter-head">
+                    <span>高级筛选</span>
+                    <el-button link type="primary" @click="resetFilters">清空条件</el-button>
+                  </div>
+                  <div class="kyzz-question-page__advanced-filter-grid">
+                    <el-select
+                      v-model="filters.questionBankId"
+                      clearable
+                      filterable
+                      placeholder="全部题库"
+                      class="bank-select"
+                      @change="handleSearch"
+                    >
+                      <el-option
+                        v-for="bank in questionBankOptions"
+                        :key="bank.id"
+                        :label="formatBankLabel(bank)"
+                        :value="bank.id"
+                      />
+                    </el-select>
+                    <el-select
+                      v-model="filters.categoryId"
+                      clearable
+                      filterable
+                      placeholder="全部分类"
+                      class="category-select"
+                      @change="handleSearch"
+                    >
+                      <el-option
+                        v-for="category in categoryOptions"
+                        :key="category.id"
+                        :label="formatCategoryLabel(category)"
+                        :value="category.id"
+                      />
+                    </el-select>
+                    <el-select
+                      v-model="filters.tagId"
+                      clearable
+                      filterable
+                      placeholder="全部标签"
+                      class="tag-select"
+                      @change="handleSearch"
+                    >
+                      <el-option
+                        v-for="tag in questionTagOptions"
+                        :key="tag.id"
+                        :label="formatTagOptionLabel(tag)"
+                        :value="tag.id"
+                      />
+                    </el-select>
+                    <el-select
+                      v-model="filters.questionType"
+                      clearable
+                      placeholder="全部题型"
+                      class="type-select"
+                      @change="handleSearch"
+                    >
+                      <el-option
+                        v-for="option in questionTypeOptions"
+                        :key="option.value"
+                        :label="option.label"
+                        :value="option.value"
+                      />
+                    </el-select>
+                    <el-select
+                      v-model="filters.status"
+                      clearable
+                      placeholder="全部状态"
+                      class="status-select"
+                      @change="handleSearch"
+                    >
+                      <el-option label="启用中" :value="1" />
+                      <el-option label="已停用" :value="0" />
+                    </el-select>
+                    <el-select
+                      v-model="filters.difficultyLevel"
+                      clearable
+                      placeholder="全部难度"
+                      class="difficulty-select"
+                      @change="handleSearch"
+                    >
+                      <el-option
+                        v-for="option in difficultyOptions"
+                        :key="option.value"
+                        :label="option.label"
+                        :value="option.value"
+                      />
+                    </el-select>
+                    <el-input
+                      v-model="filters.yearNoText"
+                      clearable
+                      placeholder="年份"
+                      class="year-input"
+                      @keyup.enter="handleSearch"
+                      @clear="handleSearch"
+                    />
+                  </div>
+                </div>
+              </el-popover>
               <el-button :icon="Refresh" @click="resetFilters">重置</el-button>
             </div>
             <div class="toolbar-right">
@@ -177,20 +201,18 @@
             :title="`当前由标签“${prefilledTag.tagName}”快捷进入，标签筛选已默认带出；重置筛选时会回到该标签。`"
           />
 
-          <el-table v-loading="loading" :data="dashboard.records" row-key="id" class="kyzz-question-page__table">
-            <el-table-column label="题目内容" min-width="420">
+          <el-table v-loading="loading" :data="dashboard.records" row-key="id" size="small" class="kyzz-question-page__table">
+            <el-table-column label="题目内容" min-width="520">
               <template #default="{ row }">
                 <div class="kyzz-question-page__content-cell">
                   <div class="kyzz-question-page__content-head">
                     <el-tag size="small" effect="plain">{{ questionTypeLabel(row.questionType) }}</el-tag>
                     <el-tag size="small" type="info" effect="light">{{ difficultyLabel(row.difficultyLevel) }}</el-tag>
-                    <span class="kyzz-question-page__content-meta">排序 {{ row.sortNo }}</span>
-                  </div>
-                  <div class="kyzz-question-page__stem">{{ row.stemPreview }}</div>
-                  <div v-if="row.sourceName || row.yearNo" class="kyzz-question-page__subtext">
                     <span v-if="row.sourceName">来源：{{ row.sourceName }}</span>
                     <span v-if="row.yearNo">年份：{{ row.yearNo }}</span>
+                    <span class="kyzz-question-page__content-meta">排序 {{ row.sortNo }}</span>
                   </div>
+                  <div class="kyzz-question-page__stem" :title="row.stemPreview">{{ row.stemPreview }}</div>
                   <div class="kyzz-question-page__tag-strip">
                     <template v-if="row.tags.length">
                       <el-tag
@@ -206,7 +228,7 @@
                     <span v-else class="kyzz-question-page__content-meta">未打标签</span>
                   </div>
                   <div v-if="row.analysis" class="kyzz-question-page__analysis">
-                    解析：{{ previewText(row.analysis, 72) }}
+                    解析：{{ previewText(row.analysis, 42) }}
                   </div>
                   <div v-if="row.deleteBlockReason" class="kyzz-question-page__warning">
                     {{ row.deleteBlockReason }}
@@ -215,7 +237,7 @@
               </template>
             </el-table-column>
 
-            <el-table-column label="归属信息" min-width="230">
+            <el-table-column label="归属" min-width="180">
               <template #default="{ row }">
                 <div class="kyzz-question-page__ownership">
                   <div class="kyzz-question-page__ownership-main">{{ row.questionBankName || '未归属题库' }}</div>
@@ -226,7 +248,7 @@
               </template>
             </el-table-column>
 
-            <el-table-column label="答案摘要" min-width="240">
+            <el-table-column label="答案" min-width="190">
               <template #default="{ row }">
                 <div class="kyzz-question-page__answer-cell">
                   <div class="kyzz-question-page__answer-tags">
@@ -244,12 +266,12 @@
                     </template>
                     <span v-else class="kyzz-question-page__content-meta">简答标准答案</span>
                   </div>
-                  <div class="kyzz-question-page__answer-text">{{ previewText(row.answerText, 72) }}</div>
+                  <div class="kyzz-question-page__answer-text" :title="row.answerText || ''">{{ previewText(row.answerText, 36) }}</div>
                 </div>
               </template>
             </el-table-column>
 
-            <el-table-column label="分值 / 年份" width="140" align="center">
+            <el-table-column label="分值/年份" width="110" align="center">
               <template #default="{ row }">
                 <div class="kyzz-question-page__metric-stack">
                   <span>{{ Number(row.score).toFixed(2) }} 分</span>
@@ -258,7 +280,7 @@
               </template>
             </el-table-column>
 
-            <el-table-column label="状态" width="110" align="center">
+            <el-table-column label="状态" width="92" align="center">
               <template #default="{ row }">
                 <el-switch
                   :model-value="row.status === 1"
@@ -272,13 +294,13 @@
               </template>
             </el-table-column>
 
-            <el-table-column label="更新时间" width="170">
+            <el-table-column label="更新" width="145">
               <template #default="{ row }">
                 {{ formatDateTime(row.updatedAt) }}
               </template>
             </el-table-column>
 
-            <el-table-column label="操作" width="230" fixed="right">
+            <el-table-column label="操作" width="180" fixed="right">
               <template #default="{ row }">
                 <el-button link type="primary" :icon="Edit" @click="openEditDrawer(row)">编辑</el-button>
                 <el-button link type="primary" :icon="CopyDocument" @click="openCopyDrawer(row)">复制</el-button>
@@ -624,7 +646,7 @@
 // AI 索引: KYZZ 题目管理页面。
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { CopyDocument, Delete, Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
+import { ArrowDown, CopyDocument, Delete, Edit, Filter, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import PageContainer from '@/shared/components/PageContainer.vue'
@@ -721,6 +743,7 @@ const saving = ref(false)
 const togglingId = ref<number | null>(null)
 const deletingId = ref<number | null>(null)
 const editingId = ref<number | null>(null)
+const advancedFiltersVisible = ref(false)
 const drawerMode = ref<'create' | 'edit' | 'copy'>('create')
 const followBankCategory = ref(true)
 const formRef = ref<FormInstance>()
@@ -816,6 +839,17 @@ const questionBankMap = computed(() => {
 })
 const prefilledBank = computed(() => questionBankOptions.value.find((bank) => bank.id === routeBankId.value))
 const prefilledTag = computed(() => questionTagOptions.value.find((tag) => tag.id === routeTagId.value))
+const advancedFilterCount = computed(() => {
+  return [
+    filters.questionBankId,
+    filters.categoryId,
+    filters.tagId,
+    filters.questionType,
+    filters.status,
+    filters.difficultyLevel,
+    filters.yearNoText.trim() || undefined
+  ].filter((value) => value !== undefined && value !== null && value !== '').length
+})
 const isObjectiveQuestion = computed(() => form.questionType !== 'short')
 const drawerTitle = computed(() => {
   if (drawerMode.value === 'edit') {
@@ -1340,25 +1374,63 @@ watch(
 
 .kyzz-question-page {
   .bank-select {
-    width: 240px;
+    width: 100%;
   }
 
   .category-select {
-    width: 220px;
+    width: 100%;
   }
 
   .tag-select {
-    width: 220px;
+    width: 100%;
   }
 
   .type-select,
+  .status-select,
   .difficulty-select {
-    width: 140px;
+    width: 100%;
   }
 
   .year-input {
-    width: 120px;
+    width: 100%;
   }
+
+  .search-input {
+    width: min(360px, 42vw);
+  }
+}
+
+.kyzz-question-page__filter-badge {
+  margin-left: 6px;
+}
+
+.kyzz-question-page__filter-arrow {
+  margin-left: 6px;
+  font-size: 12px;
+}
+
+.kyzz-question-page__advanced-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.kyzz-question-page__advanced-filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  color: var(--el-text-color-primary);
+}
+
+.kyzz-question-page__advanced-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+:global(.kyzz-question-page__filter-popper) {
+  max-width: calc(100vw - 40px);
 }
 
 .kyzz-question-page__entry-alert {
@@ -1370,27 +1442,36 @@ watch(
 .kyzz-question-page__ownership {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .kyzz-question-page__content-head,
 .kyzz-question-page__answer-tags {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .kyzz-question-page__tag-strip {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .kyzz-question-page__stem {
   color: var(--el-text-color-primary);
-  line-height: 1.7;
+  line-height: 1.45;
   font-weight: 600;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .kyzz-question-page__subtext,
@@ -1398,23 +1479,62 @@ watch(
 .kyzz-question-page__content-meta,
 .kyzz-question-page__answer-text {
   color: var(--admin-text-soft);
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .kyzz-question-page__subtext {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.kyzz-question-page__analysis,
+.kyzz-question-page__answer-text,
+.kyzz-question-page__ownership-main,
+.kyzz-question-page__subtext span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kyzz-question-page__table {
+  :deep(.el-table__cell) {
+    padding: 6px 0;
+  }
+
+  :deep(.cell) {
+    line-height: 1.35;
+  }
+
+  :deep(img) {
+    display: inline-block;
+    width: auto;
+    max-width: 84px;
+    max-height: 36px;
+    margin: 0 4px 0 0;
+    vertical-align: middle;
+    object-fit: contain;
+  }
+
+  :deep(p) {
+    display: inline;
+    margin: 0;
+  }
 }
 
 .kyzz-question-page__warning {
   color: var(--el-color-warning-dark-2);
   background: var(--el-color-warning-light-9);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 4px 8px;
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .kyzz-question-page__ownership-main {
@@ -1425,8 +1545,9 @@ watch(
 .kyzz-question-page__metric-stack {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 3px;
   align-items: center;
+  font-size: 12px;
 }
 
 .kyzz-question-page__pagination {

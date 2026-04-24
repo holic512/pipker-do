@@ -33,13 +33,13 @@
         >
           <el-sub-menu v-for="section in visibleMenuSections" :key="section.key" :index="section.key">
             <template #title>
-              <el-icon class="admin-layout__menu-icon">
+              <el-icon class="admin-layout__menu-icon" :style="buildMenuIconStyle(section.iconTone)">
                 <component :is="section.icon" />
               </el-icon>
               <span>{{ section.label }}</span>
             </template>
             <el-menu-item v-for="item in section.items" :key="item.key" :index="item.route">
-              <el-icon class="admin-layout__menu-icon">
+              <el-icon class="admin-layout__menu-icon" :style="buildMenuIconStyle(item.iconTone)">
                 <component :is="item.icon" />
               </el-icon>
               <span>{{ item.label }}</span>
@@ -54,7 +54,7 @@
               class="admin-layout__collapsed-section"
           >
             <el-tooltip :content="section.label" placement="right">
-              <div class="admin-layout__collapsed-section-mark">
+              <div class="admin-layout__collapsed-section-mark" :style="buildMenuIconStyle(section.iconTone)">
                 <el-icon size="14">
                   <component :is="section.icon" />
                 </el-icon>
@@ -71,6 +71,7 @@
                   type="button"
                   class="admin-layout__collapsed-item"
                   :class="{ 'is-active': activeMenuPath === item.route }"
+                  :style="buildMenuIconStyle(item.iconTone)"
                   @click="router.push(item.route)"
               >
                 <el-icon size="16">
@@ -203,6 +204,10 @@ const isCollapse = ref(false) // 菜单折叠状态
 // 切换折叠状态
 function toggleCollapse() {
   isCollapse.value = !isCollapse.value
+}
+
+function buildMenuIconStyle(iconTone?: string) {
+  return iconTone ? { '--menu-icon-tone': iconTone } : undefined
 }
 
 const projectCode = computed({

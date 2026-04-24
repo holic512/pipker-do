@@ -93,8 +93,21 @@
 }
 
 .admin-layout__menu-icon {
+  width: 26px;
+  height: 26px;
   margin-right: 8px;
+  border-radius: 5px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--menu-icon-tone, var(--admin-text-soft, #909399));
+  background: color-mix(in srgb, var(--menu-icon-tone, #909399) 12%, transparent);
   font-size: 16px;
+}
+
+.admin-layout__menu .el-sub-menu.is-active > .el-sub-menu__title .admin-layout__menu-icon,
+.admin-layout__menu .el-menu-item.is-active .admin-layout__menu-icon {
+  color: #fff;
+  background: var(--menu-icon-tone, var(--el-color-primary, #409eff));
 }
 
 /* 防止折叠时的原生宽度导致滚动条出现 */
@@ -247,25 +260,25 @@
 }
 
 .admin-layout__collapsed-section-mark {
-  width: 28px;
-  height: 18px;
-  border-radius: 999px;
+  width: 30px;
+  height: 22px;
+  border-radius: 5px;
   display: grid;
   place-items: center;
-  color: var(--admin-text-soft, #909399);
-  background: var(--admin-surface-soft, #f4f4f5);
+  color: var(--menu-icon-tone, var(--admin-text-soft, #909399));
+  background: color-mix(in srgb, var(--menu-icon-tone, #909399) 12%, transparent);
 }
 
 .admin-layout__collapsed-item {
   width: 36px;
   height: 36px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 6px;
   display: grid;
   place-items: center;
   padding: 0;
   background: transparent;
-  color: var(--admin-text, #303133);
+  color: var(--menu-icon-tone, var(--admin-text, #303133));
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -273,12 +286,12 @@
 }
 
 .admin-layout__collapsed-item:hover {
-  background: var(--admin-surface-soft, #f4f4f5);
-  color: var(--el-color-primary, #409eff);
+  background: color-mix(in srgb, var(--menu-icon-tone, #409eff) 12%, transparent);
+  color: var(--menu-icon-tone, var(--el-color-primary, #409eff));
 }
 
 .admin-layout__collapsed-item.is-active {
-  background: var(--el-color-primary, #409eff);
+  background: var(--menu-icon-tone, var(--el-color-primary, #409eff));
   color: #fff;
 }
 
