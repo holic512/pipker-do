@@ -113,7 +113,11 @@ async function runLaunchBootstrap(): Promise<LaunchSnapshot> {
 	})
 
 	await syncStep('auth', '同步用户信息', async () => {
-		await bootstrapAuth({ silent: true })
+		try {
+			await bootstrapAuth({ silent: true })
+		} catch (error) {
+			console.warn('[launch] auth bootstrap skipped', error)
+		}
 	})
 
 	const elapsed = Date.now() - launchStartedAt
