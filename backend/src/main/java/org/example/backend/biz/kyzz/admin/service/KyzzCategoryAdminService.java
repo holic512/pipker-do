@@ -15,6 +15,7 @@ import org.example.backend.biz.kyzz.entity.KyzzQuestionBank;
 import org.example.backend.biz.kyzz.mapper.KyzzCategoryMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionBankMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionMapper;
+import org.example.backend.biz.kyzz.support.KyzzCacheService;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
 import org.springframework.stereotype.Service;
@@ -43,15 +44,18 @@ public class KyzzCategoryAdminService {
     private final KyzzQuestionBankMapper kyzzQuestionBankMapper;
     private final KyzzQuestionMapper kyzzQuestionMapper;
     private final KyzzAdminAccessSupport kyzzAdminAccessSupport;
+    private final KyzzCacheService kyzzCacheService;
 
     public KyzzCategoryAdminService(KyzzCategoryMapper kyzzCategoryMapper,
                                     KyzzQuestionBankMapper kyzzQuestionBankMapper,
                                     KyzzQuestionMapper kyzzQuestionMapper,
-                                    KyzzAdminAccessSupport kyzzAdminAccessSupport) {
+                                    KyzzAdminAccessSupport kyzzAdminAccessSupport,
+                                    KyzzCacheService kyzzCacheService) {
         this.kyzzCategoryMapper = kyzzCategoryMapper;
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
         this.kyzzQuestionMapper = kyzzQuestionMapper;
         this.kyzzAdminAccessSupport = kyzzAdminAccessSupport;
+        this.kyzzCacheService = kyzzCacheService;
     }
 
     public KyzzCategoryAdminDashboardResponse getDashboard(Long operatorId, String keyword, Integer isEnabled, Long categoryLevel) {
@@ -99,6 +103,7 @@ public class KyzzCategoryAdminService {
         category.setSortNo(payload.sortNo());
         category.setIsEnabled(payload.isEnabled());
         kyzzCategoryMapper.insert(category);
+        kyzzCacheService.evictPublicBaseCaches();
         return requireItem(category.getId());
     }
 
@@ -120,6 +125,7 @@ public class KyzzCategoryAdminService {
                 .set(KyzzCategory::getCategoryLevel, payload.categoryLevel())
                 .set(KyzzCategory::getSortNo, payload.sortNo())
                 .set(KyzzCategory::getIsEnabled, payload.isEnabled()));
+        kyzzCacheService.evictPublicBaseCaches();
         return requireItem(categoryId);
     }
 
@@ -135,6 +141,7 @@ public class KyzzCategoryAdminService {
         kyzzCategoryMapper.update(null, new LambdaUpdateWrapper<KyzzCategory>()
                 .eq(KyzzCategory::getId, categoryId)
                 .set(KyzzCategory::getIsEnabled, request.getIsEnabled()));
+        kyzzCacheService.evictPublicBaseCaches();
         return requireItem(categoryId);
     }
 
@@ -156,6 +163,7 @@ public class KyzzCategoryAdminService {
         }
 
         kyzzCategoryMapper.deleteById(categoryId);
+        kyzzCacheService.evictPublicBaseCaches();
     }
 
     private KyzzCategoryAdminItemResponse requireItem(Long categoryId) {

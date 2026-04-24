@@ -52,6 +52,7 @@ public class KyzzPracticeSupport {
     private final KyzzUserAnswerMapper kyzzUserAnswerMapper;
     private final KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper;
     private final LocalFileStorage localFileStorage;
+    private final KyzzCacheService kyzzCacheService;
 
     public KyzzPracticeSupport(KyzzCategoryMapper kyzzCategoryMapper,
                                KyzzQuestionBankMapper kyzzQuestionBankMapper,
@@ -59,7 +60,8 @@ public class KyzzPracticeSupport {
                                KyzzQuestionOptionMapper kyzzQuestionOptionMapper,
                                KyzzUserAnswerMapper kyzzUserAnswerMapper,
                                KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper,
-                               LocalFileStorage localFileStorage) {
+                               LocalFileStorage localFileStorage,
+                               KyzzCacheService kyzzCacheService) {
         this.kyzzCategoryMapper = kyzzCategoryMapper;
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
         this.kyzzQuestionMapper = kyzzQuestionMapper;
@@ -67,13 +69,18 @@ public class KyzzPracticeSupport {
         this.kyzzUserAnswerMapper = kyzzUserAnswerMapper;
         this.kyzzUserQuestionBankMapper = kyzzUserQuestionBankMapper;
         this.localFileStorage = localFileStorage;
+        this.kyzzCacheService = kyzzCacheService;
     }
 
     public Map<Long, KyzzCategory> buildCategoryMap() {
-        List<KyzzCategory> categories = kyzzCategoryMapper.selectList(new LambdaQueryWrapper<KyzzCategory>()
+        List<KyzzCategory> categories = kyzzCacheService.getList(KyzzCacheService.CATEGORY_LIST_KEY);
+        if (categories == null) {
+            categories = kyzzCategoryMapper.selectList(new LambdaQueryWrapper<KyzzCategory>()
                 .orderByAsc(KyzzCategory::getCategoryLevel)
                 .orderByAsc(KyzzCategory::getSortNo)
                 .orderByAsc(KyzzCategory::getId));
+            kyzzCacheService.putList(KyzzCacheService.CATEGORY_LIST_KEY, categories, KyzzCacheService.PUBLIC_BASE_TTL);
+        }
         Map<Long, KyzzCategory> result = new HashMap<>();
         categories.forEach(category -> result.put(category.getId(), category));
         return result;
@@ -99,12 +106,32 @@ public class KyzzPracticeSupport {
         if (normalizedBankIds.isEmpty()) {
             return Map.of();
         }
-        List<KyzzQuestion> questions = kyzzQuestionMapper.selectList(new LambdaQueryWrapper<KyzzQuestion>()
-                .in(KyzzQuestion::getQuestionBankId, normalizedBankIds)
-                .eq(KyzzQuestion::getStatus, 1)
-                .orderByAsc(KyzzQuestion::getQuestionBankId)
-                .orderByAsc(KyzzQuestion::getSortNo)
-                .orderByAsc(KyzzQuestion::getId));
+        List<KyzzQuestion> questions = new ArrayList<>();
+        List<Long> missedBankIds = new ArrayList<>();
+        for (Long bankId : normalizedBankIds) {
+            List<KyzzQuestion> cachedQuestions = kyzzCacheService.getList(kyzzCacheService.bankQuestionsKey(bankId));
+            if (cachedQuestions == null) {
+                missedBankIds.add(bankId);
+            } else {
+                questions.addAll(cachedQuestions);
+            }
+        }
+        if (!missedBankIds.isEmpty()) {
+            List<KyzzQuestion> missedQuestions = kyzzQuestionMapper.selectList(new LambdaQueryWrapper<KyzzQuestion>()
+                    .in(KyzzQuestion::getQuestionBankId, missedBankIds)
+                    .eq(KyzzQuestion::getStatus, 1)
+                    .orderByAsc(KyzzQuestion::getQuestionBankId)
+                    .orderByAsc(KyzzQuestion::getSortNo)
+                    .orderByAsc(KyzzQuestion::getId));
+            Map<Long, List<KyzzQuestion>> missedQuestionMap = new LinkedHashMap<>();
+            missedQuestions.forEach(question -> missedQuestionMap.computeIfAbsent(question.getQuestionBankId(), key -> new ArrayList<>()).add(question));
+            missedBankIds.forEach(bankId -> kyzzCacheService.putList(
+                    kyzzCacheService.bankQuestionsKey(bankId),
+                    missedQuestionMap.getOrDefault(bankId, List.of()),
+                    KyzzCacheService.PUBLIC_BASE_TTL
+            ));
+            questions.addAll(missedQuestions);
+        }
         Map<Long, List<KyzzQuestion>> result = new LinkedHashMap<>();
         questions.forEach(question -> result.computeIfAbsent(question.getQuestionBankId(), key -> new ArrayList<>()).add(question));
         return result;
@@ -115,11 +142,31 @@ public class KyzzPracticeSupport {
         if (normalizedQuestionIds.isEmpty()) {
             return Map.of();
         }
-        List<KyzzQuestionOption> options = kyzzQuestionOptionMapper.selectList(new LambdaQueryWrapper<KyzzQuestionOption>()
-                .in(KyzzQuestionOption::getQuestionId, normalizedQuestionIds)
-                .orderByAsc(KyzzQuestionOption::getQuestionId)
-                .orderByAsc(KyzzQuestionOption::getSortNo)
-                .orderByAsc(KyzzQuestionOption::getId));
+        List<KyzzQuestionOption> options = new ArrayList<>();
+        List<Long> missedQuestionIds = new ArrayList<>();
+        for (Long questionId : normalizedQuestionIds) {
+            List<KyzzQuestionOption> cachedOptions = kyzzCacheService.getList(kyzzCacheService.questionOptionsKey(questionId));
+            if (cachedOptions == null) {
+                missedQuestionIds.add(questionId);
+            } else {
+                options.addAll(cachedOptions);
+            }
+        }
+        if (!missedQuestionIds.isEmpty()) {
+            List<KyzzQuestionOption> missedOptions = kyzzQuestionOptionMapper.selectList(new LambdaQueryWrapper<KyzzQuestionOption>()
+                    .in(KyzzQuestionOption::getQuestionId, missedQuestionIds)
+                    .orderByAsc(KyzzQuestionOption::getQuestionId)
+                    .orderByAsc(KyzzQuestionOption::getSortNo)
+                    .orderByAsc(KyzzQuestionOption::getId));
+            Map<Long, List<KyzzQuestionOption>> missedOptionMap = new LinkedHashMap<>();
+            missedOptions.forEach(option -> missedOptionMap.computeIfAbsent(option.getQuestionId(), key -> new ArrayList<>()).add(option));
+            missedQuestionIds.forEach(questionId -> kyzzCacheService.putList(
+                    kyzzCacheService.questionOptionsKey(questionId),
+                    missedOptionMap.getOrDefault(questionId, List.of()),
+                    KyzzCacheService.PUBLIC_BASE_TTL
+            ));
+            options.addAll(missedOptions);
+        }
         Map<Long, List<KyzzQuestionOption>> result = new LinkedHashMap<>();
         options.forEach(option -> result.computeIfAbsent(option.getQuestionId(), key -> new ArrayList<>()).add(option));
         return result;

@@ -10,6 +10,7 @@ import org.example.backend.biz.kyzz.entity.KyzzComment;
 import org.example.backend.biz.kyzz.entity.KyzzQuestion;
 import org.example.backend.biz.kyzz.mapper.KyzzCommentMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionMapper;
+import org.example.backend.biz.kyzz.support.KyzzCacheService;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.shared.account.entity.AppUser;
@@ -43,15 +44,18 @@ public class KyzzQuestionCommentUserService {
     private final KyzzQuestionMapper kyzzQuestionMapper;
     private final AppUserMapper appUserMapper;
     private final LocalFileStorage localFileStorage;
+    private final KyzzCacheService kyzzCacheService;
 
     public KyzzQuestionCommentUserService(KyzzCommentMapper kyzzCommentMapper,
                                           KyzzQuestionMapper kyzzQuestionMapper,
                                           AppUserMapper appUserMapper,
-                                          LocalFileStorage localFileStorage) {
+                                          LocalFileStorage localFileStorage,
+                                          KyzzCacheService kyzzCacheService) {
         this.kyzzCommentMapper = kyzzCommentMapper;
         this.kyzzQuestionMapper = kyzzQuestionMapper;
         this.appUserMapper = appUserMapper;
         this.localFileStorage = localFileStorage;
+        this.kyzzCacheService = kyzzCacheService;
     }
 
     public KyzzQuestionCommentPageResponse getQuestionComments(Long userId,
@@ -60,6 +64,18 @@ public class KyzzQuestionCommentUserService {
                                                                Long pageSize) {
         requireActiveQuestion(questionId);
         Pagination pagination = normalizePagination(pageNo, pageSize);
+        if (pagination.pageNo() == DEFAULT_PAGE_NO) {
+            return kyzzCacheService.getOrLoad(
+                    kyzzCacheService.questionCommentsKey(questionId, userId, pagination.pageNo(), pagination.pageSize()),
+                    KyzzCacheService.COMMENT_FIRST_PAGE_TTL,
+                    KyzzQuestionCommentPageResponse.class,
+                    () -> loadQuestionComments(userId, questionId, pagination)
+            );
+        }
+        return loadQuestionComments(userId, questionId, pagination);
+    }
+
+    private KyzzQuestionCommentPageResponse loadQuestionComments(Long userId, Long questionId, Pagination pagination) {
         Page<KyzzComment> page = kyzzCommentMapper.selectPage(
                 new Page<>(pagination.pageNo(), pagination.pageSize()),
                 new LambdaQueryWrapper<KyzzComment>()
@@ -102,6 +118,7 @@ public class KyzzQuestionCommentUserService {
         comment.setReplyCount(0);
         comment.setStatus(STATUS_ACTIVE);
         kyzzCommentMapper.insert(comment);
+        kyzzCacheService.evictQuestionCommentCaches(questionId);
 
         KyzzComment savedComment = kyzzCommentMapper.selectById(comment.getId());
         if (savedComment == null) {

@@ -3,6 +3,7 @@ package org.example.backend.biz.kyzz.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -10,7 +11,7 @@ import java.util.List;
  */
 @Data
 @AllArgsConstructor
-public class KyzzPracticeSessionResponse {
+public class KyzzPracticeSessionResponse implements Serializable {
 
     private KyzzPracticeBankRecordResponse activeBank;
 

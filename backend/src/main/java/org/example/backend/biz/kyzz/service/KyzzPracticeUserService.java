@@ -21,6 +21,7 @@ import org.example.backend.biz.kyzz.mapper.KyzzQuestionBankMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserAnswerMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserQuestionBankMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserWrongQuestionMapper;
+import org.example.backend.biz.kyzz.support.KyzzCacheService;
 import org.example.backend.biz.kyzz.support.KyzzPracticeSupport;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
@@ -64,22 +65,34 @@ public class KyzzPracticeUserService {
     private final KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper;
     private final KyzzPracticeSupport kyzzPracticeSupport;
     private final AntiCrawlerSecurityService antiCrawlerSecurityService;
+    private final KyzzCacheService kyzzCacheService;
 
     public KyzzPracticeUserService(KyzzQuestionBankMapper kyzzQuestionBankMapper,
                                    KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper,
                                    KyzzUserAnswerMapper kyzzUserAnswerMapper,
                                    KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper,
                                    KyzzPracticeSupport kyzzPracticeSupport,
-                                   AntiCrawlerSecurityService antiCrawlerSecurityService) {
+                                   AntiCrawlerSecurityService antiCrawlerSecurityService,
+                                   KyzzCacheService kyzzCacheService) {
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
         this.kyzzUserQuestionBankMapper = kyzzUserQuestionBankMapper;
         this.kyzzUserAnswerMapper = kyzzUserAnswerMapper;
         this.kyzzUserWrongQuestionMapper = kyzzUserWrongQuestionMapper;
         this.kyzzPracticeSupport = kyzzPracticeSupport;
         this.antiCrawlerSecurityService = antiCrawlerSecurityService;
+        this.kyzzCacheService = kyzzCacheService;
     }
 
     public KyzzPracticeDashboardResponse getDashboard(Long userId) {
+        return kyzzCacheService.getOrLoad(
+                kyzzCacheService.userDashboardKey(userId),
+                KyzzCacheService.USER_AGGREGATE_TTL,
+                KyzzPracticeDashboardResponse.class,
+                () -> loadDashboard(userId)
+        );
+    }
+
+    private KyzzPracticeDashboardResponse loadDashboard(Long userId) {
         DashboardContext context = buildDashboardContext(userId);
         KyzzPracticeBankRecordResponse recommended = resolveRecommendedRecord(context.records());
         return new KyzzPracticeDashboardResponse(
@@ -167,6 +180,7 @@ public class KyzzPracticeUserService {
         );
         syncWrongQuestion(userId, context.bank().getId(), context.question().getId(), answerResult.correct());
         KyzzPracticeBankRecordResponse updatedBank = refreshBankRecord(userId, context.bank().getId());
+        kyzzCacheService.evictUserAggregateCaches(userId);
         return new KyzzPracticeReviewResponse(
                 context.question().getId(),
                 context.bank().getId(),
@@ -210,6 +224,7 @@ public class KyzzPracticeUserService {
         );
         syncWrongQuestion(userId, context.bank().getId(), context.question().getId(), request.getSelfJudgedCorrect());
         KyzzPracticeBankRecordResponse updatedBank = refreshBankRecord(userId, context.bank().getId());
+        kyzzCacheService.evictUserAggregateCaches(userId);
         return new KyzzPracticeReviewResponse(
                 context.question().getId(),
                 context.bank().getId(),

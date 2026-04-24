@@ -23,6 +23,7 @@ import org.example.backend.biz.kyzz.mapper.KyzzQuestionBankRatingMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserAnswerMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserQuestionBankMapper;
+import org.example.backend.biz.kyzz.support.KyzzCacheService;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.shared.admin.entity.AdminUser;
@@ -58,6 +59,7 @@ public class KyzzQuestionBankAdminService {
     private final AdminUserMapper adminUserMapper;
     private final LocalFileStorage localFileStorage;
     private final KyzzAdminAccessSupport kyzzAdminAccessSupport;
+    private final KyzzCacheService kyzzCacheService;
 
     public KyzzQuestionBankAdminService(KyzzQuestionBankMapper kyzzQuestionBankMapper,
                                         KyzzCategoryMapper kyzzCategoryMapper,
@@ -67,7 +69,8 @@ public class KyzzQuestionBankAdminService {
                                         KyzzUserAnswerMapper kyzzUserAnswerMapper,
                                         AdminUserMapper adminUserMapper,
                                         LocalFileStorage localFileStorage,
-                                        KyzzAdminAccessSupport kyzzAdminAccessSupport) {
+                                        KyzzAdminAccessSupport kyzzAdminAccessSupport,
+                                        KyzzCacheService kyzzCacheService) {
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
         this.kyzzCategoryMapper = kyzzCategoryMapper;
         this.kyzzQuestionMapper = kyzzQuestionMapper;
@@ -77,6 +80,7 @@ public class KyzzQuestionBankAdminService {
         this.adminUserMapper = adminUserMapper;
         this.localFileStorage = localFileStorage;
         this.kyzzAdminAccessSupport = kyzzAdminAccessSupport;
+        this.kyzzCacheService = kyzzCacheService;
     }
 
     public KyzzQuestionBankAdminDashboardResponse getDashboard(Long operatorId,
@@ -158,6 +162,7 @@ public class KyzzQuestionBankAdminService {
         bank.setSortNo(payload.sortNo());
         bank.setCreatedBy(operatorId);
         kyzzQuestionBankMapper.insert(bank);
+        kyzzCacheService.evictPublicBaseCaches();
         return requireItem(bank.getId());
     }
 
@@ -187,6 +192,7 @@ public class KyzzQuestionBankAdminService {
                 .set(KyzzQuestionBank::getStatus, payload.status())
                 .set(KyzzQuestionBank::getSortNo, payload.sortNo())
                 .set(KyzzQuestionBank::getCreatedBy, existing.getCreatedBy()));
+        kyzzCacheService.evictPublicBaseCaches();
         return requireItem(bankId);
     }
 
@@ -204,6 +210,7 @@ public class KyzzQuestionBankAdminService {
         kyzzQuestionBankMapper.update(null, new LambdaUpdateWrapper<KyzzQuestionBank>()
                 .eq(KyzzQuestionBank::getId, bankId)
                 .set(KyzzQuestionBank::getStatus, request.getStatus()));
+        kyzzCacheService.evictPublicBaseCaches();
         return requireItem(bankId);
     }
 
@@ -223,6 +230,7 @@ public class KyzzQuestionBankAdminService {
         kyzzQuestionBankMapper.update(null, new LambdaUpdateWrapper<KyzzQuestionBank>()
                 .eq(KyzzQuestionBank::getId, bankId)
                 .set(KyzzQuestionBank::getCoverUrl, nextCoverStorageKey));
+        kyzzCacheService.evictPublicBaseCaches();
 
         if (StringUtils.hasText(oldCoverValue)
                 && !Objects.equals(oldCoverValue, nextCoverStorageKey)
@@ -257,6 +265,7 @@ public class KyzzQuestionBankAdminService {
             localFileStorage.deleteByKey(bank.getCoverUrl());
         }
         kyzzQuestionBankMapper.deleteById(bankId);
+        kyzzCacheService.evictPublicBaseCaches();
     }
 
     @Transactional
@@ -264,6 +273,7 @@ public class KyzzQuestionBankAdminService {
         kyzzAdminAccessSupport.requireProjectAccess(operatorId);
         requireQuestionBank(bankId);
         syncQuestionCounts(List.of(bankId));
+        kyzzCacheService.evictPublicBaseCaches();
         return requireItem(bankId);
     }
 
@@ -462,6 +472,7 @@ public class KyzzQuestionBankAdminService {
         normalizedIds.forEach(bankId -> kyzzQuestionBankMapper.update(null, new LambdaUpdateWrapper<KyzzQuestionBank>()
                 .eq(KyzzQuestionBank::getId, bankId)
                 .set(KyzzQuestionBank::getQuestionCount, actualQuestionCountByBankId.getOrDefault(bankId, 0))));
+        kyzzCacheService.evictPublicBaseCaches();
     }
 
     private int countActualQuestions(Long bankId) {

@@ -38,6 +38,7 @@ import org.example.backend.biz.kyzz.mapper.KyzzTagMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserAnswerMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserNoteMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserWrongQuestionMapper;
+import org.example.backend.biz.kyzz.support.KyzzCacheService;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
 import org.springframework.stereotype.Service;
@@ -88,6 +89,7 @@ public class KyzzQuestionAdminService {
     private final KyzzAdminAccessSupport kyzzAdminAccessSupport;
     private final KyzzQuestionBankAdminService kyzzQuestionBankAdminService;
     private final KyzzQuestionTagAdminService kyzzQuestionTagAdminService;
+    private final KyzzCacheService kyzzCacheService;
 
     public KyzzQuestionAdminService(KyzzQuestionMapper kyzzQuestionMapper,
                                     KyzzQuestionOptionMapper kyzzQuestionOptionMapper,
@@ -101,7 +103,8 @@ public class KyzzQuestionAdminService {
                                     KyzzQuestionTagRelMapper kyzzQuestionTagRelMapper,
                                     KyzzAdminAccessSupport kyzzAdminAccessSupport,
                                     KyzzQuestionBankAdminService kyzzQuestionBankAdminService,
-                                    KyzzQuestionTagAdminService kyzzQuestionTagAdminService) {
+                                    KyzzQuestionTagAdminService kyzzQuestionTagAdminService,
+                                    KyzzCacheService kyzzCacheService) {
         this.kyzzQuestionMapper = kyzzQuestionMapper;
         this.kyzzQuestionOptionMapper = kyzzQuestionOptionMapper;
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
@@ -115,6 +118,7 @@ public class KyzzQuestionAdminService {
         this.kyzzAdminAccessSupport = kyzzAdminAccessSupport;
         this.kyzzQuestionBankAdminService = kyzzQuestionBankAdminService;
         this.kyzzQuestionTagAdminService = kyzzQuestionTagAdminService;
+        this.kyzzCacheService = kyzzCacheService;
     }
 
     public KyzzQuestionAdminDashboardResponse getDashboard(Long operatorId,
@@ -213,6 +217,7 @@ public class KyzzQuestionAdminService {
         replaceQuestionOptions(question.getId(), payload);
         replaceQuestionTags(question.getId(), List.of(), payload.tagIds());
         kyzzQuestionBankAdminService.syncQuestionCounts(List.of(payload.questionBankId()));
+        kyzzCacheService.evictPublicBaseCaches();
         return requireDetail(question.getId());
     }
 
@@ -246,6 +251,8 @@ public class KyzzQuestionAdminService {
         replaceQuestionOptions(questionId, payload);
         replaceQuestionTags(questionId, previousTagIds, payload.tagIds());
         kyzzQuestionBankAdminService.syncQuestionCounts(List.of(previousBankId, payload.questionBankId()));
+        kyzzCacheService.evictPublicBaseCaches();
+        kyzzCacheService.evictQuestionCommentCaches(questionId);
         return requireDetail(questionId);
     }
 
@@ -263,6 +270,7 @@ public class KyzzQuestionAdminService {
         kyzzQuestionMapper.update(null, new LambdaUpdateWrapper<KyzzQuestion>()
                 .eq(KyzzQuestion::getId, questionId)
                 .set(KyzzQuestion::getStatus, request.getStatus()));
+        kyzzCacheService.evictPublicBaseCaches();
         return requireItem(questionId);
     }
 
@@ -284,6 +292,8 @@ public class KyzzQuestionAdminService {
         kyzzQuestionMapper.deleteById(questionId);
         kyzzQuestionTagAdminService.syncUseCounts(previousTagIds);
         kyzzQuestionBankAdminService.syncQuestionCounts(List.of(question.getQuestionBankId()));
+        kyzzCacheService.evictPublicBaseCaches();
+        kyzzCacheService.evictQuestionCommentCaches(questionId);
     }
 
     private KyzzQuestionAdminItemResponse requireItem(Long questionId) {

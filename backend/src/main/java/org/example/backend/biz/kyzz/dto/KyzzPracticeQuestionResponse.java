@@ -3,6 +3,7 @@ package org.example.backend.biz.kyzz.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -11,7 +12,7 @@ import java.util.List;
  */
 @Data
 @AllArgsConstructor
-public class KyzzPracticeQuestionResponse {
+public class KyzzPracticeQuestionResponse implements Serializable {
 
     private Long id;
 

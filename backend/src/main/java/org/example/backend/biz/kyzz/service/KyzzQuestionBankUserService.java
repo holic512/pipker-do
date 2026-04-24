@@ -15,6 +15,7 @@ import org.example.backend.biz.kyzz.entity.KyzzQuestionBank;
 import org.example.backend.biz.kyzz.entity.KyzzUserQuestionBank;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionBankMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserQuestionBankMapper;
+import org.example.backend.biz.kyzz.support.KyzzCacheService;
 import org.example.backend.biz.kyzz.support.KyzzPracticeSupport;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
@@ -45,16 +46,28 @@ public class KyzzQuestionBankUserService {
     private final KyzzQuestionBankMapper kyzzQuestionBankMapper;
     private final KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper;
     private final KyzzPracticeSupport kyzzPracticeSupport;
+    private final KyzzCacheService kyzzCacheService;
 
     public KyzzQuestionBankUserService(KyzzQuestionBankMapper kyzzQuestionBankMapper,
                                        KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper,
-                                       KyzzPracticeSupport kyzzPracticeSupport) {
+                                       KyzzPracticeSupport kyzzPracticeSupport,
+                                       KyzzCacheService kyzzCacheService) {
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
         this.kyzzUserQuestionBankMapper = kyzzUserQuestionBankMapper;
         this.kyzzPracticeSupport = kyzzPracticeSupport;
+        this.kyzzCacheService = kyzzCacheService;
     }
 
     public KyzzQuestionBankMineResponse getMineQuestionBanks(Long userId) {
+        return kyzzCacheService.getOrLoad(
+                kyzzCacheService.userMineBanksKey(userId),
+                KyzzCacheService.USER_AGGREGATE_TTL,
+                KyzzQuestionBankMineResponse.class,
+                () -> loadMineQuestionBanks(userId)
+        );
+    }
+
+    private KyzzQuestionBankMineResponse loadMineQuestionBanks(Long userId) {
         List<KyzzUserQuestionBank> relations = kyzzUserQuestionBankMapper.selectList(new LambdaQueryWrapper<KyzzUserQuestionBank>()
                 .eq(KyzzUserQuestionBank::getUserId, userId)
                 .orderByDesc(KyzzUserQuestionBank::getCreatedAt)
@@ -105,10 +118,14 @@ public class KyzzQuestionBankUserService {
         String normalizedSelectionStatus = normalizeSelectionStatus(selectionStatus);
         validateDifficultyLevel(difficultyLevel);
 
-        List<KyzzQuestionBank> activeBanks = kyzzQuestionBankMapper.selectList(new LambdaQueryWrapper<KyzzQuestionBank>()
-                .eq(KyzzQuestionBank::getStatus, 1)
-                .orderByAsc(KyzzQuestionBank::getSortNo)
-                .orderByDesc(KyzzQuestionBank::getId));
+        List<KyzzQuestionBank> activeBanks = kyzzCacheService.getList(KyzzCacheService.ACTIVE_BANK_LIST_KEY);
+        if (activeBanks == null) {
+            activeBanks = kyzzQuestionBankMapper.selectList(new LambdaQueryWrapper<KyzzQuestionBank>()
+                    .eq(KyzzQuestionBank::getStatus, 1)
+                    .orderByAsc(KyzzQuestionBank::getSortNo)
+                    .orderByDesc(KyzzQuestionBank::getId));
+            kyzzCacheService.putList(KyzzCacheService.ACTIVE_BANK_LIST_KEY, activeBanks, KyzzCacheService.PUBLIC_BASE_TTL);
+        }
         Map<Long, KyzzCategory> categoryMap = kyzzPracticeSupport.buildCategoryMap();
         Map<Long, KyzzUserQuestionBank> selectedRelationMap = kyzzPracticeSupport.buildSelectedRelationMap(userId, toBankIds(activeBanks));
         Map<Long, KyzzPracticeSupport.QuestionBankProgressSnapshot> progressMap = kyzzPracticeSupport.buildProgressSnapshotMap(userId, selectedRelationMap.keySet(), activeBanks);
@@ -179,6 +196,8 @@ public class KyzzQuestionBankUserService {
         }
 
         kyzzPracticeSupport.syncStudyUserCount(bankId);
+        kyzzCacheService.evictUserAggregateCaches(userId);
+        kyzzCacheService.delete(KyzzCacheService.ACTIVE_BANK_LIST_KEY);
         KyzzQuestionBank refreshedBank = kyzzPracticeSupport.requireActiveQuestionBank(bankId);
         KyzzCategory category = refreshedBank.getCategoryId() == null ? null : kyzzPracticeSupport.buildCategoryMap().get(refreshedBank.getCategoryId());
 

@@ -3,6 +3,7 @@ package org.example.backend.biz.kyzz.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @AllArgsConstructor
-public class KyzzLeaderboardRecordResponse {
+public class KyzzLeaderboardRecordResponse implements Serializable {
 
     private Integer rankNo;
 

@@ -10,6 +10,7 @@ import org.example.backend.biz.kyzz.entity.KyzzUserWrongQuestion;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionBankMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserWrongQuestionMapper;
+import org.example.backend.biz.kyzz.support.KyzzCacheService;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
 import org.springframework.stereotype.Service;
@@ -39,19 +40,30 @@ public class KyzzWrongQuestionUserService {
     private final KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper;
     private final KyzzQuestionMapper kyzzQuestionMapper;
     private final KyzzQuestionBankMapper kyzzQuestionBankMapper;
+    private final KyzzCacheService kyzzCacheService;
 
     public KyzzWrongQuestionUserService(KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper,
                                         KyzzQuestionMapper kyzzQuestionMapper,
-                                        KyzzQuestionBankMapper kyzzQuestionBankMapper) {
+                                        KyzzQuestionBankMapper kyzzQuestionBankMapper,
+                                        KyzzCacheService kyzzCacheService) {
         this.kyzzUserWrongQuestionMapper = kyzzUserWrongQuestionMapper;
         this.kyzzQuestionMapper = kyzzQuestionMapper;
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
+        this.kyzzCacheService = kyzzCacheService;
     }
 
     public KyzzWrongQuestionResponse getWrongQuestions(Long userId, String status, String keyword) {
         String normalizedStatus = normalizeStatus(status);
         String normalizedKeyword = normalizeKeyword(keyword);
+        return kyzzCacheService.getOrLoad(
+                kyzzCacheService.userWrongQuestionsKey(userId, normalizedStatus, normalizedKeyword),
+                KyzzCacheService.USER_AGGREGATE_TTL,
+                KyzzWrongQuestionResponse.class,
+                () -> loadWrongQuestions(userId, normalizedStatus, normalizedKeyword)
+        );
+    }
 
+    private KyzzWrongQuestionResponse loadWrongQuestions(Long userId, String normalizedStatus, String normalizedKeyword) {
         List<KyzzUserWrongQuestion> wrongQuestions = kyzzUserWrongQuestionMapper.selectList(new LambdaQueryWrapper<KyzzUserWrongQuestion>()
                 .eq(KyzzUserWrongQuestion::getUserId, userId)
                 .orderByDesc(KyzzUserWrongQuestion::getLastWrongAt)
