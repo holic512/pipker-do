@@ -50,8 +50,7 @@
     /* 快应用特有相关 */
     "mp-weixin" : {
         /* 小程序特有相关 */
-        /* AI 索引: 真实微信小程序 appid 不入库，二开时请在本地改成自己的 appid。 */
-        "appid" : "",
+        "appid" : "wx81d85cf22dae3970",
         "setting" : {
             "urlCheck" : false,
             "minified" : true,
