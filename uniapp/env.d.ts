@@ -14,3 +14,5 @@ declare const uni: any
 declare const process: {
 	env?: Record<string, string | undefined>
 }
+
+declare function getCurrentPages(): unknown[]

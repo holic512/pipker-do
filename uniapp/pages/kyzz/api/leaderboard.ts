@@ -14,7 +14,7 @@ function compactQuery(params: KyzzLeaderboardQuery): Partial<KyzzLeaderboardQuer
 	const query: Record<string, RequestParamValue> = {}
 	;(Object.keys(params) as Array<keyof KyzzLeaderboardQuery>).forEach((key) => {
 		const value = params[key]
-		if (value !== undefined && value !== null && value !== '') {
+		if (value !== undefined && value !== null) {
 			query[key] = value
 		}
 	})
