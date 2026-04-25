@@ -27,6 +27,13 @@ export function updateProfile<TUser = unknown>(data: UserProfilePayload): Promis
 	})
 }
 
+export function acceptUserAgreement<TUser = unknown>(): Promise<TUser> {
+	return request({
+		url: '/api/user/agreement/accept',
+		method: 'PUT'
+	})
+}
+
 export function uploadAvatar(filePath: string): Promise<UploadAvatarResponse> {
 	return uploadFile<UploadAvatarResponse>({
 		url: '/api/files/avatar',

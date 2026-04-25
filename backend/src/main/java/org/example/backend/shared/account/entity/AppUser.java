@@ -35,6 +35,10 @@ public class AppUser implements Serializable {
 
     private String bio;
 
+    private String agreementVersion;
+
+    private LocalDateTime agreementAcceptedAt;
+
     private Integer status;
 
     private LocalDateTime lastLoginAt;

@@ -1,6 +1,7 @@
 // AI 索引: 小程序登录态管理与静默登录。
 
 import env from '@/shared/config/env'
+import { cacheAgreementAcceptance, clearAgreementAcceptanceCache } from '@/shared/auth/agreement'
 import { clearCachedUser, clearToken, getCachedUser, getToken, setCachedUser, setToken } from '@/shared/auth/storage'
 import {
 	buildAntiCrawlerHeaders,
@@ -48,6 +49,11 @@ interface ApiEnvelope {
 	code?: number
 	message?: unknown
 	data?: unknown
+}
+
+interface AgreementAwareUser {
+	agreementAccepted?: boolean
+	agreementAcceptedAt?: string
 }
 
 type SessionListener = (snapshot: SessionSnapshot) => void
@@ -159,6 +165,10 @@ function setSession(
 		clearToken()
 	}
 	setCachedUser(state.currentUser)
+	const agreementUser = state.currentUser as AgreementAwareUser | null
+	if (agreementUser?.agreementAccepted) {
+		cacheAgreementAcceptance(state.currentUser, agreementUser.agreementAcceptedAt)
+	}
 	notify()
 }
 
@@ -184,6 +194,7 @@ export function clearSession(options: { notify?: boolean } = {}): void {
 	state.validatedAt = 0
 	clearToken()
 	clearCachedUser()
+	clearAgreementAcceptanceCache()
 	if (options.notify !== false) {
 		notify()
 	}

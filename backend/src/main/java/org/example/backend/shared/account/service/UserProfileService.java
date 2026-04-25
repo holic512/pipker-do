@@ -24,6 +24,10 @@ public class UserProfileService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private static final String CURRENT_AGREEMENT_VERSION = "2026-04-25";
+
     private final AppUserMapper appUserMapper;
     private final AppUserVipMapper appUserVipMapper;
     private final LocalFileStorage localFileStorage;
@@ -75,8 +79,24 @@ public class UserProfileService {
                 user.getGender() == null ? 0 : user.getGender(),
                 user.getBio(),
                 vipInfo,
-                StringUtils.hasText(user.getNickname()) && StringUtils.hasText(resolveAvatarUrl(user.getAvatarUrl()))
+                StringUtils.hasText(user.getNickname()) && StringUtils.hasText(resolveAvatarUrl(user.getAvatarUrl())),
+                user.getAgreementVersion(),
+                formatDateTime(user.getAgreementAcceptedAt()),
+                isCurrentAgreementAccepted(user)
         );
+    }
+
+    @Transactional
+    public CurrentUserResponse acceptCurrentAgreement(Long userId) {
+        AppUser user = requireUser(userId);
+        LocalDateTime now = LocalDateTime.now();
+        user.setAgreementVersion(CURRENT_AGREEMENT_VERSION);
+        user.setAgreementAcceptedAt(now);
+        appUserMapper.update(null, new LambdaUpdateWrapper<AppUser>()
+                .eq(AppUser::getId, user.getId())
+                .set(AppUser::getAgreementVersion, CURRENT_AGREEMENT_VERSION)
+                .set(AppUser::getAgreementAcceptedAt, now));
+        return buildCurrentUser(userId);
     }
 
     @Transactional
@@ -122,6 +142,14 @@ public class UserProfileService {
             return new VipInfoResponse(false, null, null);
         }
         return new VipInfoResponse(true, vip.getVipType(), vip.getEndTime().format(DATE_FORMATTER));
+    }
+
+    private boolean isCurrentAgreementAccepted(AppUser user) {
+        return CURRENT_AGREEMENT_VERSION.equals(user.getAgreementVersion()) && user.getAgreementAcceptedAt() != null;
+    }
+
+    private String formatDateTime(LocalDateTime value) {
+        return value == null ? null : value.format(DATE_TIME_FORMATTER);
     }
 
     private String buildDefaultUsername(String openId) {

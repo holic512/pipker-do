@@ -33,4 +33,9 @@ public class UserController {
     public ApiResponse<CurrentUserResponse> updateProfile(@RequestBody UpdateProfileRequest request) {
         return responseFactory.success(userProfileService.updateProfile(LoginUserContext.requireUserId(), request));
     }
+
+    @PutMapping("/agreement/accept")
+    public ApiResponse<CurrentUserResponse> acceptAgreement() {
+        return responseFactory.success(userProfileService.acceptCurrentAgreement(LoginUserContext.requireUserId()));
+    }
 }

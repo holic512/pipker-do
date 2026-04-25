@@ -134,6 +134,7 @@ export default {
 			menuItems: [
 				{ key: 'redeem', text: '激活兑换码', icon: 'scan' },
 				{ key: 'setting', text: '刷题设置', icon: 'gear' },
+				{ key: 'agreement', text: '用户协议', icon: 'paperclip' },
 				{ key: 'service', text: '联系客服', icon: 'headphones' },
 				{ key: 'feedback', text: '意见反馈', icon: 'chatboxes' },
 				{ key: 'about', text: '关于我们', icon: 'info' }
@@ -206,10 +207,17 @@ export default {
 				this.openRedeemPopup()
 				return
 			}
+			if (key === 'agreement') {
+				uni.navigateTo({
+					url: '/pages/common/agreement/index'
+				})
+				return
+			}
 			const actionTextMap = {
 				profile: '更新资料',
 				redeem: '激活兑换码',
 				setting: '刷题设置',
+				agreement: '用户协议',
 				service: '联系客服',
 				feedback: '意见反馈',
 				about: '关于我们'

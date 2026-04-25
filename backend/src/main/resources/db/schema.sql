@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS app_user (
     avatar_url VARCHAR(255) DEFAULT NULL COMMENT '头像地址',
     gender TINYINT NOT NULL DEFAULT 0 COMMENT '性别：0未知 1男 2女',
     bio VARCHAR(255) DEFAULT NULL COMMENT '个人简介',
+    agreement_version VARCHAR(30) DEFAULT NULL COMMENT '已接受用户协议版本',
+    agreement_accepted_at DATETIME DEFAULT NULL COMMENT '用户协议接受时间',
     status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0禁用 1正常',
     last_login_at DATETIME DEFAULT NULL COMMENT '最后登录时间',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -23,6 +25,7 @@ CREATE TABLE IF NOT EXISTS app_user (
     UNIQUE KEY uk_app_user_phone (phone),
     UNIQUE KEY uk_app_user_email (email),
     KEY idx_app_user_wechat_unionid (wechat_unionid),
+    KEY idx_app_user_agreement_version (agreement_version, agreement_accepted_at),
     KEY idx_app_user_status_created_at (status, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 

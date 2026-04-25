@@ -20,4 +20,10 @@ public class CurrentUserResponse {
     private VipInfoResponse vipInfo;
 
     private boolean profileCompleted;
+
+    private String agreementVersion;
+
+    private String agreementAcceptedAt;
+
+    private boolean agreementAccepted;
 }
