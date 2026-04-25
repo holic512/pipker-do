@@ -117,11 +117,6 @@
         </view>
       </view>
 
-      <study-garden v-if="!isInitialLoading" />
-      <view v-else class="study-page__garden-skeleton">
-        <view class="study-page__garden-skeleton-card study-page__skeleton-shimmer"></view>
-        <view class="study-page__garden-skeleton-card study-page__garden-skeleton-card--wide study-page__skeleton-shimmer"></view>
-      </view>
     </view>
   </page-shell>
 </template>
@@ -178,7 +173,7 @@ export default defineComponent({
           title: '收藏',
           description: '高频重点',
           icon: 'star-filled',
-          iconColor: '#5d6678',
+          iconColor: '#8a5f2d',
           pagePath: '/pages/kyzz/favorite/index'
         },
         {
@@ -186,7 +181,7 @@ export default defineComponent({
           title: '错题库',
           description: '错因复盘',
           icon: 'help',
-          iconColor: '#5d6678',
+          iconColor: '#9a4f4b',
           pagePath: '/pages/kyzz/wrong-book/index'
         },
         {
@@ -194,7 +189,7 @@ export default defineComponent({
           title: '笔记',
           description: '知识沉淀',
           icon: 'compose',
-          iconColor: '#5d6678',
+          iconColor: '#315f42',
           pagePath: '/pages/kyzz/note/index'
         },
         {
@@ -202,7 +197,7 @@ export default defineComponent({
           title: '排行榜',
           description: '阶段坐标',
           icon: 'medal-filled',
-          iconColor: '#5d6678',
+          iconColor: '#345176',
           pagePath: '/pages/kyzz/leaderboard/index'
         }
       ]
@@ -329,8 +324,7 @@ export default defineComponent({
 
 .study-page {
   position: relative;
-  background:
-      radial-gradient(circle at top, rgba(255, 255, 255, 0.98) 0%, rgba(244, 247, 252, 0.94) 48%, rgba(236, 241, 247, 0.92) 100%);
+  background: linear-gradient(180deg, #f7f9fc 0%, #eef3f8 52%, #e9eff6 100%);
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -351,7 +345,7 @@ export default defineComponent({
   position: absolute;
   border-radius: 50%;
   filter: blur(80px);
-  opacity: 0.6;
+  opacity: 0.22;
   will-change: transform, opacity;
 }
 
@@ -360,7 +354,7 @@ export default defineComponent({
   left: -20%;
   width: 600rpx;
   height: 600rpx;
-  background: rgba(186, 212, 255, 0.3);
+  background: rgba(149, 168, 197, 0.2);
   animation: float-ambient-1 12s ease-in-out infinite alternate;
 }
 
@@ -369,7 +363,7 @@ export default defineComponent({
   right: -10%;
   width: 500rpx;
   height: 500rpx;
-  background: rgba(220, 230, 250, 0.4);
+  background: rgba(188, 205, 226, 0.18);
   animation: float-ambient-2 15s ease-in-out infinite alternate;
 }
 
@@ -394,15 +388,14 @@ export default defineComponent({
   line-height: 1.5;
   font-weight: 600;
   font-style: italic;
-  letter-spacing: 0.08em;
-  color: rgba(120, 127, 142, 0.88);
+  color: #5a6678;
 }
 
 .study-page__cursor {
   display: inline-block;
   width: 4rpx;
   height: 28rpx;
-  background-color: rgba(120, 127, 142, 0.88);
+  background-color: #5a6678;
   margin-left: 6rpx;
   vertical-align: middle;
   transform: translateY(-2rpx);
@@ -417,7 +410,7 @@ export default defineComponent({
   margin-top: 24rpx;
   width: 182rpx;
   height: 2rpx;
-  background: rgba(178, 186, 201, 0.9);
+  background: #c9d2dc;
 }
 
 .study-page__frame,
@@ -431,7 +424,7 @@ export default defineComponent({
   top: 132rpx;
   width: 260rpx;
   height: 260rpx;
-  border-top: 2rpx solid rgba(197, 206, 220, 0.48);
+  border-top: 2rpx solid rgba(174, 187, 205, 0.32);
 }
 
 .study-page__frame--left {
@@ -451,7 +444,7 @@ export default defineComponent({
   top: 248rpx;
   width: 520rpx;
   height: 520rpx;
-  border: 2rpx solid rgba(202, 211, 224, 0.32);
+  border: 2rpx solid rgba(174, 187, 205, 0.22);
   transform: translateX(-50%) rotate(45deg) translateZ(0);
   animation: spin-slow 40s linear infinite;
 }
@@ -465,10 +458,10 @@ export default defineComponent({
   margin: 64rpx auto 0;
   padding: 12rpx;
   border-radius: 26rpx;
-  background: rgba(248, 250, 253, 0.95);
+  background: #ffffff;
   box-shadow:
-      0 14rpx 40rpx rgba(147, 160, 182, 0.18),
-      inset 0 0 0 2rpx rgba(196, 205, 220, 0.85);
+      0 16rpx 34rpx rgba(45, 58, 77, 0.09),
+      inset 0 0 0 2rpx #d4deea;
   box-sizing: border-box;
 }
 
@@ -481,17 +474,17 @@ export default defineComponent({
   padding: 52rpx 28rpx 48rpx;
   box-sizing: border-box;
   border-radius: 22rpx;
-  background: linear-gradient(180deg, #202837 0%, #2b3446 100%);
+  background: linear-gradient(180deg, #263142 0%, #334056 100%);
   box-shadow:
       inset 0 0 0 2rpx rgba(255, 255, 255, 0.05),
-      0 10rpx 22rpx rgba(49, 58, 76, 0.18);
+      0 10rpx 22rpx rgba(49, 58, 76, 0.16);
 }
 
 .study-page__hero-en {
   font-size: 24rpx;
   line-height: 1.4;
-  letter-spacing: 0.22em;
-  color: rgba(206, 212, 223, 0.6);
+  letter-spacing: 0;
+  color: rgba(226, 232, 240, 0.68);
 }
 
 .study-page__hero-title {
@@ -499,7 +492,7 @@ export default defineComponent({
   font-size: 62rpx;
   line-height: 1.18;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   color: #ffffff;
 }
 
@@ -508,7 +501,7 @@ export default defineComponent({
   width: 90rpx;
   height: 4rpx;
   border-radius: 999rpx;
-  background: rgba(180, 191, 209, 0.62);
+  background: rgba(201, 211, 225, 0.76);
 }
 
 .study-page__hero-bank {
@@ -517,7 +510,7 @@ export default defineComponent({
   font-size: 24rpx;
   line-height: 1.55;
   font-weight: 600;
-  color: rgba(232, 236, 242, 0.84);
+  color: rgba(241, 245, 249, 0.9);
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -529,8 +522,7 @@ export default defineComponent({
 .study-page__hero-skeleton-divider,
 .study-page__hero-skeleton-text,
 .study-page__hero-skeleton-button,
-.study-page__shortcut-title-skeleton,
-.study-page__garden-skeleton-card {
+.study-page__shortcut-title-skeleton {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.28) 50%, rgba(255, 255, 255, 0.12) 100%);
   background-size: 200% 100%;
 }
@@ -599,9 +591,9 @@ export default defineComponent({
   /* 利用圆锥渐变形成从顶部 12 点钟顺时针绘制的进度条 */
   background: conic-gradient(
           from 0deg,
-          #64b5f6 0%,
-          #1e88e5 var(--progress),
-          rgba(255, 255, 255, 0.15) var(--progress)
+          #8fb79a 0%,
+          #4f7f58 var(--progress),
+          rgba(255, 255, 255, 0.18) var(--progress)
   );
   /* 呼吸脉冲光晕动效 */
   animation: button-pulse-glow 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
@@ -634,7 +626,7 @@ export default defineComponent({
   border-radius: 99rpx;
   font-size: 22rpx;
   font-weight: 700;
-  color: #1e88e5;
+  color: #3f754d;
 }
 
 /* 百分比前的灵动小圆点 */
@@ -642,7 +634,7 @@ export default defineComponent({
   width: 8rpx;
   height: 8rpx;
   border-radius: 50%;
-  background: #64b5f6;
+  background: #4f7f58;
   animation: dot-pulse 1.5s infinite alternate;
 }
 
@@ -656,13 +648,13 @@ export default defineComponent({
   padding: 10rpx 24rpx;
   border: 4rpx solid #ffffff;
   border-radius: 999rpx;
-  background: linear-gradient(180deg, #6a738c 0%, #7a8399 100%);
-  box-shadow: 0 10rpx 20rpx rgba(110, 121, 143, 0.24);
+  background: linear-gradient(180deg, #465a7e 0%, #657896 100%);
+  box-shadow: 0 10rpx 20rpx rgba(54, 75, 111, 0.22);
   transform: translateX(14rpx);
 }
 
 .study-page__streak.is-skeleton {
-  background: linear-gradient(180deg, rgba(122, 131, 153, 0.92) 0%, rgba(108, 119, 141, 0.92) 100%);
+  background: linear-gradient(180deg, rgba(70, 90, 126, 0.92) 0%, rgba(101, 120, 150, 0.92) 100%);
 }
 
 .study-page__streak-dot {
@@ -677,7 +669,7 @@ export default defineComponent({
   font-size: 22rpx;
   line-height: 1;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   color: #ffffff;
 }
 
@@ -691,7 +683,7 @@ export default defineComponent({
   font-size: 30rpx;
   line-height: 1.2;
   font-weight: 700;
-  color: #203153;
+  color: #243146;
 }
 
 .study-page__shortcut-title-row {
@@ -709,7 +701,7 @@ export default defineComponent({
 .study-page__shortcut-title-bar {
   width: 10rpx;
   border-radius: 999rpx;
-  background: linear-gradient(180deg, #3c86ff 0%, #6ba6ff 100%);
+  background: linear-gradient(180deg, #465a7e 0%, #8ba0bf 100%);
 }
 
 .study-page__shortcut-title-bar--left {
@@ -742,12 +734,10 @@ export default defineComponent({
   border-radius: 30rpx;
   overflow: hidden;
   box-sizing: border-box;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(249, 251, 254, 0.9) 52%, rgba(238, 243, 248, 0.86) 100%);
+  background: #ffffff;
   box-shadow:
-    0 18rpx 42rpx rgba(43, 52, 55, 0.075),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.95),
-    inset 0 0 0 1rpx rgba(220, 227, 236, 0.72);
+    0 14rpx 30rpx rgba(45, 58, 77, 0.055),
+    inset 0 0 0 1rpx #d6deea;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -755,8 +745,7 @@ export default defineComponent({
   transform: scale(0.975) translateY(2rpx);
   box-shadow:
     0 10rpx 26rpx rgba(43, 52, 55, 0.06),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.9),
-    inset 0 0 0 1rpx rgba(210, 218, 229, 0.82);
+    inset 0 0 0 1rpx #cbd5e4;
 }
 
 .study-page__shortcut-card-glow {
@@ -766,15 +755,15 @@ export default defineComponent({
   width: 146rpx;
   height: 146rpx;
   border-radius: 999rpx;
-  background: radial-gradient(circle, rgba(215, 226, 255, 0.72) 0%, rgba(215, 226, 255, 0) 68%);
+  background: radial-gradient(circle, rgba(232, 240, 255, 0.48) 0%, rgba(232, 240, 255, 0) 68%);
   pointer-events: none;
 }
 
 .study-page__shortcut-card--skeleton {
-  background-color: rgba(255, 255, 255, 0.72);
+  background-color: #ffffff;
   box-shadow:
-    0 16rpx 34rpx rgba(43, 52, 55, 0.04),
-    inset 0 0 0 1rpx rgba(232, 237, 244, 0.8);
+    0 14rpx 30rpx rgba(45, 58, 77, 0.045),
+    inset 0 0 0 1rpx #d6deea;
 }
 
 .study-page__shortcut-icon {
@@ -787,11 +776,10 @@ export default defineComponent({
   height: 58rpx;
   flex: 0 0 58rpx;
   border-radius: 20rpx;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(242, 246, 250, 0.9) 100%);
+  background: #f7f9fc;
   box-shadow:
-    0 10rpx 20rpx rgba(93, 102, 120, 0.12),
-    inset 0 0 0 1rpx rgba(218, 225, 235, 0.88);
+    0 8rpx 18rpx rgba(54, 68, 90, 0.06),
+    inset 0 0 0 1rpx #cbd5e4;
 }
 
 .study-page__shortcut-copy {
@@ -808,7 +796,7 @@ export default defineComponent({
   font-size: 26rpx;
   line-height: 1.25;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   color: #273247;
 }
 
@@ -818,7 +806,7 @@ export default defineComponent({
   font-size: 20rpx;
   line-height: 1.25;
   font-weight: 500;
-  color: rgba(102, 113, 132, 0.72);
+  color: #5f6d7f;
   white-space: nowrap;
 }
 
@@ -833,9 +821,9 @@ export default defineComponent({
   width: 32rpx;
   height: 32rpx;
   border-radius: 999rpx;
-  background: rgba(242, 246, 250, 0.72);
+  background: #f7f9fc;
   transform: translateY(-50%);
-  box-shadow: inset 0 0 0 1rpx rgba(219, 226, 236, 0.72);
+  box-shadow: inset 0 0 0 1rpx #cbd5e4;
 }
 
 .study-page__shortcut-title-skeleton {
@@ -843,25 +831,6 @@ export default defineComponent({
   height: 24rpx;
   margin: 14rpx auto 0;
   border-radius: 999rpx;
-}
-
-.study-page__garden-skeleton {
-  display: grid;
-  gap: 20rpx;
-  margin: 34rpx 18rpx 0;
-}
-
-.study-page__garden-skeleton-card {
-  height: 220rpx;
-  border-radius: 30rpx;
-  background-color: rgba(255, 255, 255, 0.82);
-  box-shadow:
-    0 18rpx 34rpx rgba(43, 52, 55, 0.05),
-    inset 0 0 0 1rpx rgba(232, 237, 244, 0.8);
-}
-
-.study-page__garden-skeleton-card--wide {
-  height: 180rpx;
 }
 
 .study-page__skeleton-shimmer {
@@ -882,8 +851,8 @@ export default defineComponent({
 }
 
 @keyframes float-ambient-2 {
-  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.4; }
-  100% { transform: translate3d(-60rpx, -40rpx, 0) scale(1.2); opacity: 0.7; }
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.18; }
+  100% { transform: translate3d(-60rpx, -40rpx, 0) scale(1.12); opacity: 0.26; }
 }
 
 @keyframes float-left {
@@ -903,9 +872,9 @@ export default defineComponent({
 
 /* 按钮环绕边框的脉冲发光 */
 @keyframes button-pulse-glow {
-  0% { box-shadow: 0 0 0 0 rgba(100, 181, 246, 0.4); }
-  70% { box-shadow: 0 0 0 16rpx rgba(100, 181, 246, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(100, 181, 246, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(79, 127, 88, 0.28); }
+  70% { box-shadow: 0 0 0 16rpx rgba(79, 127, 88, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(79, 127, 88, 0); }
 }
 
 @keyframes dot-pulse {

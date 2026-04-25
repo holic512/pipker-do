@@ -235,22 +235,22 @@ export default defineComponent({
 					scope: 'daily',
 					label: '日榜',
 					icon: 'calendar-filled',
-					iconColor: '#6880a8',
-					iconShellBackground: 'linear-gradient(135deg, rgba(217, 230, 255, 0.95) 0%, rgba(236, 243, 255, 0.95) 100%)'
+					iconColor: '#334f7c',
+					iconShellBackground: '#e8f0ff'
 				},
 				{
 					scope: 'weekly',
 					label: '周榜',
 					icon: 'fire-filled',
-					iconColor: '#bf7652',
-					iconShellBackground: 'linear-gradient(135deg, rgba(255, 227, 208, 0.95) 0%, rgba(255, 240, 225, 0.95) 100%)'
+					iconColor: '#78511f',
+					iconShellBackground: '#fff0dc'
 				},
 				{
 					scope: 'total',
 					label: '总榜',
 					icon: 'medal-filled',
-					iconColor: '#8a6f3c',
-					iconShellBackground: 'linear-gradient(135deg, rgba(255, 238, 198, 0.95) 0%, rgba(255, 247, 223, 0.95) 100%)'
+					iconColor: '#735817',
+					iconShellBackground: '#fff6df'
 				}
 			]
 		}
@@ -400,8 +400,7 @@ export default defineComponent({
 	min-height: 100vh;
 	padding: 24rpx 24rpx calc(env(safe-area-inset-bottom) + 32rpx);
 	box-sizing: border-box;
-	background:
-		radial-gradient(circle at 12% 0%, rgba(235, 242, 255, 0.94) 0%, rgba(246, 249, 253, 0.98) 38%, rgba(239, 244, 250, 0.98) 100%);
+	background: linear-gradient(180deg, #f7f9fc 0%, #eef3f8 52%, #e9eff6 100%);
 }
 
 .leaderboard-page__scope-tabs {
@@ -417,16 +416,18 @@ export default defineComponent({
 	gap: 10rpx;
 	height: 76rpx;
 	border-radius: 22rpx;
-	background: rgba(255, 255, 255, 0.86);
-	box-shadow: inset 0 0 0 1rpx rgba(217, 224, 236, 0.88);
+	background: #ffffff;
+	box-shadow:
+		0 8rpx 18rpx rgba(45, 58, 77, 0.04),
+		inset 0 0 0 1rpx #d6deea;
 	transition: all 0.2s ease;
 }
 
 .leaderboard-page__scope-tab.is-active {
-	background: rgba(255, 255, 255, 0.96);
+	background: #eef4ff;
 	box-shadow:
-		0 14rpx 24rpx rgba(78, 92, 120, 0.09),
-		inset 0 0 0 1rpx rgba(182, 196, 220, 0.92);
+		0 14rpx 24rpx rgba(55, 84, 132, 0.1),
+		inset 0 0 0 1rpx #9fb7dd;
 }
 
 .leaderboard-page__scope-icon-shell {
@@ -440,8 +441,8 @@ export default defineComponent({
 
 .leaderboard-page__scope-label {
 	font-size: 24rpx;
-	color: #4b5a71;
-	font-weight: 600;
+	color: #334155;
+	font-weight: 700;
 }
 
 .leaderboard-page__my-card,
@@ -450,15 +451,16 @@ export default defineComponent({
 .leaderboard-page__state-card {
 	margin-top: 20rpx;
 	border-radius: 26rpx;
-	background: rgba(255, 255, 255, 0.94);
-	box-shadow: 0 18rpx 34rpx rgba(43, 52, 67, 0.07);
+	background: #ffffff;
+	box-shadow: 0 14rpx 30rpx rgba(45, 58, 77, 0.055);
+	border: 1rpx solid #d6deea;
 }
 
 .leaderboard-page__my-card {
 	position: relative;
 	padding: 24rpx;
-	background:
-		linear-gradient(135deg, rgba(255, 247, 230, 0.96) 0%, rgba(255, 253, 243, 0.95) 100%);
+	background: linear-gradient(135deg, #ffffff 0%, #fffaf0 100%);
+	border-color: #e6cf91;
 }
 
 .leaderboard-page__my-head {
@@ -482,15 +484,16 @@ export default defineComponent({
 .leaderboard-page__my-title-text {
 	font-size: 28rpx;
 	font-weight: 700;
-	color: #56462f;
+	color: #3c4a58;
 }
 
 .leaderboard-page__my-range {
 	font-size: 22rpx;
-	color: #8d764f;
-	background: rgba(255, 255, 255, 0.8);
+	color: #735817;
+	background: #fff6df;
 	padding: 6rpx 12rpx;
 	border-radius: 999rpx;
+	box-shadow: inset 0 0 0 1rpx #e6cf91;
 }
 
 .leaderboard-page__rule-trigger {
@@ -500,15 +503,15 @@ export default defineComponent({
 	width: 44rpx;
 	height: 44rpx;
 	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.88);
-	box-shadow: inset 0 0 0 1rpx rgba(211, 187, 141, 0.82);
+	background: #ffffff;
+	box-shadow: inset 0 0 0 1rpx #e6cf91;
 }
 
 .leaderboard-page__rule-trigger-text {
 	font-size: 28rpx;
 	line-height: 1;
 	font-weight: 700;
-	color: #7a6340;
+	color: #735817;
 }
 
 .leaderboard-page__rule-popover {
@@ -520,8 +523,9 @@ export default defineComponent({
 	max-width: calc(100% - 48rpx);
 	padding: 18rpx;
 	border-radius: 18rpx;
-	background: rgba(255, 255, 255, 0.97);
-	box-shadow: 0 14rpx 28rpx rgba(89, 73, 41, 0.16);
+	background: #ffffff;
+	box-shadow: 0 14rpx 28rpx rgba(45, 58, 77, 0.12);
+	border: 1rpx solid #e6cf91;
 }
 
 .leaderboard-page__rule-popover-arrow {
@@ -530,7 +534,7 @@ export default defineComponent({
 	right: 28rpx;
 	width: 20rpx;
 	height: 20rpx;
-	background: rgba(255, 255, 255, 0.97);
+	background: #ffffff;
 	transform: rotate(45deg);
 }
 
@@ -541,7 +545,7 @@ export default defineComponent({
 .leaderboard-page__rule-popover-label {
 	display: block;
 	font-size: 20rpx;
-	color: #8a754f;
+	color: #735817;
 }
 
 .leaderboard-page__rule-popover-value {
@@ -549,7 +553,7 @@ export default defineComponent({
 	margin-top: 6rpx;
 	font-size: 22rpx;
 	line-height: 1.6;
-	color: #5b4d38;
+	color: #3c4a58;
 }
 
 .leaderboard-page__my-main {
@@ -562,14 +566,14 @@ export default defineComponent({
 	flex: 0 0 220rpx;
 	padding: 14rpx 16rpx;
 	border-radius: 18rpx;
-	background: rgba(255, 255, 255, 0.88);
-	box-shadow: inset 0 0 0 1rpx rgba(227, 214, 183, 0.92);
+	background: #fff6df;
+	box-shadow: inset 0 0 0 1rpx #e6cf91;
 }
 
 .leaderboard-page__my-rank-label {
 	display: block;
 	font-size: 20rpx;
-	color: #8e7a54;
+	color: #735817;
 }
 
 .leaderboard-page__my-rank-value {
@@ -578,14 +582,14 @@ export default defineComponent({
 	font-size: 42rpx;
 	line-height: 1;
 	font-weight: 700;
-	color: #5c4a30;
+	color: #4f3d16;
 }
 
 .leaderboard-page__my-last {
 	display: block;
 	margin-top: 12rpx;
 	font-size: 20rpx;
-	color: #8d7e61;
+	color: #735817;
 }
 
 .leaderboard-page__my-metrics {
@@ -602,25 +606,27 @@ export default defineComponent({
 	padding: 8rpx 12rpx;
 	gap: 8rpx;
 	border-radius: 999rpx;
-	background: rgba(255, 255, 255, 0.82);
+	background: #f7f9fc;
+	box-shadow: inset 0 0 0 1rpx #cbd5e4;
 }
 
 .leaderboard-page__metric-text {
 	font-size: 21rpx;
-	color: #50607c;
+	color: #3c4a58;
 }
 
 .leaderboard-page__my-empty {
 	margin-top: 16rpx;
 	padding: 18rpx;
 	border-radius: 18rpx;
-	background: rgba(255, 255, 255, 0.88);
+	background: #ffffff;
+	box-shadow: inset 0 0 0 1rpx #d6deea;
 }
 
 .leaderboard-page__my-empty-title {
 	display: block;
 	font-size: 26rpx;
-	color: #544a38;
+	color: #1f2937;
 	font-weight: 700;
 }
 
@@ -629,7 +635,7 @@ export default defineComponent({
 	margin-top: 8rpx;
 	font-size: 22rpx;
 	line-height: 1.6;
-	color: #7e7058;
+	color: #5f6d7f;
 }
 
 .leaderboard-page__my-empty-action,
@@ -639,7 +645,7 @@ export default defineComponent({
 	line-height: 76rpx;
 	border-radius: 20rpx;
 	font-size: 24rpx;
-	font-weight: 600;
+	font-weight: 700;
 }
 
 .leaderboard-page__my-empty-action::after,
@@ -648,8 +654,14 @@ export default defineComponent({
 }
 
 .leaderboard-page__my-empty-action {
-	background: linear-gradient(135deg, #6f728a 0%, #8d91ad 100%);
+	background: linear-gradient(135deg, #465a7e 0%, #6d7f9b 100%);
 	color: #ffffff;
+}
+
+.leaderboard-page__retry-btn {
+	background: linear-gradient(135deg, #465a7e 0%, #6d7f9b 100%);
+	color: #ffffff;
+	box-shadow: 0 12rpx 22rpx rgba(54, 75, 111, 0.18);
 }
 
 .leaderboard-page__refreshing {
@@ -659,12 +671,13 @@ export default defineComponent({
 	gap: 8rpx;
 	padding: 8rpx 14rpx;
 	border-radius: 999rpx;
-	background: rgba(232, 238, 247, 0.92);
+	background: #eef2f6;
+	box-shadow: inset 0 0 0 1rpx #c9d2dc;
 }
 
 .leaderboard-page__refreshing-text {
 	font-size: 20rpx;
-	color: #6e7d95;
+	color: #3c4a58;
 }
 
 .leaderboard-page__state-card {
@@ -672,14 +685,15 @@ export default defineComponent({
 }
 
 .leaderboard-page__state-card--error {
-	background: rgba(255, 243, 241, 0.95);
+	background: #fdebea;
+	border-color: #dc9b96;
 }
 
 .leaderboard-page__state-title {
 	display: block;
 	font-size: 28rpx;
 	font-weight: 700;
-	color: #3f4d66;
+	color: #1f2937;
 }
 
 .leaderboard-page__state-desc {
@@ -687,7 +701,7 @@ export default defineComponent({
 	margin-top: 10rpx;
 	font-size: 22rpx;
 	line-height: 1.7;
-	color: #6d7890;
+	color: #5f6d7f;
 }
 
 .leaderboard-page__section-head {
@@ -699,12 +713,12 @@ export default defineComponent({
 .leaderboard-page__section-title {
 	font-size: 28rpx;
 	font-weight: 700;
-	color: #3b4860;
+	color: #1f2937;
 }
 
 .leaderboard-page__section-meta {
 	font-size: 20rpx;
-	color: #8a95a9;
+	color: #5f6d7f;
 }
 
 .leaderboard-page__top3,
@@ -722,14 +736,16 @@ export default defineComponent({
 .leaderboard-page__top3-card {
 	padding: 16rpx;
 	border-radius: 20rpx;
-	background: rgba(247, 250, 255, 0.9);
+	background: #f7f9fc;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	box-shadow: inset 0 0 0 1rpx #cbd5e4;
 }
 
 .leaderboard-page__top3-card.is-me {
-	background: rgba(255, 245, 223, 0.92);
+	background: #fff6df;
+	box-shadow: inset 0 0 0 1rpx #e6cf91;
 }
 
 .leaderboard-page__top3-rank {
@@ -742,7 +758,7 @@ export default defineComponent({
 .leaderboard-page__top3-rank-no {
 	font-size: 24rpx;
 	font-weight: 700;
-	color: #42526d;
+	color: #334155;
 }
 
 .leaderboard-page__top3-user {
@@ -755,7 +771,7 @@ export default defineComponent({
 .leaderboard-page__top3-name {
 	margin-left: 10rpx;
 	font-size: 24rpx;
-	color: #374760;
+	color: #1f2937;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -763,7 +779,7 @@ export default defineComponent({
 
 .leaderboard-page__top3-score {
 	font-size: 22rpx;
-	color: #51637f;
+	color: #3c4a58;
 }
 
 .leaderboard-page__full-list {
@@ -774,13 +790,15 @@ export default defineComponent({
 	margin-top: 12rpx;
 	padding: 14rpx;
 	border-radius: 18rpx;
-	background: rgba(246, 249, 253, 0.94);
+	background: #f7f9fc;
 	display: flex;
 	gap: 12rpx;
+	box-shadow: inset 0 0 0 1rpx #cbd5e4;
 }
 
 .leaderboard-page__row.is-me {
-	background: rgba(255, 243, 221, 0.94);
+	background: #fff6df;
+	box-shadow: inset 0 0 0 1rpx #e6cf91;
 }
 
 .leaderboard-page__row-rank {
@@ -806,13 +824,13 @@ export default defineComponent({
 }
 
 .leaderboard-page__row-rank.is-rank-normal {
-	background: rgba(231, 238, 247, 0.9);
+	background: #e8f0ff;
 }
 
 .leaderboard-page__row-rank-no {
 	font-size: 24rpx;
 	font-weight: 700;
-	color: #4d5c77;
+	color: #334155;
 }
 
 .leaderboard-page__row-main {
@@ -834,7 +852,7 @@ export default defineComponent({
 .leaderboard-page__row-name {
 	display: block;
 	font-size: 24rpx;
-	color: #384860;
+	color: #1f2937;
 	font-weight: 700;
 	overflow: hidden;
 	text-overflow: ellipsis;

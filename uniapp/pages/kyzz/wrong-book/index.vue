@@ -50,7 +50,7 @@
 			>
 				<view class="wrong-book-page__card-head">
 					<view class="wrong-book-page__card-tags">
-						<text class="wrong-book-page__tag">{{ questionTypeLabel(item.questionType) }}</text>
+						<text class="wrong-book-page__tag wrong-book-page__tag--type" :class="questionTypeTagClass(item.questionType)">{{ questionTypeLabel(item.questionType) }}</text>
 						<text class="wrong-book-page__tag" :class="difficultyTagClass(item.difficultyLevel)">{{ difficultyLabel(item.difficultyLevel) }}</text>
 						<text class="wrong-book-page__tag wrong-book-page__tag--bank">题库 · {{ item.bankName }}</text>
 					</view>
@@ -117,6 +117,7 @@ import { bootstrapAuth } from '@/shared/session/session'
 import { getWrongQuestions } from '@/pages/kyzz/api/wrong-book'
 import { openBankPracticeTab, openPracticeTab } from '@/pages/kyzz/practice/navigation'
 import { difficultyLabel, difficultyTagClass, questionTypeLabel } from '@/pages/kyzz/practice/view'
+import type { KyzzPracticeQuestionType } from '@/pages/kyzz/practice/types'
 import type {
 	KyzzWrongQuestionDashboardState,
 	KyzzWrongQuestionStatus,
@@ -219,6 +220,18 @@ export default defineComponent({
 		difficultyLabel,
 		difficultyTagClass,
 		questionTypeLabel,
+		questionTypeTagClass(questionType: KyzzPracticeQuestionType): string {
+			if (questionType === 'single') {
+				return 'is-single'
+			}
+			if (questionType === 'multiple') {
+				return 'is-multiple'
+			}
+			if (questionType === 'short') {
+				return 'is-short'
+			}
+			return ''
+		},
 		formatWrongQuestionTime,
 		async bootstrapAndLoad(): Promise<void> {
 			try {
@@ -330,8 +343,7 @@ export default defineComponent({
 	min-height: 100vh;
 	padding: 28rpx 24rpx calc(env(safe-area-inset-bottom) + 48rpx);
 	box-sizing: border-box;
-	background:
-		radial-gradient(circle at top, rgba(255, 255, 255, 0.99) 0%, rgba(243, 247, 252, 0.97) 46%, rgba(233, 239, 247, 0.95) 100%);
+	background: linear-gradient(180deg, #f7f9fc 0%, #eef3f8 52%, #e9eff6 100%);
 }
 
 .wrong-book-page__toolbar {
@@ -379,15 +391,15 @@ export default defineComponent({
 }
 
 .wrong-book-page__tab.is-active::after {
-	background: #59657d;
+	background: #465a7e;
 }
 
 .wrong-book-page__tab-label,
 .wrong-book-page__tab-count {
 	font-size: 28rpx;
 	line-height: 1;
-	font-weight: 600;
-	color: #7d8795;
+	font-weight: 700;
+	color: #667386;
 }
 
 .wrong-book-page__tab-count {
@@ -397,22 +409,22 @@ export default defineComponent({
 
 .wrong-book-page__tab.is-active .wrong-book-page__tab-label,
 .wrong-book-page__tab.is-active .wrong-book-page__tab-count {
-	color: #283241;
-	font-weight: 700;
+	color: #1f2937;
+	font-weight: 800;
 }
 
 .wrong-book-page__toolbar-meta {
 	padding-bottom: 14rpx;
 	font-size: 22rpx;
 	line-height: 1.4;
-	color: #adb5c1;
+	color: #5f6d7f;
 	white-space: nowrap;
 }
 
 .wrong-book-page__search-shell {
 	margin-top: 18rpx;
 	padding-top: 18rpx;
-	border-top: 1rpx solid rgba(220, 227, 236, 0.78);
+	border-top: 1rpx solid #d6deea;
 }
 
 .wrong-book-page__search-box {
@@ -422,8 +434,10 @@ export default defineComponent({
 	height: 82rpx;
 	padding: 0 22rpx;
 	border-radius: 999rpx;
-	background: rgba(244, 247, 251, 0.96);
-	box-shadow: inset 0 0 0 1rpx rgba(225, 232, 241, 0.98);
+	background: #ffffff;
+	box-shadow:
+		0 10rpx 24rpx rgba(45, 58, 77, 0.05),
+		inset 0 0 0 1rpx #cfd8e6;
 }
 
 .wrong-book-page__search-input {
@@ -446,7 +460,7 @@ export default defineComponent({
 	width: 38rpx;
 	height: 38rpx;
 	border-radius: 50%;
-	background: rgba(210, 218, 229, 0.92);
+	background: #9aa7ba;
 }
 
 .wrong-book-page__search-clear-text {
@@ -460,8 +474,9 @@ export default defineComponent({
 	margin-top: 22rpx;
 	padding: 34rpx 28rpx;
 	border-radius: 30rpx;
-	background: rgba(255, 255, 255, 0.9);
-	box-shadow: 0 20rpx 38rpx rgba(43, 52, 55, 0.06);
+	background: #ffffff;
+	box-shadow: 0 16rpx 34rpx rgba(45, 58, 77, 0.06);
+	border: 1rpx solid #d6deea;
 }
 
 .wrong-book-page__state-title,
@@ -492,8 +507,9 @@ export default defineComponent({
 .wrong-book-page__card {
 	padding: 28rpx 24rpx;
 	border-radius: 28rpx;
-	background: rgba(255, 255, 255, 0.92);
-	box-shadow: 0 20rpx 38rpx rgba(43, 52, 55, 0.05);
+	background: #ffffff;
+	box-shadow: 0 14rpx 30rpx rgba(45, 58, 77, 0.055);
+	border: 1rpx solid #d6deea;
 }
 
 .wrong-book-page__card-head {
@@ -519,48 +535,74 @@ export default defineComponent({
 	border-radius: 999rpx;
 	font-size: 20rpx;
 	line-height: 1;
-	font-weight: 600;
+	font-weight: 700;
 }
 
 .wrong-book-page__tag {
-	background: rgba(242, 246, 251, 0.98);
-	color: #5d6779;
+	background: #ffffff;
+	box-shadow: inset 0 0 0 1rpx #cfd8e6;
+	color: #39465a;
+}
+
+.wrong-book-page__tag--type.is-single {
+	background: #e8f0ff;
+	box-shadow: inset 0 0 0 1rpx #bccbe4;
+	color: #334f7c;
+}
+
+.wrong-book-page__tag--type.is-multiple {
+	background: #edf5ea;
+	box-shadow: inset 0 0 0 1rpx #c2d9bc;
+	color: #3d6237;
+}
+
+.wrong-book-page__tag--type.is-short {
+	background: #f4ecff;
+	box-shadow: inset 0 0 0 1rpx #d5c2ec;
+	color: #5b4678;
 }
 
 .wrong-book-page__tag.is-simple {
-	background: rgba(225, 236, 226, 0.98);
-	color: #466354;
+	background: #e5f4e8;
+	box-shadow: inset 0 0 0 1rpx #bcdabe;
+	color: #315f42;
 }
 
 .wrong-book-page__tag.is-medium {
-	background: rgba(235, 240, 247, 0.98);
-	color: #4f6078;
+	background: #e7efff;
+	box-shadow: inset 0 0 0 1rpx #b9cae8;
+	color: #314f79;
 }
 
 .wrong-book-page__tag.is-hard {
-	background: rgba(245, 235, 226, 0.98);
-	color: #8d5d47;
+	background: #fff0dc;
+	box-shadow: inset 0 0 0 1rpx #e6c58e;
+	color: #78511f;
 }
 
 .wrong-book-page__tag.is-sprint {
-	background: rgba(247, 226, 224, 0.98);
-	color: #965251;
+	background: #fde8e5;
+	box-shadow: inset 0 0 0 1rpx #e8b8b3;
+	color: #87413e;
 }
 
 .wrong-book-page__tag--bank {
 	max-width: 100%;
-	background: linear-gradient(135deg, rgba(232, 239, 251, 0.98) 0%, rgba(242, 247, 255, 0.98) 100%);
-	color: #4a6287;
+	background: #eef2f6;
+	box-shadow: inset 0 0 0 1rpx #c9d2dc;
+	color: #3c4a58;
 }
 
 .wrong-book-page__status.is-active {
-	background: rgba(247, 226, 224, 0.98);
-	color: #964e4b;
+	background: #fde8e5;
+	box-shadow: inset 0 0 0 1rpx #e8b8b3;
+	color: #87413e;
 }
 
 .wrong-book-page__status.is-mastered {
-	background: rgba(225, 236, 226, 0.98);
-	color: #476453;
+	background: #e5f4e8;
+	box-shadow: inset 0 0 0 1rpx #bcdabe;
+	color: #315f42;
 }
 
 .wrong-book-page__stem-wrap {
@@ -572,8 +614,8 @@ export default defineComponent({
 	display: block;
 	font-size: 28rpx;
 	line-height: 1.7;
-	font-weight: 600;
-	color: #27313f;
+	font-weight: 700;
+	color: #1f2937;
 }
 
 .wrong-book-page__stem.is-collapsed {
@@ -595,8 +637,8 @@ export default defineComponent({
 	width: 42rpx;
 	height: 36rpx;
 	border-radius: 999rpx;
-	background: rgba(243, 247, 252, 0.96);
-	box-shadow: inset 0 0 0 1rpx rgba(227, 233, 241, 0.96);
+	background: #f7f9fc;
+	box-shadow: inset 0 0 0 1rpx #cbd5e4;
 }
 
 .wrong-book-page__meta-row {
@@ -623,20 +665,20 @@ export default defineComponent({
 	min-height: 44rpx;
 	padding: 0 14rpx;
 	border-radius: 999rpx;
-	background: rgba(243, 247, 252, 0.96);
-	box-shadow: inset 0 0 0 1rpx rgba(227, 233, 241, 0.96);
+	background: #f7f9fc;
+	box-shadow: inset 0 0 0 1rpx #cbd5e4;
 }
 
 .wrong-book-page__meta-pill--mastered {
-	background: rgba(237, 247, 239, 0.98);
-	box-shadow: inset 0 0 0 1rpx rgba(211, 231, 216, 0.96);
+	background: #e5f4e8;
+	box-shadow: inset 0 0 0 1rpx #bcdabe;
 }
 
 .wrong-book-page__meta-pill-text,
 .wrong-book-page__meta-pill-text--mastered {
 	font-size: 22rpx;
 	line-height: 1.6;
-	color: #7c8796;
+	color: #5f6d7f;
 }
 
 .wrong-book-page__meta-pill-text--mastered {
@@ -650,11 +692,11 @@ export default defineComponent({
 	height: 54rpx;
 	line-height: 54rpx;
 	border-radius: 18rpx;
-	background: linear-gradient(135deg, #545e76 0%, #7f8ca7 100%);
+	background: linear-gradient(135deg, #465a7e 0%, #6d7f9b 100%);
 	color: #ffffff;
 	font-size: 22rpx;
-	font-weight: 600;
-	box-shadow: 0 12rpx 22rpx rgba(84, 94, 118, 0.14);
+	font-weight: 700;
+	box-shadow: 0 12rpx 22rpx rgba(54, 75, 111, 0.18);
 }
 
 .wrong-book-page__retry-button {
@@ -677,10 +719,10 @@ export default defineComponent({
 	width: 132rpx;
 	height: 132rpx;
 	border-radius: 36rpx;
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(237, 242, 249, 0.96) 100%);
+	background: #eef2f6;
 	box-shadow:
-		0 24rpx 44rpx rgba(84, 94, 118, 0.08),
-		inset 0 0 0 1rpx rgba(222, 229, 239, 0.88);
+		0 18rpx 34rpx rgba(45, 58, 77, 0.06),
+		inset 0 0 0 1rpx #c9d2dc;
 }
 
 .wrong-book-page__empty-icon-core {
@@ -690,7 +732,7 @@ export default defineComponent({
 	width: 86rpx;
 	height: 86rpx;
 	border-radius: 28rpx;
-	background: linear-gradient(135deg, rgba(222, 231, 245, 0.98) 0%, rgba(246, 249, 253, 0.98) 100%);
+	background: #ffffff;
 }
 
 .wrong-book-page__empty-button {

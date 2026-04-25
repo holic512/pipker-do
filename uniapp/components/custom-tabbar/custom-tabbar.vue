@@ -19,7 +19,7 @@
 							:color="resolveColor(item)"
 						/>
 					</view>
-					<text class="tabbar-label">{{ item.text }}</text>
+					<text class="tabbar-label" :style="{ color: resolveColor(item) }">{{ item.text }}</text>
 				</view>
 			</view>
 
@@ -52,8 +52,8 @@ export default {
 			return sourceItems.map(item => ({
 				...item,
 				size: item.size || 24,
-				activeColor: item.activeColor || '#2f3648',
-				color: item.color || '#bcc5d4'
+				activeColor: item.activeColor || '#46536a',
+				color: item.color || '#6b7884'
 			}));
 		}
 	},
@@ -65,7 +65,7 @@ export default {
 			return item.key === this.current;
 		},
 		resolveIcon(item) {
-			return this.isActive(item) ? (item.activeIcon || item.icon) : item.icon;
+			return item.icon;
 		},
 		resolveColor(item) {
 			return this.isActive(item) ? item.activeColor : item.color;
@@ -96,8 +96,7 @@ export default {
 
 <style lang="scss" scoped>
 $color-bg: #ffffff;
-$color-text-normal: #bcc5d4;
-$color-text-active: #2f3648;
+$color-text-normal: #6b7884;
 
 .custom-tabbar {
 	position: relative;
@@ -118,7 +117,8 @@ $color-text-active: #2f3648;
 		z-index: 999;
 		background: $color-bg;
 		border-radius: 36rpx 36rpx 0 0;
-		box-shadow: 0 -2rpx 16rpx rgba(43, 52, 55, 0.04);
+		border-top: 1rpx solid #e0e6e9;
+		box-shadow: 0 -4rpx 20rpx rgba(43, 52, 55, 0.06);
 	}
 
 	&__panel {
@@ -170,8 +170,7 @@ $color-text-active: #2f3648;
 
 	&.is-active {
 		.tabbar-label {
-			color: $color-text-active;
-			font-weight: 700;
+			font-weight: 600;
 		}
 	}
 }

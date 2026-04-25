@@ -80,9 +80,9 @@
 						</view>
 
 						<view class="question-bank-page__meta-row">
-							<text class="question-bank-page__meta-pill">{{ item.categoryName || '未分类' }}</text>
+							<text class="question-bank-page__meta-pill question-bank-page__meta-pill--category">{{ item.categoryName || '未分类' }}</text>
 							<text class="question-bank-page__meta-pill" :class="difficultyTagClass(item.difficultyLevel)">{{ difficultyLabel(item.difficultyLevel) }}</text>
-							<text class="question-bank-page__meta-pill">{{ item.questionCount }} 题</text>
+							<text class="question-bank-page__meta-pill question-bank-page__meta-pill--count">{{ item.questionCount }} 题</text>
 						</view>
 
 						<view class="question-bank-page__info-row">
@@ -344,10 +344,10 @@ export default defineComponent({
 			const progress = this.progressPercent(item)
 			const progressDegree = `${Math.max(0, Math.min(360, progress * 3.6))}deg`
 			const activeColor = progress >= 100 && item.questionCount > 0
-				? '#8eb89a'
-				: '#7a889f'
+				? '#5f8f67'
+				: '#5472a5'
 			return {
-				background: `conic-gradient(${activeColor} 0deg, ${activeColor} ${progressDegree}, rgba(224, 230, 240, 0.88) ${progressDegree}, rgba(224, 230, 240, 0.88) 360deg)`
+				background: `conic-gradient(${activeColor} 0deg, ${activeColor} ${progressDegree}, #d8e1ec ${progressDegree}, #d8e1ec 360deg)`
 			}
 		},
 		formatLastPractice(value: string | null): string {
@@ -444,8 +444,7 @@ export default defineComponent({
 
 .question-bank-page {
 	min-height: 100vh;
-	background:
-		radial-gradient(circle at top, rgba(255, 255, 255, 0.98) 0%, rgba(245, 247, 250, 0.96) 42%, rgba(236, 241, 246, 0.94) 100%);
+	background: linear-gradient(180deg, #f7f9fc 0%, #eef3f8 52%, #e9eff6 100%);
 	box-sizing: border-box;
 }
 
@@ -481,13 +480,12 @@ export default defineComponent({
 	height: 42rpx;
 	padding: 0 18rpx;
 	border-radius: 999rpx;
-	background: rgba(110, 124, 146, 0.1);
-	border: 1rpx solid rgba(110, 124, 146, 0.18);
+	background: #e8f0ff;
+	border: 1rpx solid #bccbe4;
 	font-size: 22rpx;
 	line-height: 1;
-	font-weight: 600;
-	letter-spacing: 0.02em;
-	color: #667389;
+	font-weight: 700;
+	color: #345176;
 }
 
 .question-bank-page__search-shell {
@@ -501,8 +499,10 @@ export default defineComponent({
 	height: 82rpx;
 	padding: 0 22rpx;
 	border-radius: 999rpx;
-	background: rgba(244, 247, 251, 0.96);
-	box-shadow: inset 0 0 0 1rpx rgba(225, 232, 241, 0.98);
+	background: #ffffff;
+	box-shadow:
+		0 10rpx 24rpx rgba(45, 58, 77, 0.05),
+		inset 0 0 0 1rpx #cfd8e6;
 }
 
 .question-bank-page__search-input {
@@ -525,7 +525,7 @@ export default defineComponent({
 	width: 38rpx;
 	height: 38rpx;
 	border-radius: 50%;
-	background: rgba(210, 218, 229, 0.92);
+	background: #9aa7ba;
 }
 
 .question-bank-page__search-clear-text {
@@ -539,8 +539,9 @@ export default defineComponent({
 	margin-top: 26rpx;
 	padding: 44rpx 34rpx;
 	border-radius: 30rpx;
-	background: rgba(255, 255, 255, 0.92);
-	box-shadow: 0 18rpx 40rpx rgba(43, 52, 55, 0.06);
+	background: #ffffff;
+	box-shadow: 0 16rpx 34rpx rgba(45, 58, 77, 0.06);
+	border: 1rpx solid #d6deea;
 }
 
 .question-bank-page__state-title,
@@ -571,8 +572,9 @@ export default defineComponent({
 .question-bank-page__card {
 	padding: 18rpx;
 	border-radius: 28rpx;
-	background: rgba(255, 255, 255, 0.94);
-	box-shadow: 0 16rpx 34rpx rgba(43, 52, 55, 0.06);
+	background: #ffffff;
+	box-shadow: 0 14rpx 30rpx rgba(45, 58, 77, 0.055);
+	border: 1rpx solid #d6deea;
 }
 
 .question-bank-page__card-main {
@@ -622,7 +624,7 @@ export default defineComponent({
 }
 
 .question-bank-page__cover-ring--done::after {
-	border-color: rgba(142, 184, 154, 0.22);
+	border-color: rgba(95, 143, 103, 0.22);
 	animation: question-bank-cover-pulse 2.8s ease-out infinite;
 }
 
@@ -633,15 +635,15 @@ export default defineComponent({
 	height: 100%;
 	border-radius: 22rpx;
 	overflow: hidden;
-	background: rgba(255, 255, 255, 0.94);
-	box-shadow: inset 0 0 0 2rpx rgba(255, 255, 255, 0.5);
+	background: #ffffff;
+	box-shadow: inset 0 0 0 2rpx rgba(255, 255, 255, 0.72);
 }
 
 .question-bank-page__cover {
 	width: 100%;
 	height: 100%;
 	border-radius: 22rpx;
-	background: linear-gradient(145deg, #eef3ff 0%, #dde7fb 100%);
+	background: linear-gradient(145deg, #e8f0ff 0%, #dbe7f7 100%);
 	display: block;
 	overflow: hidden;
 }
@@ -661,7 +663,7 @@ export default defineComponent({
 	line-height: 1;
 	font-family: $heading-font-family;
 	font-weight: 700;
-	color: #58657b;
+	color: #42546f;
 }
 
 .question-bank-page__cover-grid {
@@ -673,7 +675,7 @@ export default defineComponent({
 .question-bank-page__cover-dot {
 	height: 16rpx;
 	border-radius: 6rpx;
-	background: rgba(84, 94, 118, 0.16);
+	background: rgba(66, 84, 111, 0.18);
 }
 
 .question-bank-page__card-body {
@@ -720,23 +722,26 @@ export default defineComponent({
 	border-radius: 999rpx;
 	font-size: 20rpx;
 	line-height: 1;
-	font-weight: 600;
+	font-weight: 700;
 	white-space: nowrap;
 }
 
 .question-bank-page__stage-badge--active {
-	background: rgba(215, 226, 255, 0.8);
-	color: #516079;
+	background: #e8f0ff;
+	box-shadow: inset 0 0 0 1rpx #bccbe4;
+	color: #334f7c;
 }
 
 .question-bank-page__stage-badge--done {
-	background: rgba(221, 233, 222, 0.88);
-	color: #557062;
+	background: #e5f4e8;
+	box-shadow: inset 0 0 0 1rpx #bcdabe;
+	color: #315f42;
 }
 
 .question-bank-page__stage-badge--idle {
-	background: rgba(229, 234, 237, 0.9);
-	color: #707a84;
+	background: #eef2f6;
+	box-shadow: inset 0 0 0 1rpx #c9d2dc;
+	color: #465669;
 }
 
 .question-bank-page__meta-row {
@@ -753,30 +758,48 @@ export default defineComponent({
 	min-height: 40rpx;
 	padding: 0 14rpx;
 	border-radius: 999rpx;
-	background: #f3f6f9;
+	background: #ffffff;
+	box-shadow: inset 0 0 0 1rpx #cfd8e6;
 	font-size: 20rpx;
 	line-height: 1;
-	color: #707987;
+	font-weight: 700;
+	color: #39465a;
+}
+
+.question-bank-page__meta-pill--category {
+	background: #eef2f6;
+	box-shadow: inset 0 0 0 1rpx #c9d2dc;
+	color: #3c4a58;
 }
 
 .question-bank-page__meta-pill--simple {
-	background: rgba(221, 233, 222, 0.92);
-	color: #587062;
+	background: #e5f4e8;
+	box-shadow: inset 0 0 0 1rpx #bcdabe;
+	color: #315f42;
 }
 
 .question-bank-page__meta-pill--medium {
-	background: rgba(215, 226, 255, 0.86);
-	color: #516079;
+	background: #e7efff;
+	box-shadow: inset 0 0 0 1rpx #b9cae8;
+	color: #314f79;
 }
 
 .question-bank-page__meta-pill--hard {
-	background: rgba(242, 231, 218, 0.94);
-	color: #916d3f;
+	background: #fff0dc;
+	box-shadow: inset 0 0 0 1rpx #e6c58e;
+	color: #78511f;
 }
 
 .question-bank-page__meta-pill--sprint {
-	background: rgba(244, 226, 225, 0.96);
-	color: #a35c59;
+	background: #fde8e5;
+	box-shadow: inset 0 0 0 1rpx #e8b8b3;
+	color: #87413e;
+}
+
+.question-bank-page__meta-pill--count {
+	background: #fff6df;
+	box-shadow: inset 0 0 0 1rpx #e6cf91;
+	color: #735817;
 }
 
 .question-bank-page__info-row {
@@ -821,14 +844,15 @@ export default defineComponent({
 }
 
 .question-bank-page__primary-button {
-	background: linear-gradient(135deg, #545e76 0%, #7f8ca7 100%);
+	background: linear-gradient(135deg, #465a7e 0%, #6d7f9b 100%);
 	color: #ffffff;
-	box-shadow: 0 14rpx 28rpx rgba(84, 94, 118, 0.2);
+	box-shadow: 0 14rpx 28rpx rgba(54, 75, 111, 0.22);
 }
 
 .question-bank-page__ghost-button {
-	background: #eef2f6;
-	color: #5b667c;
+	background: #f7f9fc;
+	color: #34445e;
+	box-shadow: inset 0 0 0 1rpx #cbd5e4;
 }
 
 .question-bank-page__add-card {
@@ -838,21 +862,22 @@ export default defineComponent({
 	margin-top: 24rpx;
 	padding: 26rpx 24rpx;
 	border-radius: 28rpx;
-	background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(241, 245, 251, 0.92) 100%);
-	box-shadow: 0 16rpx 32rpx rgba(43, 52, 55, 0.05);
+	background: #ffffff;
+	box-shadow: 0 14rpx 30rpx rgba(45, 58, 77, 0.055);
+	border: 1rpx solid #d6deea;
 }
 
 .question-bank-page__add-mark {
 	width: 72rpx;
 	height: 72rpx;
 	border-radius: 24rpx;
-	background: rgba(84, 94, 118, 0.1);
+	background: #e8f0ff;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	font-size: 40rpx;
 	line-height: 1;
-	color: #546078;
+	color: #345176;
 	flex-shrink: 0;
 }
 

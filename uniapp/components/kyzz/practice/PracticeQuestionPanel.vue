@@ -25,10 +25,10 @@
 		</view>
 
 		<view class="practice-question-panel__meta-row">
-			<text class="practice-question-panel__meta-badge">{{ questionTypeLabel(question.questionType) }}</text>
-			<text class="practice-question-panel__meta-badge" :class="difficultyTagClass(question.difficultyLevel)">{{ difficultyLabel(question.difficultyLevel) }}</text>
-			<text v-if="question.score" class="practice-question-panel__meta-badge">{{ question.score }} 分</text>
-			<text v-if="question.yearNo" class="practice-question-panel__meta-badge">{{ question.yearNo }} 年</text>
+			<text class="practice-question-panel__meta-badge practice-question-panel__meta-badge--type" :class="questionTypeTagClass(question.questionType)">{{ questionTypeLabel(question.questionType) }}</text>
+			<text class="practice-question-panel__meta-badge practice-question-panel__meta-badge--difficulty" :class="difficultyTagClass(question.difficultyLevel)">{{ difficultyLabel(question.difficultyLevel) }}</text>
+			<text v-if="question.score" class="practice-question-panel__meta-badge practice-question-panel__meta-badge--score">{{ question.score }} 分</text>
+			<text v-if="question.yearNo" class="practice-question-panel__meta-badge practice-question-panel__meta-badge--year">{{ question.yearNo }} 年</text>
 		</view>
 
 		<view class="practice-question-panel__stem-shell">
@@ -68,6 +68,7 @@ import { defineComponent, type PropType } from 'vue'
 import type {
 	KyzzPracticeBankViewRecord,
 	KyzzPracticeQuestionView,
+	KyzzPracticeQuestionType,
 	KyzzPracticeReviewViewResult,
 	KyzzPracticeSessionProgress
 } from '@/pages/kyzz/practice/types'
@@ -120,6 +121,18 @@ export default defineComponent({
 		difficultyLabel,
 		difficultyTagClass,
 		questionTypeLabel,
+		questionTypeTagClass(questionType: KyzzPracticeQuestionType): string {
+			if (questionType === 'single') {
+				return 'is-single'
+			}
+			if (questionType === 'multiple') {
+				return 'is-multiple'
+			}
+			if (questionType === 'short') {
+				return 'is-short'
+			}
+			return ''
+		},
 		optionCardClass(optionKey: string): string {
 			const selected = this.selectedOptionKeys.includes(optionKey)
 			if (!this.reviewResult) {
@@ -172,8 +185,8 @@ export default defineComponent({
 .practice-question-panel__summary-index {
 	font-size: 34rpx;
 	line-height: 1.2;
-	font-weight: 700;
-	color: #242d3a;
+	font-weight: 800;
+	color: #1e2734;
 }
 
 .practice-question-panel__summary-source-tag,
@@ -185,21 +198,21 @@ export default defineComponent({
 	padding: 0 16rpx;
 	box-sizing: border-box;
 	border-radius: 999rpx;
-	background: rgba(223, 232, 247, 0.96);
-	box-shadow: inset 0 0 0 1rpx rgba(190, 204, 227, 0.92);
+	background: #e8f0ff;
+	box-shadow: inset 0 0 0 1rpx #bccbe4;
 	font-size: 20rpx;
 	line-height: 1;
-	font-weight: 600;
-	color: #4b627f;
+	font-weight: 700;
+	color: #345176;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
 .practice-question-panel__summary-source-tag {
-	background: rgba(237, 247, 239, 0.98);
-	box-shadow: inset 0 0 0 1rpx rgba(204, 225, 211, 0.92);
-	color: #557061;
+	background: #e9f5ed;
+	box-shadow: inset 0 0 0 1rpx #bdd8c7;
+	color: #37614a;
 }
 
 .practice-question-panel__switcher {
@@ -209,16 +222,18 @@ export default defineComponent({
 	padding: 0 18rpx;
 	height: 58rpx;
 	border-radius: 999rpx;
-	background: rgba(240, 244, 249, 0.96);
-	box-shadow: inset 0 0 0 1rpx rgba(202, 212, 228, 0.82);
+	background: #f5f7fb;
+	box-shadow:
+		0 8rpx 18rpx rgba(54, 68, 90, 0.06),
+		inset 0 0 0 1rpx #cbd5e4;
 	flex-shrink: 0;
 }
 
 .practice-question-panel__switcher-text {
 	font-size: 22rpx;
 	line-height: 1;
-	font-weight: 600;
-	color: #4a566c;
+	font-weight: 700;
+	color: #33445d;
 }
 
 .practice-question-panel__favorite-button {
@@ -230,8 +245,10 @@ export default defineComponent({
 	margin: 0;
 	padding: 0;
 	border-radius: 999rpx;
-	background: rgba(240, 244, 249, 0.96);
-	box-shadow: inset 0 0 0 1rpx rgba(202, 212, 228, 0.82);
+	background: #f7f9fc;
+	box-shadow:
+		0 8rpx 18rpx rgba(54, 68, 90, 0.05),
+		inset 0 0 0 1rpx #ccd6e5;
 }
 
 .practice-question-panel__favorite-button::after {
@@ -239,10 +256,10 @@ export default defineComponent({
 }
 
 .practice-question-panel__favorite-button.is-active {
-	background: rgba(255, 244, 229, 0.98);
+	background: #fff4df;
 	box-shadow:
-		0 10rpx 22rpx rgba(189, 122, 54, 0.12),
-		inset 0 0 0 1rpx rgba(237, 205, 165, 0.9);
+		0 10rpx 22rpx rgba(174, 104, 34, 0.14),
+		inset 0 0 0 1rpx #e8c17f;
 }
 
 .practice-question-panel__meta-row {
@@ -259,31 +276,66 @@ export default defineComponent({
 	min-height: 42rpx;
 	padding: 0 16rpx;
 	border-radius: 999rpx;
-	background: rgba(255, 255, 255, 0.96);
-	box-shadow: inset 0 0 0 1rpx rgba(220, 227, 237, 0.92);
+	background: #ffffff;
+	box-shadow: inset 0 0 0 1rpx #cfd8e6;
 	font-size: 20rpx;
 	line-height: 1;
-	color: #5d6777;
+	font-weight: 700;
+	color: #39465a;
+}
+
+.practice-question-panel__meta-badge--type.is-single {
+	background: #e8f0ff;
+	box-shadow: inset 0 0 0 1rpx #bccbe4;
+	color: #334f7c;
+}
+
+.practice-question-panel__meta-badge--type.is-multiple {
+	background: #edf5ea;
+	box-shadow: inset 0 0 0 1rpx #c2d9bc;
+	color: #3d6237;
+}
+
+.practice-question-panel__meta-badge--type.is-short {
+	background: #f4ecff;
+	box-shadow: inset 0 0 0 1rpx #d5c2ec;
+	color: #5b4678;
 }
 
 .practice-question-panel__meta-badge.is-simple {
-	background: rgba(224, 236, 225, 0.98);
-	color: #486655;
+	background: #e5f4e8;
+	box-shadow: inset 0 0 0 1rpx #bcdabe;
+	color: #315f42;
 }
 
 .practice-question-panel__meta-badge.is-medium {
-	background: rgba(220, 229, 252, 0.96);
-	color: #405775;
+	background: #e7efff;
+	box-shadow: inset 0 0 0 1rpx #b9cae8;
+	color: #314f79;
 }
 
 .practice-question-panel__meta-badge.is-hard {
-	background: rgba(244, 230, 213, 0.98);
-	color: #8b6335;
+	background: #fff0dc;
+	box-shadow: inset 0 0 0 1rpx #e6c58e;
+	color: #78511f;
 }
 
 .practice-question-panel__meta-badge.is-sprint {
-	background: rgba(246, 225, 223, 0.98);
-	color: #9e4e4b;
+	background: #fde8e5;
+	box-shadow: inset 0 0 0 1rpx #e8b8b3;
+	color: #87413e;
+}
+
+.practice-question-panel__meta-badge--score {
+	background: #fff6df;
+	box-shadow: inset 0 0 0 1rpx #e6cf91;
+	color: #735817;
+}
+
+.practice-question-panel__meta-badge--year {
+	background: #eef2f6;
+	box-shadow: inset 0 0 0 1rpx #c9d2dc;
+	color: #3c4a58;
 }
 
 .practice-question-panel__stem-shell,
@@ -291,16 +343,16 @@ export default defineComponent({
 	margin-top: 18rpx;
 	padding: 28rpx 26rpx;
 	border-radius: 30rpx;
-	background: rgba(255, 255, 255, 0.97);
-	box-shadow: 0 18rpx 36rpx rgba(50, 60, 72, 0.05);
-	border: 1rpx solid rgba(217, 225, 236, 0.9);
+	background: #ffffff;
+	box-shadow: 0 14rpx 28rpx rgba(45, 58, 77, 0.06);
+	border: 1rpx solid #d4deea;
 }
 
 .practice-question-panel__stem {
 	font-size: 31rpx;
 	line-height: 1.8;
-	font-weight: 600;
-	color: #26303d;
+	font-weight: 700;
+	color: #1f2937;
 	white-space: pre-line;
 }
 
@@ -317,26 +369,26 @@ export default defineComponent({
 	gap: 16rpx;
 	padding: 24rpx 22rpx;
 	border-radius: 26rpx;
-	background: rgba(255, 255, 255, 0.98);
-	box-shadow: 0 14rpx 30rpx rgba(50, 60, 72, 0.04);
-	border: 1rpx solid rgba(218, 225, 235, 0.88);
+	background: #ffffff;
+	box-shadow: 0 12rpx 24rpx rgba(45, 58, 77, 0.045);
+	border: 1rpx solid #d8e0eb;
 	transition: all 0.18s ease;
 }
 
 .practice-question-panel__option--selected {
-	background: linear-gradient(135deg, rgba(238, 243, 250, 0.99) 0%, rgba(226, 232, 243, 0.99) 100%);
-	box-shadow: 0 18rpx 32rpx rgba(70, 82, 106, 0.08);
-	border-color: rgba(177, 190, 211, 0.9);
+	background: #eef4ff;
+	box-shadow: 0 16rpx 30rpx rgba(55, 84, 132, 0.1);
+	border-color: #9fb7dd;
 }
 
 .practice-question-panel__option--correct {
-	background: linear-gradient(135deg, rgba(233, 245, 236, 0.99) 0%, rgba(220, 238, 227, 0.99) 100%);
-	border-color: rgba(178, 207, 186, 0.9);
+	background: #e8f6eb;
+	border-color: #97c8a4;
 }
 
 .practice-question-panel__option--wrong {
-	background: linear-gradient(135deg, rgba(248, 236, 235, 0.99) 0%, rgba(244, 226, 224, 0.99) 100%);
-	border-color: rgba(223, 186, 182, 0.9);
+	background: #fdebea;
+	border-color: #dc9b96;
 }
 
 .practice-question-panel__option-key {
@@ -346,12 +398,27 @@ export default defineComponent({
 	width: 48rpx;
 	height: 48rpx;
 	border-radius: 16rpx;
-	background: rgba(83, 96, 119, 0.14);
+	background: #e6ebf2;
 	font-size: 22rpx;
 	line-height: 1;
 	font-weight: 700;
-	color: #49566f;
+	color: #334155;
 	flex-shrink: 0;
+}
+
+.practice-question-panel__option--selected .practice-question-panel__option-key {
+	background: #5472a5;
+	color: #ffffff;
+}
+
+.practice-question-panel__option--correct .practice-question-panel__option-key {
+	background: #4f7f58;
+	color: #ffffff;
+}
+
+.practice-question-panel__option--wrong .practice-question-panel__option-key {
+	background: #b45f5b;
+	color: #ffffff;
 }
 
 .practice-question-panel__option-content {
@@ -359,7 +426,7 @@ export default defineComponent({
 	min-width: 0;
 	font-size: 27rpx;
 	line-height: 1.8;
-	color: #2b3443;
+	color: #253142;
 }
 
 .practice-question-panel__essay-input {
@@ -367,7 +434,7 @@ export default defineComponent({
 	min-height: 240rpx;
 	font-size: 28rpx;
 	line-height: 1.8;
-	color: #2a3342;
+	color: #1f2937;
 }
 
 .practice-question-panel__essay-hint {
@@ -375,6 +442,6 @@ export default defineComponent({
 	margin-top: 18rpx;
 	font-size: 22rpx;
 	line-height: 1.6;
-	color: #6f7b8d;
+	color: #5f6d7f;
 }
 </style>

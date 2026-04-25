@@ -926,7 +926,7 @@ export default defineComponent({
 .practice-page {
 	min-height: 100vh;
 	background:
-		radial-gradient(circle at top, rgba(255, 255, 255, 0.99) 0%, rgba(242, 246, 251, 0.97) 42%, rgba(229, 236, 245, 0.96) 100%);
+		linear-gradient(180deg, #f7f9fc 0%, #eef3f8 52%, #e9eff6 100%);
 	box-sizing: border-box;
 }
 
@@ -943,7 +943,7 @@ export default defineComponent({
 .practice-page__halo {
 	position: absolute;
 	border-radius: 999rpx;
-	filter: blur(24rpx);
+	filter: blur(28rpx);
 	pointer-events: none;
 }
 
@@ -952,7 +952,7 @@ export default defineComponent({
 	top: 32rpx;
 	width: 240rpx;
 	height: 240rpx;
-	background: rgba(176, 191, 217, 0.18);
+	background: rgba(149, 168, 197, 0.08);
 }
 
 .practice-page__halo--bottom {
@@ -960,7 +960,7 @@ export default defineComponent({
 	bottom: 180rpx;
 	width: 220rpx;
 	height: 220rpx;
-	background: rgba(201, 212, 230, 0.18);
+	background: rgba(116, 140, 178, 0.07);
 }
 
 .practice-page__scroll,
@@ -992,10 +992,10 @@ export default defineComponent({
 	margin: 0;
 	padding: 0;
 	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.94);
+	background: #ffffff;
 	box-shadow:
-		0 16rpx 32rpx rgba(67, 79, 100, 0.14),
-		inset 0 0 0 1rpx rgba(212, 220, 232, 0.9);
+		0 16rpx 32rpx rgba(54, 68, 90, 0.14),
+		inset 0 0 0 1rpx #cbd5e4;
 }
 
 .practice-page__scroll-top::after {
@@ -1017,7 +1017,7 @@ export default defineComponent({
 	align-items: center;
 	justify-content: center;
 	padding: 0 48rpx calc(env(safe-area-inset-bottom) + 132rpx);
-	background: rgba(247, 250, 253, 0.58);
+	background: rgba(244, 248, 252, 0.68);
 	backdrop-filter: blur(6rpx);
 	box-sizing: border-box;
 }
@@ -1029,10 +1029,10 @@ export default defineComponent({
 	width: 288rpx;
 	padding: 34rpx 32rpx 32rpx;
 	border-radius: 28rpx;
-	background: rgba(255, 255, 255, 0.95);
+	background: #ffffff;
 	box-shadow:
-		0 22rpx 52rpx rgba(66, 78, 96, 0.12),
-		inset 0 0 0 1rpx rgba(220, 226, 235, 0.86);
+		0 22rpx 52rpx rgba(54, 68, 90, 0.13),
+		inset 0 0 0 1rpx #d2dbe7;
 	box-sizing: border-box;
 }
 

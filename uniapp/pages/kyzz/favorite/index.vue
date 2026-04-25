@@ -32,7 +32,7 @@
 			>
 				<view class="favorite-page__card-head">
 					<view class="favorite-page__card-tags">
-						<text class="favorite-page__tag">{{ questionTypeLabel(item.questionType) }}</text>
+						<text class="favorite-page__tag favorite-page__tag--type" :class="questionTypeTagClass(item.questionType)">{{ questionTypeLabel(item.questionType) }}</text>
 						<text class="favorite-page__tag" :class="difficultyTagClass(item.difficultyLevel)">{{ difficultyLabel(item.difficultyLevel) }}</text>
 						<text class="favorite-page__tag favorite-page__tag--bank">题库 · {{ item.bankName }}</text>
 					</view>
@@ -87,6 +87,7 @@ import { bootstrapAuth } from '@/shared/session/session'
 import { getFavoriteQuestions, unfavoriteQuestion } from '@/pages/kyzz/api/favorite'
 import { openBankPracticeTab, openPracticeTab } from '@/pages/kyzz/practice/navigation'
 import { difficultyLabel, difficultyTagClass, questionTypeLabel } from '@/pages/kyzz/practice/view'
+import type { KyzzPracticeQuestionType } from '@/pages/kyzz/practice/types'
 import type {
 	KyzzFavoriteQuestionState,
 	KyzzFavoriteQuestionViewRecord,
@@ -154,6 +155,18 @@ export default defineComponent({
 		difficultyLabel,
 		difficultyTagClass,
 		questionTypeLabel,
+		questionTypeTagClass(questionType: KyzzPracticeQuestionType): string {
+			if (questionType === 'single') {
+				return 'is-single'
+			}
+			if (questionType === 'multiple') {
+				return 'is-multiple'
+			}
+			if (questionType === 'short') {
+				return 'is-short'
+			}
+			return ''
+		},
 		formatFavoriteQuestionTime,
 		async bootstrapAndLoad(): Promise<void> {
 			try {
@@ -271,7 +284,7 @@ export default defineComponent({
 	min-height: 100vh;
 	padding: 28rpx 26rpx calc(env(safe-area-inset-bottom) + 40rpx);
 	box-sizing: border-box;
-	background: radial-gradient(circle at top, rgba(255, 249, 246, 0.98) 0%, rgba(244, 247, 251, 0.97) 44%, rgba(231, 238, 247, 0.95) 100%);
+	background: linear-gradient(180deg, #f7f9fc 0%, #eef3f8 52%, #e9eff6 100%);
 }
 
 .favorite-page__toolbar {
@@ -289,8 +302,10 @@ export default defineComponent({
 	height: 82rpx;
 	padding: 0 22rpx;
 	border-radius: 999rpx;
-	background: rgba(255, 255, 255, 0.9);
-	box-shadow: inset 0 0 0 1rpx rgba(225, 232, 241, 0.98);
+	background: #ffffff;
+	box-shadow:
+		0 10rpx 24rpx rgba(45, 58, 77, 0.05),
+		inset 0 0 0 1rpx #cfd8e6;
 }
 
 .favorite-page__search-input {
@@ -313,7 +328,7 @@ export default defineComponent({
 	width: 38rpx;
 	height: 38rpx;
 	border-radius: 50%;
-	background: rgba(210, 218, 229, 0.92);
+	background: #9aa7ba;
 }
 
 .favorite-page__search-clear-text {
@@ -327,8 +342,9 @@ export default defineComponent({
 	margin-top: 22rpx;
 	padding: 34rpx 28rpx;
 	border-radius: 30rpx;
-	background: rgba(255, 255, 255, 0.9);
-	box-shadow: 0 20rpx 38rpx rgba(43, 52, 55, 0.06);
+	background: #ffffff;
+	box-shadow: 0 16rpx 34rpx rgba(45, 58, 77, 0.06);
+	border: 1rpx solid #d6deea;
 }
 
 .favorite-page__state-title,
@@ -359,8 +375,9 @@ export default defineComponent({
 .favorite-page__card {
 	padding: 28rpx 24rpx;
 	border-radius: 28rpx;
-	background: rgba(255, 255, 255, 0.92);
-	box-shadow: 0 20rpx 38rpx rgba(43, 52, 55, 0.05);
+	background: #ffffff;
+	box-shadow: 0 14rpx 30rpx rgba(45, 58, 77, 0.055);
+	border: 1rpx solid #d6deea;
 }
 
 .favorite-page__card-head {
@@ -386,45 +403,70 @@ export default defineComponent({
 	border-radius: 999rpx;
 	font-size: 20rpx;
 	line-height: 1;
-	font-weight: 600;
+	font-weight: 700;
 }
 
 .favorite-page__tag {
-	background: rgba(242, 246, 251, 0.98);
-	color: #5d6779;
+	background: #ffffff;
+	box-shadow: inset 0 0 0 1rpx #cfd8e6;
+	color: #39465a;
+}
+
+.favorite-page__tag--type.is-single {
+	background: #e8f0ff;
+	box-shadow: inset 0 0 0 1rpx #bccbe4;
+	color: #334f7c;
+}
+
+.favorite-page__tag--type.is-multiple {
+	background: #edf5ea;
+	box-shadow: inset 0 0 0 1rpx #c2d9bc;
+	color: #3d6237;
+}
+
+.favorite-page__tag--type.is-short {
+	background: #f4ecff;
+	box-shadow: inset 0 0 0 1rpx #d5c2ec;
+	color: #5b4678;
 }
 
 .favorite-page__tag.is-simple {
-	background: rgba(225, 236, 226, 0.98);
-	color: #466354;
+	background: #e5f4e8;
+	box-shadow: inset 0 0 0 1rpx #bcdabe;
+	color: #315f42;
 }
 
 .favorite-page__tag.is-medium {
-	background: rgba(235, 240, 247, 0.98);
-	color: #4f6078;
+	background: #e7efff;
+	box-shadow: inset 0 0 0 1rpx #b9cae8;
+	color: #314f79;
 }
 
 .favorite-page__tag.is-hard {
-	background: rgba(245, 235, 226, 0.98);
-	color: #8d5d47;
+	background: #fff0dc;
+	box-shadow: inset 0 0 0 1rpx #e6c58e;
+	color: #78511f;
 }
 
 .favorite-page__tag.is-sprint {
-	background: rgba(247, 226, 224, 0.98);
-	color: #965251;
+	background: #fde8e5;
+	box-shadow: inset 0 0 0 1rpx #e8b8b3;
+	color: #87413e;
 }
 
 .favorite-page__tag--bank {
 	max-width: 100%;
-	background: linear-gradient(135deg, rgba(232, 239, 251, 0.98) 0%, rgba(242, 247, 255, 0.98) 100%);
-	color: #4a6287;
+	background: #eef2f6;
+	box-shadow: inset 0 0 0 1rpx #c9d2dc;
+	color: #3c4a58;
 }
 
 .favorite-page__favorite-button {
 	gap: 6rpx;
 	margin: 0;
-	background: rgba(255, 244, 229, 0.98);
-	color: #8d5d47;
+	background: #fff4df;
+	color: #78511f;
+	box-shadow: inset 0 0 0 1rpx #e8c17f;
 }
 
 .favorite-page__favorite-button::after {
@@ -445,8 +487,8 @@ export default defineComponent({
 	display: block;
 	font-size: 28rpx;
 	line-height: 1.7;
-	font-weight: 600;
-	color: #27313f;
+	font-weight: 700;
+	color: #1f2937;
 }
 
 .favorite-page__stem.is-collapsed {
@@ -468,8 +510,8 @@ export default defineComponent({
 	width: 42rpx;
 	height: 36rpx;
 	border-radius: 999rpx;
-	background: rgba(243, 247, 252, 0.96);
-	box-shadow: inset 0 0 0 1rpx rgba(227, 233, 241, 0.96);
+	background: #f7f9fc;
+	box-shadow: inset 0 0 0 1rpx #cbd5e4;
 }
 
 .favorite-page__meta-row {
@@ -488,14 +530,14 @@ export default defineComponent({
 	min-height: 44rpx;
 	padding: 0 14rpx;
 	border-radius: 999rpx;
-	background: rgba(243, 247, 252, 0.96);
-	box-shadow: inset 0 0 0 1rpx rgba(227, 233, 241, 0.96);
+	background: #f7f9fc;
+	box-shadow: inset 0 0 0 1rpx #cbd5e4;
 }
 
 .favorite-page__meta-pill-text {
 	font-size: 22rpx;
 	line-height: 1.6;
-	color: #7c8796;
+	color: #5f6d7f;
 }
 
 .favorite-page__retry-button,
@@ -511,9 +553,9 @@ export default defineComponent({
 
 .favorite-page__retry-button {
 	flex-shrink: 0;
-	background: linear-gradient(135deg, #545e76 0%, #7f8ca7 100%);
+	background: linear-gradient(135deg, #465a7e 0%, #6d7f9b 100%);
 	color: #ffffff;
-	box-shadow: 0 12rpx 22rpx rgba(84, 94, 118, 0.14);
+	box-shadow: 0 12rpx 22rpx rgba(54, 75, 111, 0.18);
 }
 
 .favorite-page__retry-button::after,
@@ -532,8 +574,10 @@ export default defineComponent({
 	width: 132rpx;
 	height: 132rpx;
 	border-radius: 36rpx;
-	background: linear-gradient(180deg, rgba(255, 242, 238, 0.98) 0%, rgba(247, 225, 218, 0.96) 100%);
-	box-shadow: 0 24rpx 44rpx rgba(84, 94, 118, 0.08), inset 0 0 0 1rpx rgba(239, 210, 198, 0.88);
+	background: #fff4df;
+	box-shadow:
+		0 18rpx 34rpx rgba(45, 58, 77, 0.06),
+		inset 0 0 0 1rpx #e8c17f;
 }
 
 .favorite-page__empty-icon-core {
@@ -543,12 +587,12 @@ export default defineComponent({
 	width: 86rpx;
 	height: 86rpx;
 	border-radius: 28rpx;
-	background: linear-gradient(135deg, rgba(255, 233, 226, 0.98) 0%, rgba(255, 248, 245, 0.98) 100%);
+	background: #ffffff;
 }
 
 .favorite-page__empty-button {
 	margin-top: 24rpx;
-	background: linear-gradient(135deg, #545e76 0%, #7f8ca7 100%);
+	background: linear-gradient(135deg, #465a7e 0%, #6d7f9b 100%);
 	color: #ffffff;
 }
 </style>
