@@ -3,6 +3,7 @@
 		current="mine"
 		root-class="mine-page"
 		content-class="mine-page__content"
+		:show-tabbar="!practiceSettingsPopupVisible"
 	>
 		<view class="mine-page__profile">
 			<view class="mine-page__avatar" @tap="goProfile">
@@ -94,6 +95,22 @@
 				</button>
 			</view>
 		</view>
+
+		<uni-popup
+			ref="practiceSettingsPopup"
+			type="bottom"
+			background-color="#ffffff"
+			border-radius="28rpx 28rpx 0 0"
+			:is-mask-click="true"
+			@change="handlePracticeSettingsPopupChange"
+		>
+			<practice-settings-popup
+				:auto-jump-on-correct="practiceSettings.autoJumpOnCorrect"
+				:syncing="practiceSettings.syncing"
+				@close="closePracticeSettingsPopup"
+				@change-auto-jump="handlePracticeAutoJumpChange"
+			/>
+		</uni-popup>
 	</page-shell>
 </template>
 
@@ -101,6 +118,13 @@
 import { bootstrapAuth, getSessionSnapshot, setCurrentUser, subscribeSession } from '@/shared/session/session'
 import { getVipStatus, redeemVipKey } from '@/shared/api/vip'
 import { resolveAvatarUserKey, resolveDisplayAvatarUrl, warmAvatarCache } from '@/shared/media/avatar-cache'
+import PracticeSettingsPopup from '@/components/kyzz/practice/PracticeSettingsPopup.vue'
+import {
+	cachePracticeSettings,
+	loadPracticeSettingsWithFallback,
+	readCachedPracticeSettings,
+	syncPracticeSettings
+} from '@/pages/kyzz/practice/settings'
 
 const VIP_TYPE_TEXT = {
 	month: '月卡会员',
@@ -110,6 +134,9 @@ const VIP_TYPE_TEXT = {
 
 export default {
 	name: 'MinePage',
+	components: {
+		PracticeSettingsPopup
+	},
 	data() {
 		return {
 			user: {
@@ -125,6 +152,8 @@ export default {
 			redeemForm: {
 				key: ''
 			},
+			practiceSettings: readCachedPracticeSettings(),
+			practiceSettingsPopupVisible: false,
 			unsubscribeSession: null,
 			vipFeatures: [
 				{ key: 'unlimited', text: '无限提问', icon: 'loop' },
@@ -149,6 +178,7 @@ export default {
 	},
 	onShow() {
 		bootstrapAuth({ silent: true }).then(() => {
+			this.refreshPracticeSettings()
 			this.refreshVipStatus({ silent: true }).catch((error) => {
 				console.warn('[mine] refresh vip status failed', error)
 			})
@@ -207,6 +237,10 @@ export default {
 				this.openRedeemPopup()
 				return
 			}
+			if (key === 'setting') {
+				this.openPracticeSettingsPopup()
+				return
+			}
 			if (key === 'agreement') {
 				uni.navigateTo({
 					url: '/pages/common/agreement/index'
@@ -227,6 +261,60 @@ export default {
 				title: `${actionTextMap[key] || '功能'}开发中`,
 				icon: 'none'
 			});
+		},
+		async refreshPracticeSettings() {
+			this.practiceSettings = {
+				...this.practiceSettings,
+				...readCachedPracticeSettings(),
+				syncing: false
+			}
+			const settings = await loadPracticeSettingsWithFallback()
+			if (this.practiceSettings.syncing) {
+				return
+			}
+			this.practiceSettings = {
+				...settings,
+				syncing: false
+			}
+		},
+		openPracticeSettingsPopup() {
+			this.practiceSettingsPopupVisible = true
+			this.refreshPracticeSettings().catch((error) => {
+				console.warn('[mine] refresh practice settings failed', error)
+			})
+			this.$refs.practiceSettingsPopup && this.$refs.practiceSettingsPopup.open()
+		},
+		closePracticeSettingsPopup() {
+			this.practiceSettingsPopupVisible = false
+			this.$refs.practiceSettingsPopup && this.$refs.practiceSettingsPopup.close()
+		},
+		handlePracticeSettingsPopupChange(event) {
+			this.practiceSettingsPopupVisible = !!(event && event.show)
+		},
+		async handlePracticeAutoJumpChange(value) {
+			const autoJumpOnCorrect = !!value
+			this.practiceSettings = {
+				...this.practiceSettings,
+				autoJumpOnCorrect,
+				loaded: true,
+				syncing: true
+			}
+			cachePracticeSettings(this.practiceSettings)
+			try {
+				this.practiceSettings = await syncPracticeSettings({
+					autoJumpOnCorrect
+				})
+			} catch (error) {
+				this.practiceSettings = {
+					...this.practiceSettings,
+					loaded: true,
+					syncing: false
+				}
+				uni.showToast({
+					title: '设置已在本机生效',
+					icon: 'none'
+				})
+			}
 		},
 		openRedeemPopup() {
 			this.redeemVisible = true

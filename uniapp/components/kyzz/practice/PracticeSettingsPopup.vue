@@ -3,7 +3,7 @@
 		<view class="practice-settings-popup__header">
 			<view class="practice-settings-popup__title-wrap">
 				<text class="practice-settings-popup__title">刷题设置</text>
-				<text class="practice-settings-popup__subtitle">设置会立即应用到当前练习</text>
+				<text class="practice-settings-popup__subtitle">设置会同步到当前账号并立即生效</text>
 			</view>
 			<button class="practice-settings-popup__close" @tap="$emit('close')">
 				<uni-icons type="closeempty" size="22" color="#64748b" />
