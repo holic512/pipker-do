@@ -28,6 +28,9 @@ public class KyzzUserAnswer implements Serializable {
     /** 题库 ID。 */
     private Long questionBankId;
 
+    /** 练习来源：bank/wrong_book/favorite。 */
+    private String practiceSourceType;
+
     /** 用户答案内容。 */
     private String answerContent;
 

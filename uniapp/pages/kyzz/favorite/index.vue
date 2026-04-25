@@ -85,7 +85,7 @@
 import { defineComponent } from 'vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getFavoriteQuestions, unfavoriteQuestion } from '@/pages/kyzz/api/favorite'
-import { openPracticeTab } from '@/pages/kyzz/practice/navigation'
+import { openBankPracticeTab, openPracticeTab } from '@/pages/kyzz/practice/navigation'
 import { difficultyLabel, difficultyTagClass, questionTypeLabel } from '@/pages/kyzz/practice/view'
 import type {
 	KyzzFavoriteQuestionState,
@@ -255,8 +255,11 @@ export default defineComponent({
 				this.loadFavoriteQuestions().catch(() => {})
 				return
 			}
-			uni.switchTab({
-				url: '/pages/kyzz/practice/index'
+			openBankPracticeTab().catch(() => {
+				uni.showToast({
+					title: '跳转刷题失败',
+					icon: 'none'
+				})
 			})
 		}
 	}

@@ -39,6 +39,8 @@ import java.util.Objects;
 @Component
 public class KyzzPracticeSupport {
 
+    private static final String PRACTICE_SOURCE_TYPE_BANK = "bank";
+
     public static final String RESUME_STATUS_NOT_STARTED = "not_started";
     public static final String RESUME_STATUS_IN_PROGRESS = "in_progress";
     public static final String RESUME_STATUS_COMPLETED = "completed";
@@ -181,6 +183,7 @@ public class KyzzPracticeSupport {
         List<KyzzUserAnswer> answers = kyzzUserAnswerMapper.selectList(new LambdaQueryWrapper<KyzzUserAnswer>()
                 .eq(KyzzUserAnswer::getUserId, userId)
                 .in(KyzzUserAnswer::getQuestionBankId, normalizedBankIds)
+                .eq(KyzzUserAnswer::getPracticeSourceType, PRACTICE_SOURCE_TYPE_BANK)
                 .orderByAsc(KyzzUserAnswer::getQuestionBankId)
                 .orderByAsc(KyzzUserAnswer::getQuestionId)
                 .orderByDesc(KyzzUserAnswer::getSubmittedAt)

@@ -32,6 +32,7 @@
 <script>
 // AI 索引: 小程序自定义底部导航与共享菜单配置。
 import { createDefaultTabbarItems } from '@/shared/navigation/tabbar'
+import { openPracticeTab } from '@/pages/kyzz/practice/navigation'
 
 export default {
 	name: 'CustomTabbar',
@@ -70,9 +71,17 @@ export default {
 			return this.isActive(item) ? item.activeColor : item.color;
 		},
 		handleTabClick(item) {
-			if (!item || !item.pagePath || this.isActive(item)) return;
+			if (!item || !item.pagePath) return;
+			if (this.isActive(item)) return;
 
 			uni.vibrateShort({ type: 'light' }).catch(() => {});
+
+			if (item.key === 'practice') {
+				openPracticeTab().catch((error) => {
+					console.warn('[custom-tabbar] switch practice tab failed.', error);
+				});
+				return;
+			}
 
 			uni.switchTab({
 				url: item.pagePath,

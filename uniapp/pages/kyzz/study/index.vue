@@ -130,7 +130,7 @@
 import { defineComponent } from 'vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getCachedPracticeDashboard, preloadPracticeDashboard, warmKyzzCorePreload } from '@/shared/preload/kyzz'
-import { openPracticeTab } from '@/pages/kyzz/practice/navigation'
+import { openBankPracticeTab } from '@/pages/kyzz/practice/navigation'
 import type { KyzzPracticeBankViewRecord, KyzzPracticeDashboardState } from '@/pages/kyzz/practice/types'
 import { createEmptyPracticeDashboard, formatProgress, normalizePracticeDashboard } from '@/pages/kyzz/practice/view'
 
@@ -308,7 +308,7 @@ export default defineComponent({
         this.goPublicBanks()
         return
       }
-      openPracticeTab().catch(() => {})
+      openBankPracticeTab({ bankId: this.recommendedBank.bankId }).catch(() => {})
     },
     openShortcut(pagePath: string): void {
       uni.navigateTo({

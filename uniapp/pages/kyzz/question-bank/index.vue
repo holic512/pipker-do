@@ -132,7 +132,7 @@ import {
 	preloadMineQuestionBanks,
 	preloadPracticeDashboard
 } from '@/shared/preload/kyzz'
-import { openPracticeTab } from '@/pages/kyzz/practice/navigation'
+import { openBankPracticeTab } from '@/pages/kyzz/practice/navigation'
 import type {
 	KyzzQuestionBankMineDashboardState,
 	KyzzQuestionBankMineResponse,
@@ -433,7 +433,7 @@ export default defineComponent({
 			})
 		},
 		handleBankTap(item: KyzzQuestionBankMineViewRecord): void {
-			openPracticeTab({ bankId: item.id }).catch(() => {})
+			openBankPracticeTab({ bankId: item.id }).catch(() => {})
 		}
 	}
 })

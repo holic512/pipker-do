@@ -200,6 +200,7 @@ public class KyzzPracticeUserService {
         PracticeQuestionContext context = requirePracticeQuestionContext(userId, questionId, request == null ? null : request.getBankId());
         validateUsedSeconds(request == null ? null : request.getUsedSeconds());
         String questionType = context.question().getQuestionType();
+        String normalizedSourceType = normalizeSourceType(request == null ? null : request.getSourceType());
 
         if (QUESTION_TYPE_SHORT.equals(questionType)) {
             return buildShortQuestionPreviewResponse(context, request);
@@ -210,7 +211,7 @@ public class KyzzPracticeUserService {
         PracticeSourceNavigation sourceNavigation = buildSourceNavigation(
                 userId,
                 context.question().getId(),
-                request == null ? null : request.getSourceType(),
+                normalizedSourceType,
                 request == null ? null : request.getSourceStatus(),
                 request == null ? null : request.getKeyword()
         );
@@ -218,6 +219,7 @@ public class KyzzPracticeUserService {
                 userId,
                 context.bank().getId(),
                 context.question().getId(),
+                normalizedSourceType,
                 buildChoiceAnswerContent(answerResult.submittedOptionKeys()),
                 request.getUsedSeconds(),
                 answerResult.correct()
@@ -254,11 +256,12 @@ public class KyzzPracticeUserService {
         validateUsedSeconds(request.getUsedSeconds());
 
         antiCrawlerSecurityService.inspectPracticeSubmitBehavior(userId, request.getUsedSeconds());
+        String normalizedSourceType = normalizeSourceType(request.getSourceType());
         String submittedAnswerText = trimToEmpty(request.getAnswerText());
         PracticeSourceNavigation sourceNavigation = buildSourceNavigation(
                 userId,
                 context.question().getId(),
-                request.getSourceType(),
+                normalizedSourceType,
                 request.getSourceStatus(),
                 request.getKeyword()
         );
@@ -266,6 +269,7 @@ public class KyzzPracticeUserService {
                 userId,
                 context.bank().getId(),
                 context.question().getId(),
+                normalizedSourceType,
                 submittedAnswerText,
                 request.getUsedSeconds(),
                 request.getSelfJudgedCorrect()
@@ -384,9 +388,8 @@ public class KyzzPracticeUserService {
                 toQuestionResponse(userId, targetQuestion, optionMap.getOrDefault(targetQuestion.getId(), List.of())),
                 previousQuestion == null ? null : previousQuestion.getId(),
                 previousQuestion == null ? null : currentQuestionIndex - 1,
-                Boolean.TRUE.equals(freshAttempt)
-                        ? null
-                        : buildHistoricalReviewResult(
+                Boolean.FALSE.equals(freshAttempt)
+                        ? buildHistoricalReviewResult(
                                 activeBank,
                                 targetQuestion,
                                 queue.questions(),
@@ -396,7 +399,8 @@ public class KyzzPracticeUserService {
                                 sourceType,
                                 queue.sourceTitle(),
                                 true
-                        ),
+                        )
+                        : null,
                 sourceType,
                 queue.sourceTitle()
         );
@@ -802,6 +806,7 @@ public class KyzzPracticeUserService {
     private void persistFinalAnswer(Long userId,
                                     Long bankId,
                                     Long questionId,
+                                    String practiceSourceType,
                                     String answerContent,
                                     Integer usedSeconds,
                                     boolean correct) {
@@ -809,6 +814,7 @@ public class KyzzPracticeUserService {
         answer.setUserId(userId);
         answer.setQuestionBankId(bankId);
         answer.setQuestionId(questionId);
+        answer.setPracticeSourceType(normalizeSourceType(practiceSourceType));
         answer.setAnswerContent(answerContent);
         answer.setIsCorrect(correct ? 1 : 0);
         answer.setAnswerStatus(1);

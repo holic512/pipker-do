@@ -73,6 +73,7 @@ export function consumePracticeLaunchTarget(): KyzzPracticeLaunchTarget {
 	}
 }
 
+// AI 索引: 不带 target 时仅切回练习 tab，保留当前普通/错题/收藏练习上下文。
 export function openPracticeTab(target: KyzzPracticeLaunchTarget = {}): Promise<void> {
 	persistPracticeLaunchTarget(target)
 	return new Promise((resolve, reject) => {
@@ -84,5 +85,15 @@ export function openPracticeTab(target: KyzzPracticeLaunchTarget = {}): Promise<
 				reject(error)
 			}
 		})
+	})
+}
+
+// AI 索引: 首页开始刷题、题库列表等入口使用普通题库练习，不继承错题或收藏上下文。
+export function openBankPracticeTab(target: KyzzPracticeLaunchTarget = {}): Promise<void> {
+	return openPracticeTab({
+		...target,
+		sourceType: 'bank',
+		sourceStatus: null,
+		keyword: null
 	})
 }

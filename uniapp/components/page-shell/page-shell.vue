@@ -17,6 +17,7 @@
 <script>
 export default {
 	name: 'PageShell',
+	emits: ['menu-click'],
 	props: {
 		current: {
 			type: String,

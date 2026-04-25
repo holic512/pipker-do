@@ -51,13 +51,6 @@
 					@open-wrong-book="goWrongBook"
 				/>
 
-				<practice-comment-composer
-					v-if="reviewState.result"
-					v-model="commentState.composerContent"
-					:submitting="commentState.submitting"
-					@submit="handleSubmitComment"
-				/>
-
 				<practice-footer-actions
 					v-if="reviewState.result"
 					:review-result="reviewState.result"
@@ -73,6 +66,13 @@
 					@judge-wrong="handleSelfJudgement(false)"
 					@previous-question="handlePreviousQuestion"
 					@next-question="handleNextQuestion"
+				/>
+
+				<practice-comment-composer
+					v-if="reviewState.result"
+					v-model="commentState.composerContent"
+					:submitting="commentState.submitting"
+					@submit="handleSubmitComment"
 				/>
 
 				<practice-comment-list
@@ -280,24 +280,33 @@ function hasRouteTarget(query: KyzzPracticeSessionQuery): boolean {
 }
 
 function mergeSessionQuery(base: KyzzPracticeSessionQuery, patch: KyzzPracticeSessionQuery): KyzzPracticeSessionQuery {
+	const hasExplicitBank = patch.bankId !== null && patch.bankId !== undefined
+	const hasExplicitSource = patch.sourceType !== null && patch.sourceType !== undefined
 	const bankChanged = patch.bankId !== null
 		&& patch.bankId !== undefined
 		&& patch.bankId !== base.bankId
 	const hasExplicitQuestion = patch.questionId !== null && patch.questionId !== undefined
+	const shouldResetToBankSource = hasExplicitBank
+		&& (patch.sourceType === null || patch.sourceType === undefined)
 	const sourceChanged = patch.sourceType !== null
 		&& patch.sourceType !== undefined
 		&& patch.sourceType !== base.sourceType
+	const nextSourceType = shouldResetToBankSource
+		? null
+		: patch.sourceType ?? base.sourceType ?? null
+	const shouldUseRecommendedBank = patch.sourceType === 'bank' && !hasExplicitBank
+	const hasLaunchTarget = hasExplicitBank || hasExplicitQuestion || hasExplicitSource
 	return {
-		bankId: patch.bankId ?? base.bankId ?? null,
+		bankId: shouldUseRecommendedBank ? null : patch.bankId ?? base.bankId ?? null,
 		questionId: hasExplicitQuestion
 			? patch.questionId ?? null
-			: bankChanged || sourceChanged
+			: bankChanged || sourceChanged || shouldResetToBankSource || shouldUseRecommendedBank
 				? null
 				: base.questionId ?? null,
 		freshAttempt: patch.freshAttempt ?? base.freshAttempt ?? null,
-		sourceType: patch.sourceType ?? base.sourceType ?? null,
-		sourceStatus: patch.sourceStatus ?? base.sourceStatus ?? null,
-		keyword: patch.keyword ?? base.keyword ?? null
+		sourceType: nextSourceType,
+		sourceStatus: hasLaunchTarget ? patch.sourceStatus ?? null : base.sourceStatus ?? null,
+		keyword: hasLaunchTarget ? patch.keyword ?? null : base.keyword ?? null
 	}
 }
 
