@@ -7,6 +7,8 @@ import org.example.backend.biz.kyzz.dto.KyzzPracticeQuestionOptionResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeQuestionResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeReviewRequest;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeReviewResponse;
+import org.example.backend.biz.kyzz.dto.KyzzPracticeSettingRequest;
+import org.example.backend.biz.kyzz.dto.KyzzPracticeSettingResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeSelfJudgementRequest;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeSessionProgressResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeSessionResponse;
@@ -17,10 +19,12 @@ import org.example.backend.biz.kyzz.entity.KyzzQuestionOption;
 import org.example.backend.biz.kyzz.entity.KyzzUserAnswer;
 import org.example.backend.biz.kyzz.entity.KyzzUserQuestionBank;
 import org.example.backend.biz.kyzz.entity.KyzzUserFavorite;
+import org.example.backend.biz.kyzz.entity.KyzzUserPracticeSetting;
 import org.example.backend.biz.kyzz.entity.KyzzUserWrongQuestion;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionBankMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserAnswerMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserFavoriteMapper;
+import org.example.backend.biz.kyzz.mapper.KyzzUserPracticeSettingMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserQuestionBankMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserWrongQuestionMapper;
 import org.example.backend.biz.kyzz.support.KyzzCacheService;
@@ -61,6 +65,7 @@ public class KyzzPracticeUserService {
     private static final String WRONG_STATUS_ALL = "all";
     private static final String WRONG_STATUS_ACTIVE = "active";
     private static final String WRONG_STATUS_MASTERED = "mastered";
+    private static final boolean DEFAULT_AUTO_JUMP_ON_CORRECT = true;
     private static final Set<String> SUPPORTED_SOURCE_TYPES = Set.of(SOURCE_TYPE_BANK, SOURCE_TYPE_WRONG_BOOK, SOURCE_TYPE_FAVORITE);
     private static final Set<String> SUPPORTED_WRONG_STATUSES = Set.of(WRONG_STATUS_ALL, WRONG_STATUS_ACTIVE, WRONG_STATUS_MASTERED);
     private static final Set<String> SUPPORTED_QUESTION_TYPES = Set.of(
@@ -73,6 +78,7 @@ public class KyzzPracticeUserService {
     private final KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper;
     private final KyzzUserAnswerMapper kyzzUserAnswerMapper;
     private final KyzzUserFavoriteMapper kyzzUserFavoriteMapper;
+    private final KyzzUserPracticeSettingMapper kyzzUserPracticeSettingMapper;
     private final KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper;
     private final KyzzPracticeSupport kyzzPracticeSupport;
     private final KyzzFavoriteQuestionUserService kyzzFavoriteQuestionUserService;
@@ -83,6 +89,7 @@ public class KyzzPracticeUserService {
                                    KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper,
                                    KyzzUserAnswerMapper kyzzUserAnswerMapper,
                                    KyzzUserFavoriteMapper kyzzUserFavoriteMapper,
+                                   KyzzUserPracticeSettingMapper kyzzUserPracticeSettingMapper,
                                    KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper,
                                    KyzzPracticeSupport kyzzPracticeSupport,
                                    KyzzFavoriteQuestionUserService kyzzFavoriteQuestionUserService,
@@ -92,6 +99,7 @@ public class KyzzPracticeUserService {
         this.kyzzUserQuestionBankMapper = kyzzUserQuestionBankMapper;
         this.kyzzUserAnswerMapper = kyzzUserAnswerMapper;
         this.kyzzUserFavoriteMapper = kyzzUserFavoriteMapper;
+        this.kyzzUserPracticeSettingMapper = kyzzUserPracticeSettingMapper;
         this.kyzzUserWrongQuestionMapper = kyzzUserWrongQuestionMapper;
         this.kyzzPracticeSupport = kyzzPracticeSupport;
         this.kyzzFavoriteQuestionUserService = kyzzFavoriteQuestionUserService;
@@ -116,6 +124,28 @@ public class KyzzPracticeUserService {
                 buildRecommendedReason(recommended),
                 context.records()
         );
+    }
+
+    public KyzzPracticeSettingResponse getSettings(Long userId) {
+        return toPracticeSettingResponse(loadPracticeSetting(userId));
+    }
+
+    @Transactional
+    public KyzzPracticeSettingResponse updateSettings(Long userId, KyzzPracticeSettingRequest request) {
+        boolean autoJumpOnCorrect = request == null || request.getAutoJumpOnCorrect() == null
+                ? DEFAULT_AUTO_JUMP_ON_CORRECT
+                : request.getAutoJumpOnCorrect();
+        KyzzUserPracticeSetting existing = loadPracticeSetting(userId);
+        if (existing == null) {
+            KyzzUserPracticeSetting setting = new KyzzUserPracticeSetting();
+            setting.setUserId(userId);
+            setting.setAutoJumpOnCorrect(autoJumpOnCorrect ? 1 : 0);
+            kyzzUserPracticeSettingMapper.insert(setting);
+            return toPracticeSettingResponse(setting);
+        }
+        existing.setAutoJumpOnCorrect(autoJumpOnCorrect ? 1 : 0);
+        kyzzUserPracticeSettingMapper.updateById(existing);
+        return toPracticeSettingResponse(existing);
     }
 
     public KyzzPracticeSessionResponse getSession(Long userId,
@@ -859,6 +889,19 @@ public class KyzzPracticeUserService {
         existing.setIsMastered(0);
         existing.setMasteredAt(null);
         kyzzUserWrongQuestionMapper.updateById(existing);
+    }
+
+    private KyzzUserPracticeSetting loadPracticeSetting(Long userId) {
+        return kyzzUserPracticeSettingMapper.selectOne(new LambdaQueryWrapper<KyzzUserPracticeSetting>()
+                .eq(KyzzUserPracticeSetting::getUserId, userId)
+                .last("limit 1"));
+    }
+
+    private KyzzPracticeSettingResponse toPracticeSettingResponse(KyzzUserPracticeSetting setting) {
+        boolean autoJumpOnCorrect = setting == null || setting.getAutoJumpOnCorrect() == null
+                ? DEFAULT_AUTO_JUMP_ON_CORRECT
+                : Objects.equals(setting.getAutoJumpOnCorrect(), 1);
+        return new KyzzPracticeSettingResponse(autoJumpOnCorrect);
     }
 
     private KyzzPracticeBankRecordResponse toPracticeBankRecord(KyzzQuestionBank bank,

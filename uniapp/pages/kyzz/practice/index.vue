@@ -4,7 +4,7 @@
 		current="practice"
 		root-class="practice-page"
 		content-class="practice-page__content"
-		:show-tabbar="!switchPopupVisible"
+		:show-tabbar="!switchPopupVisible && !settingsPopupVisible"
 	>
 		<view class="practice-page__inner">
 			<view class="practice-page__halo practice-page__halo--top"></view>
@@ -39,6 +39,7 @@
 					@change-answer-text="handleAnswerTextChange"
 					@open-switcher="openSwitchPopup"
 					@toggle-favorite="handleToggleFavorite"
+					@open-settings="openSettingsPopup"
 				/>
 
 				<practice-review-panel
@@ -56,7 +57,7 @@
 					:review-result="reviewState.result"
 					:awaiting-self-judgement="awaitingSelfJudgement"
 					:can-submit="canSubmit"
-					:submitting="uiState.submitting"
+					:submitting="uiState.submitting || autoJumping"
 					:submit-button-text="submitButtonText"
 					:can-go-previous="canGoPrevious"
 					:can-go-next="canGoNext"
@@ -71,7 +72,7 @@
 				<practice-comment-composer
 					v-if="reviewState.result"
 					v-model="commentState.composerContent"
-					:submitting="commentState.submitting"
+					:submitting="commentState.submitting || autoJumping"
 					@submit="handleSubmitComment"
 				/>
 
@@ -92,7 +93,7 @@
 					:review-result="reviewState.result"
 					:awaiting-self-judgement="awaitingSelfJudgement"
 					:can-submit="canSubmit"
-					:submitting="uiState.submitting"
+					:submitting="uiState.submitting || autoJumping"
 					:submit-button-text="submitButtonText"
 					:can-go-previous="canGoPrevious"
 					:can-go-next="canGoNext"
@@ -131,6 +132,22 @@
 				/>
 			</uni-popup>
 
+			<uni-popup
+				ref="settingsPopup"
+				type="bottom"
+				background-color="#ffffff"
+				border-radius="28rpx 28rpx 0 0"
+				:is-mask-click="true"
+				@change="handleSettingsPopupChange"
+			>
+				<practice-settings-popup
+					:auto-jump-on-correct="practiceSettings.autoJumpOnCorrect"
+					:syncing="practiceSettings.syncing"
+					@close="closeSettingsPopup"
+					@change-auto-jump="handleAutoJumpSettingChange"
+				/>
+			</uni-popup>
+
 			<view v-if="uiState.loading" class="practice-page__loading-mask">
 				<view class="practice-page__loading-card">
 					<view class="practice-page__loading-spinner"></view>
@@ -152,11 +169,18 @@ import PracticeCommentComposer from '@/components/kyzz/practice/PracticeCommentC
 import PracticeCommentList from '@/components/kyzz/practice/PracticeCommentList.vue'
 import PracticeFooterActions from '@/components/kyzz/practice/PracticeFooterActions.vue'
 import PracticeBankSwitcher from '@/components/kyzz/practice/PracticeBankSwitcher.vue'
+import PracticeSettingsPopup from '@/components/kyzz/practice/PracticeSettingsPopup.vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getPracticeSession, reviewPracticeQuestion, selfJudgePracticeQuestion } from '@/pages/kyzz/api/practice'
 import { favoriteQuestion, unfavoriteQuestion } from '@/pages/kyzz/api/favorite'
 import { createPracticeQuestionComment, getPracticeQuestionComments } from '@/pages/kyzz/api/comment'
 import { consumePracticeLaunchTarget } from '@/pages/kyzz/practice/navigation'
+import {
+	cachePracticeSettings,
+	loadPracticeSettingsWithFallback,
+	readCachedPracticeSettings,
+	syncPracticeSettings
+} from '@/pages/kyzz/practice/settings'
 import type {
 	KyzzPracticeAnswerDraftState,
 	KyzzPracticeBankViewRecord,
@@ -165,7 +189,9 @@ import type {
 	KyzzPracticeNoticeViewModel,
 	KyzzPracticeReviewRequest,
 	KyzzPracticeReviewState,
+	KyzzPracticeReviewViewResult,
 	KyzzPracticeSelfJudgementRequest,
+	KyzzPracticeSettingState,
 	KyzzPracticeSessionQuery,
 	KyzzPracticeSessionState,
 	KyzzPracticeUiState,
@@ -205,7 +231,11 @@ interface PracticePageState {
 	commentState: KyzzPracticeCommentState
 	uiState: KyzzPracticeUiState
 	routeQuery: KyzzPracticeSessionQuery
+	practiceSettings: KyzzPracticeSettingState
 	switchPopupVisible: boolean
+	settingsPopupVisible: boolean
+	autoJumping: boolean
+	autoJumpTimer: ReturnType<typeof setTimeout> | null
 }
 
 interface UniPopupChangeEvent {
@@ -320,7 +350,8 @@ export default defineComponent({
 		PracticeCommentComposer,
 		PracticeCommentList,
 		PracticeFooterActions,
-		PracticeBankSwitcher
+		PracticeBankSwitcher,
+		PracticeSettingsPopup
 	},
 	data(): PracticePageState {
 		return {
@@ -337,7 +368,11 @@ export default defineComponent({
 				sourceStatus: null,
 				keyword: null
 			},
-			switchPopupVisible: false
+			practiceSettings: readCachedPracticeSettings(),
+			switchPopupVisible: false,
+			settingsPopupVisible: false,
+			autoJumping: false,
+			autoJumpTimer: null
 		}
 	},
 	computed: {
@@ -354,7 +389,7 @@ export default defineComponent({
 			return Boolean(this.reviewState.result && this.reviewState.result.requiresSelfJudgement && this.reviewState.result.isCorrect === null)
 		},
 		canSubmit(): boolean {
-			if (!this.question || this.uiState.submitting || Boolean(this.reviewState.result)) {
+			if (!this.question || this.uiState.submitting || this.autoJumping || Boolean(this.reviewState.result)) {
 				return false
 			}
 			if (this.question.questionType === 'single') {
@@ -369,12 +404,13 @@ export default defineComponent({
 			return '查看答案'
 		},
 		canGoPrevious(): boolean {
-			return Boolean(this.sessionState.previousQuestionId)
+			return Boolean(this.sessionState.previousQuestionId && !this.autoJumping)
 		},
 		canGoNext(): boolean {
 			return Boolean(
 				this.reviewState.result
 				&& !this.awaitingSelfJudgement
+				&& !this.autoJumping
 				&& this.reviewState.result.nextQuestionId
 			)
 		},
@@ -493,16 +529,39 @@ export default defineComponent({
 			this.bootstrapAndLoad(this.routeQuery)
 		}
 	},
+	onHide() {
+		this.cancelAutoJump()
+	},
+	onUnload() {
+		this.cancelAutoJump()
+	},
 	methods: {
 		async bootstrapAndLoad(query: KyzzPracticeSessionQuery): Promise<void> {
 			try {
 				await bootstrapAuth({ silent: true })
+				const settingsPromise = this.refreshPracticeSettings()
 				await this.loadSession(query)
+				await settingsPromise
 			} catch (error) {
 				uni.showToast({
 					title: resolveErrorMessage(error, '刷题页面加载失败'),
 					icon: 'none'
 				})
+			}
+		},
+		async refreshPracticeSettings(): Promise<void> {
+			this.practiceSettings = {
+				...this.practiceSettings,
+				...readCachedPracticeSettings(),
+				syncing: false
+			}
+			const settings = await loadPracticeSettingsWithFallback()
+			if (this.practiceSettings.syncing) {
+				return
+			}
+			this.practiceSettings = {
+				...settings,
+				syncing: false
 			}
 		},
 		async loadSession(query: KyzzPracticeSessionQuery): Promise<void> {
@@ -559,11 +618,102 @@ export default defineComponent({
 				this.uiState.loading = false
 			}
 		},
+		async handleAutoJumpSettingChange(value: boolean): Promise<void> {
+			const autoJumpOnCorrect = Boolean(value)
+			this.practiceSettings = {
+				...this.practiceSettings,
+				autoJumpOnCorrect,
+				loaded: true,
+				syncing: true
+			}
+			cachePracticeSettings(this.practiceSettings)
+			if (!autoJumpOnCorrect) {
+				this.cancelAutoJump()
+			}
+			try {
+				this.practiceSettings = await syncPracticeSettings({
+					autoJumpOnCorrect
+				})
+			} catch (error) {
+				this.practiceSettings = {
+					...this.practiceSettings,
+					loaded: true,
+					syncing: false
+				}
+				uni.showToast({
+					title: '设置已在本机生效',
+					icon: 'none'
+				})
+			}
+		},
+		openSettingsPopup(): void {
+			if (this.autoJumping) {
+				return
+			}
+			this.settingsPopupVisible = true
+			;(this.$refs.settingsPopup as UniPopupRef | undefined)?.open()
+		},
+		closeSettingsPopup(): void {
+			this.settingsPopupVisible = false
+			;(this.$refs.settingsPopup as UniPopupRef | undefined)?.close()
+		},
+		handleSettingsPopupChange(event: UniPopupChangeEvent): void {
+			this.settingsPopupVisible = Boolean(event?.show)
+		},
+		cancelAutoJump(): void {
+			if (this.autoJumpTimer) {
+				clearTimeout(this.autoJumpTimer)
+				this.autoJumpTimer = null
+			}
+			this.autoJumping = false
+		},
+		scheduleAutoJumpIfNeeded(result: KyzzPracticeReviewViewResult | null): boolean {
+			if (!result || result.isCorrect !== true || result.requiresSelfJudgement) {
+				return false
+			}
+			if (!this.practiceSettings.autoJumpOnCorrect) {
+				return false
+			}
+			if (!result.nextQuestionId) {
+				uni.showToast({
+					title: '已完成当前题组',
+					icon: 'none'
+				})
+				return false
+			}
+			if (this.autoJumping) {
+				return true
+			}
+			const bankId = this.currentBank?.bankId ?? result.bankId
+			if (!bankId) {
+				return false
+			}
+			this.cancelAutoJump()
+			this.autoJumping = true
+			uni.showToast({
+				title: '回答正确，正在进入下一题',
+				icon: 'none',
+				duration: 700
+			})
+			this.autoJumpTimer = setTimeout(() => {
+				this.autoJumpTimer = null
+				this.loadSession({
+					bankId,
+					questionId: result.nextQuestionId,
+					sourceType: this.routeQuery.sourceType ?? null,
+					sourceStatus: this.routeQuery.sourceStatus ?? null,
+					keyword: this.routeQuery.keyword ?? null
+				}).finally(() => {
+					this.autoJumping = false
+				})
+			}, 500)
+			return true
+		},
 		handleAnswerTextChange(value: string): void {
 			this.answerDraft.answerText = value
 		},
 		handleOptionTap(optionKey: string): void {
-			if (this.reviewState.result || !this.question) {
+			if (this.reviewState.result || !this.question || this.autoJumping) {
 				return
 			}
 			if (this.question.questionType === 'single') {
@@ -585,7 +735,7 @@ export default defineComponent({
 			return diff > 0 ? diff : 0
 		},
 		async handleReview(): Promise<void> {
-			if (!this.question || !this.currentBank || !this.canSubmit || this.uiState.submitting) {
+			if (!this.question || !this.currentBank || !this.canSubmit || this.uiState.submitting || this.autoJumping) {
 				return
 			}
 			this.uiState.submitting = true
@@ -605,7 +755,9 @@ export default defineComponent({
 				const result = await reviewPracticeQuestion(this.question.id, payload)
 				this.reviewState.result = normalizePracticeReviewResult(result)
 				this.replaceBankRecord(this.reviewState.result.updatedBank)
-				await this.loadComments({ reset: true, questionId: this.question.id, silent: true })
+				if (!this.scheduleAutoJumpIfNeeded(this.reviewState.result)) {
+					await this.loadComments({ reset: true, questionId: this.question.id, silent: true })
+				}
 			} catch (error) {
 				uni.showToast({
 					title: resolveErrorMessage(error, '查看答案失败'),
@@ -616,7 +768,7 @@ export default defineComponent({
 			}
 		},
 		async handleSelfJudgement(selfJudgedCorrect: boolean): Promise<void> {
-			if (!this.question || !this.currentBank || this.uiState.submitting || !this.awaitingSelfJudgement) {
+			if (!this.question || !this.currentBank || this.uiState.submitting || this.autoJumping || !this.awaitingSelfJudgement) {
 				return
 			}
 			this.uiState.submitting = true
@@ -633,7 +785,9 @@ export default defineComponent({
 				const result = await selfJudgePracticeQuestion(this.question.id, payload)
 				this.reviewState.result = normalizePracticeReviewResult(result)
 				this.replaceBankRecord(this.reviewState.result.updatedBank)
-				await this.loadComments({ reset: true, questionId: this.question.id, silent: true })
+				if (!this.scheduleAutoJumpIfNeeded(this.reviewState.result)) {
+					await this.loadComments({ reset: true, questionId: this.question.id, silent: true })
+				}
 			} catch (error) {
 				uni.showToast({
 					title: resolveErrorMessage(error, '自判结果提交失败'),
@@ -709,13 +863,13 @@ export default defineComponent({
 			}
 		},
 		async handleLoadMoreComments(): Promise<void> {
-			if (!this.reviewState.result || !this.commentState.hasMore) {
+			if (!this.reviewState.result || !this.commentState.hasMore || this.autoJumping) {
 				return
 			}
 			await this.loadComments({ reset: false, silent: true })
 		},
 		async handleRetryComments(): Promise<void> {
-			if (!this.reviewState.result || !this.sessionState.question) {
+			if (!this.reviewState.result || !this.sessionState.question || this.autoJumping) {
 				return
 			}
 			const shouldReset = !this.commentState.records.length
@@ -726,7 +880,7 @@ export default defineComponent({
 			})
 		},
 		async handleSubmitComment(): Promise<void> {
-			if (!this.reviewState.result || !this.sessionState.question || this.commentState.submitting) {
+			if (!this.reviewState.result || !this.sessionState.question || this.commentState.submitting || this.autoJumping) {
 				return
 			}
 			const content = this.commentState.composerContent.trim()
@@ -764,7 +918,7 @@ export default defineComponent({
 			}
 		},
 		async handleToggleFavorite(): Promise<void> {
-			if (!this.question || this.uiState.submitting) {
+			if (!this.question || this.uiState.submitting || this.autoJumping) {
 				return
 			}
 			const questionId = this.question.id
@@ -801,9 +955,10 @@ export default defineComponent({
 			}
 		},
 		async handleNextQuestion(): Promise<void> {
-			if (!this.reviewState.result || !this.currentBank || !this.reviewState.result.nextQuestionId) {
+			if (!this.reviewState.result || !this.currentBank || !this.reviewState.result.nextQuestionId || this.autoJumping) {
 				return
 			}
+			this.cancelAutoJump()
 			await this.loadSession({
 				bankId: this.currentBank.bankId,
 				questionId: this.reviewState.result.nextQuestionId,
@@ -813,7 +968,7 @@ export default defineComponent({
 			})
 		},
 		async handlePreviousQuestion(): Promise<void> {
-			if (!this.canGoPrevious || this.uiState.loading || this.uiState.submitting) {
+			if (!this.canGoPrevious || this.uiState.loading || this.uiState.submitting || this.autoJumping) {
 				return
 			}
 			if (this.hasPendingState) {
@@ -831,6 +986,7 @@ export default defineComponent({
 			if (!this.currentBank || !this.sessionState.previousQuestionId) {
 				return
 			}
+			this.cancelAutoJump()
 			await this.loadSession({
 				bankId: this.currentBank.bankId,
 				questionId: this.sessionState.previousQuestionId,
@@ -840,6 +996,9 @@ export default defineComponent({
 			})
 		},
 		async handleSwitchBank(item: KyzzPracticeBankViewRecord): Promise<void> {
+			if (this.autoJumping) {
+				return
+			}
 			if (this.currentBank && this.currentBank.bankId === item.bankId) {
 				this.closeSwitchPopup()
 				return
@@ -857,6 +1016,7 @@ export default defineComponent({
 				}
 			}
 			this.closeSwitchPopup()
+			this.cancelAutoJump()
 			await this.loadSession({
 				bankId: item.bankId,
 				sourceType: null,
@@ -865,7 +1025,7 @@ export default defineComponent({
 			})
 		},
 		openSwitchPopup(): void {
-			if (!this.sessionState.switchableBanks.length || this.uiState.emptyState === 'no_bank') {
+			if (this.autoJumping || !this.sessionState.switchableBanks.length || this.uiState.emptyState === 'no_bank') {
 				return
 			}
 			this.switchPopupVisible = true

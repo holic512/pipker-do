@@ -14,6 +14,8 @@ import type {
 	KyzzPracticeReviewState,
 	KyzzPracticeReviewResponse,
 	KyzzPracticeReviewViewResult,
+	KyzzPracticeSettingResponse,
+	KyzzPracticeSettingState,
 	KyzzPracticeSessionResponse,
 	KyzzPracticeSessionState,
 	KyzzPracticeSourceType,
@@ -109,12 +111,28 @@ export function createEmptyPracticeCommentState(): KyzzPracticeCommentState {
 	}
 }
 
+export function createDefaultPracticeSettings(): KyzzPracticeSettingState {
+	return {
+		autoJumpOnCorrect: true,
+		loaded: false,
+		syncing: false
+	}
+}
+
 export function createEmptyPracticeUiState(): KyzzPracticeUiState {
 	return {
 		loading: false,
 		loadedOnce: false,
 		submitting: false,
 		emptyState: null
+	}
+}
+
+export function normalizePracticeSettings(result: KyzzPracticeSettingResponse | null | undefined): KyzzPracticeSettingState {
+	return {
+		autoJumpOnCorrect: toBoolean(result?.autoJumpOnCorrect, true),
+		loaded: true,
+		syncing: false
 	}
 }
 

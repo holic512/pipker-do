@@ -10,7 +10,14 @@
 			</view>
 			<view class="practice-question-panel__summary-actions">
 				<button
-					class="practice-question-panel__favorite-button"
+					class="practice-question-panel__icon-button"
+					@tap="$emit('open-settings')"
+				>
+					<uni-icons type="gear" size="18" color="#667286" />
+				</button>
+
+				<button
+					class="practice-question-panel__icon-button practice-question-panel__favorite-button"
 					:class="{ 'is-active': isFavorite }"
 					@tap="$emit('toggle-favorite')"
 				>
@@ -116,7 +123,7 @@ export default defineComponent({
 			default: false
 		}
 	},
-	emits: ['select-option', 'change-answer-text', 'open-switcher', 'toggle-favorite'],
+	emits: ['select-option', 'change-answer-text', 'open-switcher', 'toggle-favorite', 'open-settings'],
 	methods: {
 		difficultyLabel,
 		difficultyTagClass,
@@ -236,7 +243,7 @@ export default defineComponent({
 	color: #33445d;
 }
 
-.practice-question-panel__favorite-button {
+.practice-question-panel__icon-button {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -251,7 +258,7 @@ export default defineComponent({
 		inset 0 0 0 1rpx #ccd6e5;
 }
 
-.practice-question-panel__favorite-button::after {
+.practice-question-panel__icon-button::after {
 	border: 0;
 }
 

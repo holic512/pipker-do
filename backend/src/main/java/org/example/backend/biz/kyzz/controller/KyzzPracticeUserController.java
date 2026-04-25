@@ -3,6 +3,8 @@ package org.example.backend.biz.kyzz.controller;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeDashboardResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeReviewRequest;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeReviewResponse;
+import org.example.backend.biz.kyzz.dto.KyzzPracticeSettingRequest;
+import org.example.backend.biz.kyzz.dto.KyzzPracticeSettingResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeSelfJudgementRequest;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeSessionResponse;
 import org.example.backend.biz.kyzz.service.KyzzPracticeUserService;
@@ -12,6 +14,7 @@ import org.example.backend.shared.security.LoginUserContext;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -53,6 +56,19 @@ public class KyzzPracticeUserController {
                 sourceType,
                 sourceStatus,
                 keyword
+        ));
+    }
+
+    @GetMapping("/settings")
+    public ApiResponse<KyzzPracticeSettingResponse> getSettings() {
+        return responseFactory.success(kyzzPracticeUserService.getSettings(LoginUserContext.requireUserId()));
+    }
+
+    @PutMapping("/settings")
+    public ApiResponse<KyzzPracticeSettingResponse> updateSettings(@RequestBody KyzzPracticeSettingRequest request) {
+        return responseFactory.success(kyzzPracticeUserService.updateSettings(
+                LoginUserContext.requireUserId(),
+                request
         ));
     }
 

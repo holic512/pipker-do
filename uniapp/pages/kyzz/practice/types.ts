@@ -116,6 +116,20 @@ export interface KyzzPracticeSessionQuery {
 	keyword?: string | null
 }
 
+export interface KyzzPracticeSettingResponse {
+	autoJumpOnCorrect: boolean | number | string | null
+}
+
+export interface KyzzPracticeSettingRequest {
+	autoJumpOnCorrect: boolean
+}
+
+export interface KyzzPracticeSettingState {
+	autoJumpOnCorrect: boolean
+	loaded: boolean
+	syncing: boolean
+}
+
 export interface KyzzPracticeLaunchTarget {
 	bankId?: number | null
 	questionId?: number | null

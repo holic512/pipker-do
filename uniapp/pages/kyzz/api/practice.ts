@@ -3,6 +3,8 @@ import type {
 	KyzzPracticeDashboardResponse,
 	KyzzPracticeReviewRequest,
 	KyzzPracticeReviewResponse,
+	KyzzPracticeSettingRequest,
+	KyzzPracticeSettingResponse,
 	KyzzPracticeSelfJudgementRequest,
 	KyzzPracticeSessionQuery,
 	KyzzPracticeSessionResponse
@@ -35,6 +37,24 @@ export function getPracticeSession(params: KyzzPracticeSessionQuery = {}): Promi
 		url: '/api/kyzz/practice/session',
 		method: 'GET',
 		data: compactQuery(params)
+	})
+}
+
+export function getPracticeSettings(): Promise<KyzzPracticeSettingResponse> {
+	return request({
+		url: '/api/kyzz/practice/settings',
+		method: 'GET'
+	})
+}
+
+export function updatePracticeSettings(data: KyzzPracticeSettingRequest): Promise<KyzzPracticeSettingResponse> {
+	return request({
+		url: '/api/kyzz/practice/settings',
+		method: 'PUT',
+		header: {
+			'Content-Type': 'application/json'
+		},
+		data
 	})
 }
 

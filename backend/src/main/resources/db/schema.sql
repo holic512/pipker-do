@@ -230,6 +230,17 @@ CREATE TABLE IF NOT EXISTS kyzz_user_question_bank (
     CONSTRAINT fk_kyzz_user_question_bank_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户题库表';
 
+CREATE TABLE IF NOT EXISTS kyzz_user_practice_setting (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '刷题设置ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    auto_jump_on_correct TINYINT NOT NULL DEFAULT 1 COMMENT '答案正确后是否自动进入下一题：0否 1是',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_user_practice_setting_user_id (user_id),
+    CONSTRAINT fk_kyzz_user_practice_setting_user_id FOREIGN KEY (user_id) REFERENCES app_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYZZ用户刷题设置表';
+
 CREATE TABLE IF NOT EXISTS kyzz_user_answer (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户答题记录ID',
     user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
