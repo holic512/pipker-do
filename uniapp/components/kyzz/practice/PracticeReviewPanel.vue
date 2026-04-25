@@ -23,6 +23,19 @@
 			<text class="practice-review-panel__value">{{ reviewResult.analysis }}</text>
 		</view>
 
+		<view v-if="syncing || syncErrorMessage" class="practice-review-panel__sync" :class="{ 'is-error': syncErrorMessage }">
+			<text class="practice-review-panel__sync-text">
+				{{ syncErrorMessage || '正在同步作答记录...' }}
+			</text>
+			<button
+				v-if="syncErrorMessage"
+				class="practice-review-panel__sync-button"
+				@tap="$emit('retry-review-sync')"
+			>
+				重试同步
+			</button>
+		</view>
+
 		<view v-if="showWrongBookHint" class="practice-review-panel__wrong-book">
 			<view class="practice-review-panel__wrong-book-copy">
 				<text class="practice-review-panel__wrong-book-title">已收进错题本</text>
@@ -61,9 +74,17 @@ export default defineComponent({
 		showWrongBookHint: {
 			type: Boolean,
 			default: false
+		},
+		syncing: {
+			type: Boolean,
+			default: false
+		},
+		syncErrorMessage: {
+			type: String,
+			default: ''
 		}
 	},
-	emits: ['open-wrong-book']
+	emits: ['open-wrong-book', 'retry-review-sync']
 })
 </script>
 
@@ -149,6 +170,53 @@ export default defineComponent({
 	padding: 22rpx 20rpx;
 	border-radius: 24rpx;
 	background: linear-gradient(135deg, rgba(252, 239, 237, 0.96) 0%, rgba(255, 247, 246, 0.98) 100%);
+}
+
+.practice-review-panel__sync {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 18rpx;
+	margin-top: 22rpx;
+	padding: 18rpx 20rpx;
+	border-radius: 22rpx;
+	background: rgba(238, 243, 249, 0.96);
+	border: 1rpx solid rgba(202, 214, 229, 0.9);
+}
+
+.practice-review-panel__sync.is-error {
+	background: rgba(255, 241, 237, 0.98);
+	border-color: rgba(226, 180, 168, 0.95);
+}
+
+.practice-review-panel__sync-text {
+	flex: 1;
+	min-width: 0;
+	font-size: 22rpx;
+	line-height: 1.5;
+	color: #607083;
+}
+
+.practice-review-panel__sync.is-error .practice-review-panel__sync-text {
+	color: #985241;
+}
+
+.practice-review-panel__sync-button {
+	flex-shrink: 0;
+	margin: 0;
+	padding: 0 22rpx;
+	height: 58rpx;
+	line-height: 58rpx;
+	border-radius: 18rpx;
+	background: #fff7f4;
+	color: #8b4a39;
+	font-size: 21rpx;
+	font-weight: 700;
+	box-shadow: inset 0 0 0 1rpx #e2b4a8;
+}
+
+.practice-review-panel__sync-button::after {
+	border: 0;
 }
 
 .practice-review-panel__wrong-book-copy {

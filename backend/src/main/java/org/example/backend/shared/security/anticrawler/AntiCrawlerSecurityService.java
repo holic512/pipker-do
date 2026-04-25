@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * AI 索引: 小程序用户接口反扒核心服务。
@@ -28,6 +30,7 @@ public class AntiCrawlerSecurityService {
     private static final String RULE_CODE_SESSION_QUESTION_SCAN = "practice-session-question-scan";
     private static final String RULE_CODE_SESSION_BANK_SCAN = "practice-session-bank-scan";
     private static final String RULE_CODE_BOT_SUBMIT = "practice-submit-bot";
+    private static final Pattern PRACTICE_QUESTION_PATH = Pattern.compile("^/api/kyzz/practice/questions/(\\d+)/.*$");
 
     private final AntiCrawlerProperties antiCrawlerProperties;
     private final AntiCrawlerRouteClassifier antiCrawlerRouteClassifier;
@@ -301,7 +304,7 @@ public class AntiCrawlerSecurityService {
             String identity = sanitizeForKey("user:" + userId + ":device:" + valueOrDefault(resolveDeviceId(fingerprint), "missing")
                     + ":route:" + routeMatch.normalizedPath());
 
-            String questionId = trimToNull(request.getParameter("questionId"));
+            String questionId = resolvePracticeQuestionId(request);
             if (questionId != null) {
                 long distinctQuestionCount = antiCrawlerStateStore.addSetMemberAndCount(
                         setKey("practice-session-question", identity),
@@ -607,6 +610,15 @@ public class AntiCrawlerSecurityService {
             return null;
         }
         return value.trim();
+    }
+
+    private String resolvePracticeQuestionId(HttpServletRequest request) {
+        String questionId = trimToNull(request.getParameter("questionId"));
+        if (questionId != null) {
+            return questionId;
+        }
+        Matcher matcher = PRACTICE_QUESTION_PATH.matcher(request.getRequestURI());
+        return matcher.matches() ? matcher.group(1) : null;
     }
 
     private Map<String, Object> buildPayload(AntiCrawlerRouteMatch routeMatch,

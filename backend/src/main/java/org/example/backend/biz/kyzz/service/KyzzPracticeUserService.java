@@ -1,6 +1,7 @@
 package org.example.backend.biz.kyzz.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import org.example.backend.biz.kyzz.dto.KyzzPracticeAnswerPreviewResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeBankRecordResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeDashboardResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeQuestionOptionResponse;
@@ -198,6 +199,7 @@ public class KyzzPracticeUserService {
                 .getOrDefault(resolvedBankId, Map.of());
         int currentQuestionIndex = findQuestionIndex(questions, targetQuestion.getId());
         KyzzQuestion previousQuestion = currentQuestionIndex > 1 ? questions.get(currentQuestionIndex - 2) : null;
+        KyzzQuestion nextQuestion = resolveNextQuestion(questions, currentQuestionIndex);
         return new KyzzPracticeSessionResponse(
                 activeBank,
                 context.records(),
@@ -205,6 +207,8 @@ public class KyzzPracticeUserService {
                 toQuestionResponse(userId, targetQuestion, optionMap.getOrDefault(targetQuestion.getId(), List.of())),
                 previousQuestion == null ? null : previousQuestion.getId(),
                 previousQuestion == null ? null : currentQuestionIndex - 1,
+                nextQuestion == null ? null : nextQuestion.getId(),
+                nextQuestion == null ? null : currentQuestionIndex + 1,
                 Boolean.TRUE.equals(freshAttempt)
                         ? null
                         : buildHistoricalReviewResult(
@@ -220,6 +224,20 @@ public class KyzzPracticeUserService {
                         ),
                 SOURCE_TYPE_BANK,
                 sourceTitle(SOURCE_TYPE_BANK)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public KyzzPracticeAnswerPreviewResponse getAnswerPreview(Long userId, Long questionId, Long bankId) {
+        PracticeQuestionContext context = requirePracticeQuestionContext(userId, questionId, bankId);
+        List<KyzzQuestionOption> options = context.optionMap().getOrDefault(context.question().getId(), List.of());
+        return new KyzzPracticeAnswerPreviewResponse(
+                context.question().getId(),
+                context.bank().getId(),
+                context.question().getQuestionType(),
+                resolveCorrectOptionKeys(options),
+                context.question().getAnswerText(),
+                context.question().getAnalysis()
         );
     }
 
@@ -410,6 +428,7 @@ public class KyzzPracticeUserService {
                 .getOrDefault(activeBank.getBankId(), Map.of());
         int currentQuestionIndex = findQuestionIndex(queue.questions(), targetQuestion.getId());
         KyzzQuestion previousQuestion = currentQuestionIndex > 1 ? queue.questions().get(currentQuestionIndex - 2) : null;
+        KyzzQuestion nextQuestion = resolveNextQuestion(queue.questions(), currentQuestionIndex);
 
         return new KyzzPracticeSessionResponse(
                 activeBank,
@@ -418,6 +437,8 @@ public class KyzzPracticeUserService {
                 toQuestionResponse(userId, targetQuestion, optionMap.getOrDefault(targetQuestion.getId(), List.of())),
                 previousQuestion == null ? null : previousQuestion.getId(),
                 previousQuestion == null ? null : currentQuestionIndex - 1,
+                nextQuestion == null ? null : nextQuestion.getId(),
+                nextQuestion == null ? null : currentQuestionIndex + 1,
                 Boolean.FALSE.equals(freshAttempt)
                         ? buildHistoricalReviewResult(
                                 activeBank,
@@ -660,13 +681,7 @@ public class KyzzPracticeUserService {
         if (latestAnswer == null || !Objects.equals(latestAnswer.getAnswerStatus(), 1)) {
             return null;
         }
-        List<String> correctOptionKeys = options.stream()
-                .filter(option -> Objects.equals(option.getIsCorrect(), 1))
-                .map(KyzzQuestionOption::getOptionKey)
-                .filter(StringUtils::hasText)
-                .map(value -> value.trim().toUpperCase(Locale.ROOT))
-                .sorted()
-                .toList();
+        List<String> correctOptionKeys = resolveCorrectOptionKeys(options);
         Long nextQuestionId = null;
         Integer nextQuestionIndex = null;
         boolean completedBank = false;
@@ -734,13 +749,7 @@ public class KyzzPracticeUserService {
                                                          KyzzPracticeReviewRequest request) {
         String questionType = context.question().getQuestionType();
         List<String> submittedOptionKeys = normalizeOptionKeys(request == null ? null : request.getSelectedOptionKeys());
-        List<String> correctOptionKeys = context.optionMap().getOrDefault(context.question().getId(), List.of()).stream()
-                .filter(option -> Objects.equals(option.getIsCorrect(), 1))
-                .map(KyzzQuestionOption::getOptionKey)
-                .filter(StringUtils::hasText)
-                .map(value -> value.trim().toUpperCase(Locale.ROOT))
-                .sorted()
-                .toList();
+        List<String> correctOptionKeys = resolveCorrectOptionKeys(context.optionMap().getOrDefault(context.question().getId(), List.of()));
 
         if (QUESTION_TYPE_SINGLE.equals(questionType)) {
             if (submittedOptionKeys.size() != 1) {
@@ -955,6 +964,26 @@ public class KyzzPracticeUserService {
                 kyzzFavoriteQuestionUserService.isFavorite(userId, question.getId()),
                 optionResponses
         );
+    }
+
+    private KyzzQuestion resolveNextQuestion(List<KyzzQuestion> questions, int currentQuestionIndex) {
+        if (questions == null || currentQuestionIndex <= 0 || currentQuestionIndex >= questions.size()) {
+            return null;
+        }
+        return questions.get(currentQuestionIndex);
+    }
+
+    private List<String> resolveCorrectOptionKeys(List<KyzzQuestionOption> options) {
+        if (options == null || options.isEmpty()) {
+            return List.of();
+        }
+        return options.stream()
+                .filter(option -> Objects.equals(option.getIsCorrect(), 1))
+                .map(KyzzQuestionOption::getOptionKey)
+                .filter(StringUtils::hasText)
+                .map(value -> value.trim().toUpperCase(Locale.ROOT))
+                .sorted()
+                .toList();
     }
 
     private KyzzPracticeBankRecordResponse resolveRecommendedRecord(List<KyzzPracticeBankRecordResponse> records) {

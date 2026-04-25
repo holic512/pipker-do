@@ -1,5 +1,6 @@
 package org.example.backend.biz.kyzz.controller;
 
+import org.example.backend.biz.kyzz.dto.KyzzPracticeAnswerPreviewResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeDashboardResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeReviewRequest;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeReviewResponse;
@@ -69,6 +70,16 @@ public class KyzzPracticeUserController {
         return responseFactory.success(kyzzPracticeUserService.updateSettings(
                 LoginUserContext.requireUserId(),
                 request
+        ));
+    }
+
+    @GetMapping("/questions/{questionId}/answer-preview")
+    public ApiResponse<KyzzPracticeAnswerPreviewResponse> getAnswerPreview(@PathVariable Long questionId,
+                                                                           @RequestParam Long bankId) {
+        return responseFactory.success(kyzzPracticeUserService.getAnswerPreview(
+                LoginUserContext.requireUserId(),
+                questionId,
+                bankId
         ));
     }
 

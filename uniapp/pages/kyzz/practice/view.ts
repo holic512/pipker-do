@@ -74,6 +74,8 @@ export function createEmptyPracticeSession(): KyzzPracticeSessionState {
 		question: null,
 		previousQuestionId: null,
 		previousQuestionIndex: 0,
+		nextQuestionId: null,
+		nextQuestionIndex: 0,
 		reviewResult: null,
 		sourceType: 'bank',
 		sourceTitle: '题库练习'
@@ -180,6 +182,8 @@ export function normalizePracticeSession(result: KyzzPracticeSessionResponse): K
 			: null,
 		previousQuestionId: result?.previousQuestionId ?? null,
 		previousQuestionIndex: toNumber(result?.previousQuestionIndex),
+		nextQuestionId: result?.nextQuestionId ?? null,
+		nextQuestionIndex: toNumber(result?.nextQuestionIndex),
 		reviewResult: result?.reviewResult ? normalizePracticeReviewResult(result.reviewResult) : null,
 		sourceType: normalizePracticeSourceType(result?.sourceType),
 		sourceTitle: result?.sourceTitle || sourceTypeLabel(normalizePracticeSourceType(result?.sourceType))

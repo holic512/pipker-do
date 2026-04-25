@@ -49,7 +49,10 @@
 					:user-answer-display="userAnswerDisplay"
 					:standard-answer-display="standardAnswerDisplay"
 					:show-wrong-book-hint="showWrongBookHint"
+					:syncing="reviewSyncing"
+					:sync-error-message="reviewSyncErrorMessage"
 					@open-wrong-book="goWrongBook"
+					@retry-review-sync="handleRetryReviewSync"
 				/>
 
 				<practice-footer-actions
@@ -172,6 +175,13 @@ import PracticeBankSwitcher from '@/components/kyzz/practice/PracticeBankSwitche
 import PracticeSettingsPopup from '@/components/kyzz/practice/PracticeSettingsPopup.vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getPracticeSession, reviewPracticeQuestion, selfJudgePracticeQuestion } from '@/pages/kyzz/api/practice'
+import {
+	getCachedPracticeAnswerPreview,
+	getCachedPracticeSession,
+	preloadPracticeAnswerPreview,
+	preloadPracticeSession,
+	setCachedPracticeSession
+} from '@/shared/preload/kyzz'
 import { favoriteQuestion, unfavoriteQuestion } from '@/pages/kyzz/api/favorite'
 import { createPracticeQuestionComment, getPracticeQuestionComments } from '@/pages/kyzz/api/comment'
 import { consumePracticeLaunchTarget } from '@/pages/kyzz/practice/navigation'
@@ -182,17 +192,21 @@ import {
 	syncPracticeSettings
 } from '@/pages/kyzz/practice/settings'
 import type {
+	KyzzPracticeAnswerPreviewResponse,
 	KyzzPracticeAnswerDraftState,
 	KyzzPracticeBankViewRecord,
+	KyzzPracticeBankRecordResponse,
 	KyzzPracticeCommentState,
 	KyzzPracticeCommentCreateRequest,
 	KyzzPracticeNoticeViewModel,
 	KyzzPracticeReviewRequest,
+	KyzzPracticeReviewResponse,
 	KyzzPracticeReviewState,
 	KyzzPracticeReviewViewResult,
 	KyzzPracticeSelfJudgementRequest,
 	KyzzPracticeSettingState,
 	KyzzPracticeSessionQuery,
+	KyzzPracticeSessionResponse,
 	KyzzPracticeSessionState,
 	KyzzPracticeUiState,
 	UniPopupRef,
@@ -232,10 +246,18 @@ interface PracticePageState {
 	uiState: KyzzPracticeUiState
 	routeQuery: KyzzPracticeSessionQuery
 	practiceSettings: KyzzPracticeSettingState
+	reviewSyncing: boolean
+	reviewSyncErrorMessage: string
+	pendingReviewSync: PracticeReviewSyncTask | null
 	switchPopupVisible: boolean
 	settingsPopupVisible: boolean
 	autoJumping: boolean
 	autoJumpTimer: ReturnType<typeof setTimeout> | null
+}
+
+interface PracticeReviewSyncTask {
+	questionId: number
+	payload: KyzzPracticeReviewRequest
 }
 
 interface UniPopupChangeEvent {
@@ -301,6 +323,18 @@ function showModal(options: { title: string; content: string; confirmText?: stri
 			}
 		})
 	})
+}
+
+function normalizeOptionKeyList(value: string[] | null | undefined): string[] {
+	return Array.isArray(value)
+		? value.map((item) => String(item).trim().toUpperCase()).filter(Boolean).sort()
+		: []
+}
+
+function areOptionKeyListsEqual(left: string[] | null | undefined, right: string[] | null | undefined): boolean {
+	const leftKeys = normalizeOptionKeyList(left)
+	const rightKeys = normalizeOptionKeyList(right)
+	return leftKeys.length === rightKeys.length && leftKeys.every((item, index) => item === rightKeys[index])
 }
 
 function hasRouteTarget(query: KyzzPracticeSessionQuery): boolean {
@@ -369,6 +403,9 @@ export default defineComponent({
 				keyword: null
 			},
 			practiceSettings: readCachedPracticeSettings(),
+			reviewSyncing: false,
+			reviewSyncErrorMessage: '',
+			pendingReviewSync: null,
 			switchPopupVisible: false,
 			settingsPopupVisible: false,
 			autoJumping: false,
@@ -404,13 +441,15 @@ export default defineComponent({
 			return '查看答案'
 		},
 		canGoPrevious(): boolean {
-			return Boolean(this.sessionState.previousQuestionId && !this.autoJumping)
+			return Boolean(this.sessionState.previousQuestionId && !this.autoJumping && !this.reviewSyncing && !this.reviewSyncErrorMessage)
 		},
 		canGoNext(): boolean {
 			return Boolean(
 				this.reviewState.result
 				&& !this.awaitingSelfJudgement
 				&& !this.autoJumping
+				&& !this.reviewSyncing
+				&& !this.reviewSyncErrorMessage
 				&& this.reviewState.result.nextQuestionId
 			)
 		},
@@ -424,7 +463,13 @@ export default defineComponent({
 			return '下一题'
 		},
 		showWrongBookHint(): boolean {
-			return Boolean(this.reviewState.result && this.reviewState.result.isCorrect === false && !this.awaitingSelfJudgement)
+			return Boolean(
+				this.reviewState.result
+				&& this.reviewState.result.isCorrect === false
+				&& !this.awaitingSelfJudgement
+				&& !this.reviewSyncing
+				&& !this.reviewSyncErrorMessage
+			)
 		},
 		userAnswerDisplay(): string {
 			if (!this.reviewState.result) {
@@ -450,6 +495,9 @@ export default defineComponent({
 			return this.reviewState.result.answerText || '暂无标准答案'
 		},
 		hasPendingState(): boolean {
+			if (this.reviewSyncing || this.reviewSyncErrorMessage) {
+				return true
+			}
 			if (this.awaitingSelfJudgement) {
 				return true
 			}
@@ -564,47 +612,68 @@ export default defineComponent({
 				syncing: false
 			}
 		},
-		async loadSession(query: KyzzPracticeSessionQuery): Promise<void> {
+		applySessionResult(result: KyzzPracticeSessionResponse, query: KyzzPracticeSessionQuery): void {
+			this.sessionState = normalizePracticeSession(result)
+			this.reviewState = {
+				result: this.sessionState.reviewResult
+			}
+			this.reviewSyncing = false
+			this.reviewSyncErrorMessage = ''
+			this.pendingReviewSync = null
+			this.answerDraft = this.reviewState.result
+				? {
+					selectedOptionKeys: [...this.reviewState.result.submittedOptionKeys],
+					answerText: this.reviewState.result.submittedAnswerText || '',
+					questionStartedAt: Date.now()
+				}
+				: createEmptyPracticeAnswerDraft()
+			this.routeQuery = {
+				bankId: this.sessionState.activeBank?.bankId ?? query.bankId ?? null,
+				questionId: this.sessionState.question?.id ?? query.questionId ?? null,
+				freshAttempt: null,
+				sourceType: this.sessionState.sourceType === 'bank' ? null : this.sessionState.sourceType,
+				sourceStatus: query.sourceStatus ?? null,
+				keyword: query.keyword ?? null
+			}
+			if (this.reviewState.result && this.sessionState.question) {
+				this.loadComments({ reset: true, questionId: this.sessionState.question.id, silent: true }).catch((error) => {
+					console.warn('[practice] load comments after session failed', error)
+				})
+			} else {
+				this.resetComments()
+			}
+			this.uiState.emptyState = null
+			this.uiState.loadedOnce = true
+			this.warmNextPracticeSession()
+			uni.pageScrollTo({
+				scrollTop: 0,
+				duration: 0
+			})
+		},
+		async loadSession(query: KyzzPracticeSessionQuery, options: { preferCache?: boolean } = {}): Promise<void> {
 			if (this.uiState.loading) {
 				return
 			}
+			if (options.preferCache) {
+				const cachedSession = getCachedPracticeSession(query)
+				if (cachedSession) {
+					this.applySessionResult(cachedSession, query)
+					return
+				}
+			}
 			this.uiState.loading = true
 			try {
-				const result = await getPracticeSession(query)
-				this.sessionState = normalizePracticeSession(result)
-				this.reviewState = {
-					result: this.sessionState.reviewResult
-				}
-				this.answerDraft = this.reviewState.result
-					? {
-						selectedOptionKeys: [...this.reviewState.result.submittedOptionKeys],
-						answerText: this.reviewState.result.submittedAnswerText || '',
-						questionStartedAt: Date.now()
-					}
-					: createEmptyPracticeAnswerDraft()
-				this.routeQuery = {
-					bankId: this.sessionState.activeBank?.bankId ?? query.bankId ?? null,
-					questionId: this.sessionState.question?.id ?? query.questionId ?? null,
-					freshAttempt: null,
-					sourceType: this.sessionState.sourceType === 'bank' ? null : this.sessionState.sourceType,
-					sourceStatus: query.sourceStatus ?? null,
-					keyword: query.keyword ?? null
-				}
-				if (this.reviewState.result && this.sessionState.question) {
-					await this.loadComments({ reset: true, questionId: this.sessionState.question.id, silent: true })
-				} else {
-					this.resetComments()
-				}
-				this.uiState.emptyState = null
-				this.uiState.loadedOnce = true
-				uni.pageScrollTo({
-					scrollTop: 0,
-					duration: 0
-				})
+				const result = options.preferCache
+					? await preloadPracticeSession(query)
+					: await getPracticeSession(query)
+				this.applySessionResult(result, query)
 			} catch (error) {
 				this.sessionState = createEmptyPracticeSession()
 				this.answerDraft = createEmptyPracticeAnswerDraft()
 				this.reviewState = createEmptyPracticeReviewState()
+				this.reviewSyncing = false
+				this.reviewSyncErrorMessage = ''
+				this.pendingReviewSync = null
 				this.resetComments()
 				this.uiState.loadedOnce = true
 				this.uiState.emptyState = resolvePracticeEmptyState(error)
@@ -617,6 +686,109 @@ export default defineComponent({
 			} finally {
 				this.uiState.loading = false
 			}
+		},
+		buildQuestionSessionQuery(questionId: number | null | undefined): KyzzPracticeSessionQuery | null {
+			if (!questionId || !this.currentBank) {
+				return null
+			}
+			return {
+				bankId: this.currentBank.bankId,
+				questionId,
+				sourceType: this.routeQuery.sourceType ?? null,
+				sourceStatus: this.routeQuery.sourceStatus ?? null,
+				keyword: this.routeQuery.keyword ?? null
+			}
+		},
+		warmNextPracticeSession(): void {
+			const query = this.buildQuestionSessionQuery(this.sessionState.nextQuestionId)
+			if (!query) {
+				return
+			}
+			preloadPracticeSession(query).catch((error) => {
+				console.warn('[preload:practice] next session skipped', error)
+			})
+		},
+		patchCachedPracticeSessionBank(
+			query: KyzzPracticeSessionQuery | null,
+			updatedBank: KyzzPracticeBankRecordResponse | KyzzPracticeBankViewRecord | null
+		): void {
+			if (!query || !updatedBank) {
+				return
+			}
+			const cachedSession = getCachedPracticeSession(query)
+			if (!cachedSession) {
+				return
+			}
+			setCachedPracticeSession(query, {
+				...cachedSession,
+				activeBank: cachedSession.activeBank?.bankId === updatedBank.bankId ? updatedBank : cachedSession.activeBank,
+				switchableBanks: Array.isArray(cachedSession.switchableBanks)
+					? cachedSession.switchableBanks.map((item) => item.bankId === updatedBank.bankId ? updatedBank : item)
+					: []
+			})
+		},
+		warmAnswerPreviewForCurrentQuestion(): void {
+			if (!this.question || !this.currentBank || this.reviewState.result) {
+				return
+			}
+			preloadPracticeAnswerPreview(this.question.id, this.currentBank.bankId).catch((error) => {
+				console.warn('[preload:practice] answer preview skipped', error)
+			})
+		},
+		async loadAnswerPreviewForCurrentQuestion(): Promise<KyzzPracticeAnswerPreviewResponse> {
+			if (!this.question || !this.currentBank) {
+				throw new Error('题目不能为空')
+			}
+			const cachedPreview = getCachedPracticeAnswerPreview(this.question.id, this.currentBank.bankId)
+			if (cachedPreview) {
+				return cachedPreview
+			}
+			return preloadPracticeAnswerPreview(this.question.id, this.currentBank.bankId)
+		},
+		buildReviewPayload(): KyzzPracticeReviewRequest | null {
+			if (!this.question || !this.currentBank) {
+				return null
+			}
+			const payload: KyzzPracticeReviewRequest = {
+				bankId: this.currentBank.bankId,
+				usedSeconds: this.buildUsedSeconds(),
+				sourceType: this.routeQuery.sourceType ?? null,
+				sourceStatus: this.routeQuery.sourceStatus ?? null,
+				keyword: this.routeQuery.keyword ?? null
+			}
+			if (this.question.questionType === 'short') {
+				payload.answerText = this.answerDraft.answerText.trim()
+			} else {
+				payload.selectedOptionKeys = [...this.answerDraft.selectedOptionKeys]
+			}
+			return payload
+		},
+		buildPreviewReviewResult(
+			preview: KyzzPracticeAnswerPreviewResponse,
+			payload: KyzzPracticeReviewRequest
+		): KyzzPracticeReviewViewResult {
+			const submittedOptionKeys = normalizeOptionKeyList(payload.selectedOptionKeys)
+			const isShortQuestion = preview.questionType === 'short'
+			const response: KyzzPracticeReviewResponse = {
+				questionId: preview.questionId,
+				bankId: preview.bankId,
+				questionType: preview.questionType,
+				submittedOptionKeys: isShortQuestion ? [] : submittedOptionKeys,
+				submittedAnswerText: isShortQuestion ? payload.answerText || '' : null,
+				requiresSelfJudgement: isShortQuestion,
+				isCorrect: isShortQuestion ? null : areOptionKeyListsEqual(submittedOptionKeys, preview.correctOptionKeys),
+				correctOptionKeys: normalizeOptionKeyList(preview.correctOptionKeys),
+				answerText: preview.answerText,
+				analysis: preview.analysis,
+				updatedBank: null,
+				nextQuestionId: isShortQuestion ? null : this.sessionState.nextQuestionId,
+				nextQuestionIndex: isShortQuestion ? null : this.sessionState.nextQuestionIndex,
+				completedBank: false,
+				sourceType: this.sessionState.sourceType,
+				sourceTitle: this.sessionState.sourceTitle,
+				completedSource: !isShortQuestion && !this.sessionState.nextQuestionId
+			}
+			return normalizePracticeReviewResult(response)
 		},
 		async handleAutoJumpSettingChange(value: boolean): Promise<void> {
 			const autoJumpOnCorrect = Boolean(value)
@@ -703,7 +875,7 @@ export default defineComponent({
 					sourceType: this.routeQuery.sourceType ?? null,
 					sourceStatus: this.routeQuery.sourceStatus ?? null,
 					keyword: this.routeQuery.keyword ?? null
-				}).finally(() => {
+				}, { preferCache: true }).finally(() => {
 					this.autoJumping = false
 				})
 			}, 500)
@@ -711,6 +883,9 @@ export default defineComponent({
 		},
 		handleAnswerTextChange(value: string): void {
 			this.answerDraft.answerText = value
+			if (value.trim()) {
+				this.warmAnswerPreviewForCurrentQuestion()
+			}
 		},
 		handleOptionTap(optionKey: string): void {
 			if (this.reviewState.result || !this.question || this.autoJumping) {
@@ -718,6 +893,7 @@ export default defineComponent({
 			}
 			if (this.question.questionType === 'single') {
 				this.answerDraft.selectedOptionKeys = [optionKey]
+				this.warmAnswerPreviewForCurrentQuestion()
 				return
 			}
 			if (this.question.questionType === 'multiple') {
@@ -728,6 +904,9 @@ export default defineComponent({
 					selected.add(optionKey)
 				}
 				this.answerDraft.selectedOptionKeys = Array.from(selected).sort()
+				if (this.answerDraft.selectedOptionKeys.length) {
+					this.warmAnswerPreviewForCurrentQuestion()
+				}
 			}
 		},
 		buildUsedSeconds(): number {
@@ -740,23 +919,43 @@ export default defineComponent({
 			}
 			this.uiState.submitting = true
 			try {
-				const payload: KyzzPracticeReviewRequest = {
-					bankId: this.currentBank.bankId,
-					usedSeconds: this.buildUsedSeconds(),
-					sourceType: this.routeQuery.sourceType ?? null,
-					sourceStatus: this.routeQuery.sourceStatus ?? null,
-					keyword: this.routeQuery.keyword ?? null
+				const questionId = this.question.id
+				const payload = this.buildReviewPayload()
+				if (!payload) {
+					return
 				}
-				if (this.question.questionType === 'short') {
-					payload.answerText = this.answerDraft.answerText.trim()
-				} else {
-					payload.selectedOptionKeys = this.answerDraft.selectedOptionKeys
+				let preview: KyzzPracticeAnswerPreviewResponse | null = null
+				try {
+					preview = await this.loadAnswerPreviewForCurrentQuestion()
+				} catch (previewError) {
+					console.warn('[practice] answer preview fallback to review request', previewError)
 				}
-				const result = await reviewPracticeQuestion(this.question.id, payload)
+				if (preview) {
+					this.reviewState.result = this.buildPreviewReviewResult(preview, payload)
+					if (this.question.questionType === 'short') {
+						this.uiState.submitting = false
+						await this.loadComments({ reset: true, questionId, silent: true })
+						return
+					}
+					this.resetComments(questionId)
+					this.uiState.submitting = false
+					this.syncObjectiveReview({
+						questionId,
+						payload
+					}).catch((error) => {
+						console.warn('[practice] objective review sync failed', error)
+					})
+					return
+				}
+				const result = await reviewPracticeQuestion(questionId, payload)
 				this.reviewState.result = normalizePracticeReviewResult(result)
+				this.patchCachedPracticeSessionBank(
+					this.buildQuestionSessionQuery(this.reviewState.result.nextQuestionId),
+					this.reviewState.result.updatedBank
+				)
 				this.replaceBankRecord(this.reviewState.result.updatedBank)
 				if (!this.scheduleAutoJumpIfNeeded(this.reviewState.result)) {
-					await this.loadComments({ reset: true, questionId: this.question.id, silent: true })
+					await this.loadComments({ reset: true, questionId, silent: true })
 				}
 			} catch (error) {
 				uni.showToast({
@@ -765,6 +964,49 @@ export default defineComponent({
 				})
 			} finally {
 				this.uiState.submitting = false
+			}
+		},
+		async syncObjectiveReview(task: PracticeReviewSyncTask): Promise<void> {
+			this.reviewSyncing = true
+			this.reviewSyncErrorMessage = ''
+			this.pendingReviewSync = task
+			try {
+				const result = await reviewPracticeQuestion(task.questionId, task.payload)
+				if (!this.sessionState.question || this.sessionState.question.id !== task.questionId) {
+					this.reviewSyncing = false
+					this.pendingReviewSync = null
+					return
+				}
+				this.reviewState.result = normalizePracticeReviewResult(result)
+				this.patchCachedPracticeSessionBank(
+					this.buildQuestionSessionQuery(this.reviewState.result.nextQuestionId),
+					this.reviewState.result.updatedBank
+				)
+				this.replaceBankRecord(this.reviewState.result.updatedBank)
+				this.reviewSyncing = false
+				this.reviewSyncErrorMessage = ''
+				this.pendingReviewSync = null
+				if (!this.scheduleAutoJumpIfNeeded(this.reviewState.result)) {
+					await this.loadComments({ reset: true, questionId: task.questionId, silent: true })
+				}
+			} catch (error) {
+				this.reviewSyncing = false
+				this.reviewSyncErrorMessage = resolveErrorMessage(error, '作答记录同步失败，重试后才能进入下一题')
+				uni.showToast({
+					title: this.reviewSyncErrorMessage,
+					icon: 'none'
+				})
+				throw error
+			}
+		},
+		async handleRetryReviewSync(): Promise<void> {
+			if (!this.pendingReviewSync || this.reviewSyncing || this.autoJumping) {
+				return
+			}
+			try {
+				await this.syncObjectiveReview(this.pendingReviewSync)
+			} catch (error) {
+				console.warn('[practice] retry review sync failed', error)
 			}
 		},
 		async handleSelfJudgement(selfJudgedCorrect: boolean): Promise<void> {
@@ -784,6 +1026,10 @@ export default defineComponent({
 				}
 				const result = await selfJudgePracticeQuestion(this.question.id, payload)
 				this.reviewState.result = normalizePracticeReviewResult(result)
+				this.patchCachedPracticeSessionBank(
+					this.buildQuestionSessionQuery(this.reviewState.result.nextQuestionId),
+					this.reviewState.result.updatedBank
+				)
 				this.replaceBankRecord(this.reviewState.result.updatedBank)
 				if (!this.scheduleAutoJumpIfNeeded(this.reviewState.result)) {
 					await this.loadComments({ reset: true, questionId: this.question.id, silent: true })
@@ -955,7 +1201,7 @@ export default defineComponent({
 			}
 		},
 		async handleNextQuestion(): Promise<void> {
-			if (!this.reviewState.result || !this.currentBank || !this.reviewState.result.nextQuestionId || this.autoJumping) {
+			if (!this.reviewState.result || !this.currentBank || !this.reviewState.result.nextQuestionId || this.autoJumping || this.reviewSyncing || this.reviewSyncErrorMessage) {
 				return
 			}
 			this.cancelAutoJump()
@@ -965,7 +1211,7 @@ export default defineComponent({
 				sourceType: this.routeQuery.sourceType ?? null,
 				sourceStatus: this.routeQuery.sourceStatus ?? null,
 				keyword: this.routeQuery.keyword ?? null
-			})
+			}, { preferCache: true })
 		},
 		async handlePreviousQuestion(): Promise<void> {
 			if (!this.canGoPrevious || this.uiState.loading || this.uiState.submitting || this.autoJumping) {

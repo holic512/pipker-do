@@ -25,6 +25,10 @@ public class KyzzPracticeSessionResponse implements Serializable {
 
     private Integer previousQuestionIndex;
 
+    private Long nextQuestionId;
+
+    private Integer nextQuestionIndex;
+
     private KyzzPracticeReviewResponse reviewResult;
 
     private String sourceType;

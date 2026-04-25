@@ -1,5 +1,6 @@
 import request from '@/shared/network/request'
 import type {
+	KyzzPracticeAnswerPreviewResponse,
 	KyzzPracticeDashboardResponse,
 	KyzzPracticeReviewRequest,
 	KyzzPracticeReviewResponse,
@@ -55,6 +56,16 @@ export function updatePracticeSettings(data: KyzzPracticeSettingRequest): Promis
 			'Content-Type': 'application/json'
 		},
 		data
+	})
+}
+
+export function getPracticeAnswerPreview(questionId: number, bankId: number): Promise<KyzzPracticeAnswerPreviewResponse> {
+	return request({
+		url: `/api/kyzz/practice/questions/${questionId}/answer-preview`,
+		method: 'GET',
+		data: {
+			bankId
+		}
 	})
 }
 

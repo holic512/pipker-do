@@ -90,6 +90,8 @@ export interface KyzzPracticeSessionResponse {
 	question: KyzzPracticeQuestionResponse | null
 	previousQuestionId: number | null
 	previousQuestionIndex: number | string | null
+	nextQuestionId: number | null
+	nextQuestionIndex: number | string | null
 	reviewResult: KyzzPracticeReviewResponse | null
 	sourceType: KyzzPracticeSourceType | string | null
 	sourceTitle: string | null
@@ -102,6 +104,8 @@ export interface KyzzPracticeSessionState {
 	question: KyzzPracticeQuestionView | null
 	previousQuestionId: number | null
 	previousQuestionIndex: number
+	nextQuestionId: number | null
+	nextQuestionIndex: number
 	reviewResult: KyzzPracticeReviewViewResult | null
 	sourceType: KyzzPracticeSourceType
 	sourceTitle: string
@@ -151,6 +155,15 @@ export interface KyzzPracticeReviewRequest {
 
 export interface KyzzPracticeSelfJudgementRequest extends KyzzPracticeReviewRequest {
 	selfJudgedCorrect: boolean
+}
+
+export interface KyzzPracticeAnswerPreviewResponse {
+	questionId: number
+	bankId: number
+	questionType: KyzzPracticeQuestionType
+	correctOptionKeys: string[]
+	answerText: string | null
+	analysis: string | null
 }
 
 export interface KyzzPracticeReviewResponse {

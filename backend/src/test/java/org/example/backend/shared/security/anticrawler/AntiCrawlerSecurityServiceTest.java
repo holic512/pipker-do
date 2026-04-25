@@ -82,6 +82,37 @@ class AntiCrawlerSecurityServiceTest {
     }
 
     @Test
+    void shouldCountPracticeAnswerPreviewPathQuestionWhenScanning() {
+        AntiCrawlerRouteMatch routeMatch = new AntiCrawlerRouteClassifier()
+                .match("/api/kyzz/practice/questions/1/answer-preview", "GET");
+        assertEquals(AntiCrawlerRouteGroup.PRACTICE_SESSION_READ, routeMatch.group());
+        assertEquals("/api/kyzz/practice/questions/{questionId}/answer-preview", routeMatch.normalizedPath());
+
+        AntiCrawlerProperties properties = createDefaultProperties();
+        properties.getGroups().get(AntiCrawlerRouteGroup.PRACTICE_SESSION_READ.code()).setOneSecondLimit(100);
+        properties.getGroups().get(AntiCrawlerRouteGroup.PRACTICE_SESSION_READ.code()).setOneMinuteLimit(1000);
+        properties.getGroups().get(AntiCrawlerRouteGroup.PRACTICE_SESSION_READ.code()).setTenMinuteLimit(1000);
+        AntiCrawlerSecurityService service = newService(properties);
+
+        for (int questionId = 1; questionId < 40; questionId++) {
+            MockHttpServletRequest request = buildRequest("GET", "/api/kyzz/practice/questions/" + questionId + "/answer-preview", "127.0.0.1", "dev-2-preview");
+            request.addParameter("bankId", "8");
+            setFingerprint(request);
+            service.enforceAuthenticatedRequest(request, 9L);
+        }
+
+        MockHttpServletRequest blockedRequest = buildRequest("GET", "/api/kyzz/practice/questions/40/answer-preview", "127.0.0.1", "dev-2-preview");
+        blockedRequest.addParameter("bankId", "8");
+        setFingerprint(blockedRequest);
+        AntiCrawlerViolationException blocked = assertThrows(
+                AntiCrawlerViolationException.class,
+                () -> service.enforceAuthenticatedRequest(blockedRequest, 9L)
+        );
+        assertEquals(403, blocked.getHttpStatus());
+        assertEquals("practice-session-question-scan", blocked.getResponsePayload().ruleCode());
+    }
+
+    @Test
     void shouldBlockRobotPracticeSubmitWhenFastRatioIsTooHigh() {
         AntiCrawlerSecurityService service = newService(createDefaultProperties());
 

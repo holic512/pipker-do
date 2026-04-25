@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 public class AntiCrawlerRouteClassifier {
 
     private static final Pattern QUESTION_BANK_SELECTION_PATH = Pattern.compile("^/api/kyzz/question-banks/\\d+/selection$");
+    private static final Pattern PRACTICE_ANSWER_PREVIEW_PATH = Pattern.compile("^/api/kyzz/practice/questions/\\d+/answer-preview$");
     private static final Pattern PRACTICE_REVIEW_PATH = Pattern.compile("^/api/kyzz/practice/questions/\\d+/review$");
     private static final Pattern PRACTICE_SELF_JUDGEMENT_PATH = Pattern.compile("^/api/kyzz/practice/questions/\\d+/self-judgement$");
 
@@ -41,6 +42,9 @@ public class AntiCrawlerRouteClassifier {
         }
         if ("GET".equalsIgnoreCase(method) && "/api/kyzz/practice/settings".equals(path)) {
             return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PRACTICE_SESSION_READ, "/api/kyzz/practice/settings", true);
+        }
+        if ("GET".equalsIgnoreCase(method) && PRACTICE_ANSWER_PREVIEW_PATH.matcher(path).matches()) {
+            return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PRACTICE_SESSION_READ, "/api/kyzz/practice/questions/{questionId}/answer-preview", true);
         }
         if ("PUT".equalsIgnoreCase(method) && "/api/kyzz/practice/settings".equals(path)) {
             return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PROFILE_READWRITE, "/api/kyzz/practice/settings", false);
