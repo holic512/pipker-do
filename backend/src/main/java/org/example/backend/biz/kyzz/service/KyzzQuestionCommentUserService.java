@@ -1,13 +1,17 @@
 package org.example.backend.biz.kyzz.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.example.backend.biz.kyzz.dto.KyzzQuestionCommentAuthorResponse;
 import org.example.backend.biz.kyzz.dto.KyzzQuestionCommentCreateRequest;
 import org.example.backend.biz.kyzz.dto.KyzzQuestionCommentItemResponse;
+import org.example.backend.biz.kyzz.dto.KyzzQuestionCommentLikeToggleResponse;
 import org.example.backend.biz.kyzz.dto.KyzzQuestionCommentPageResponse;
 import org.example.backend.biz.kyzz.entity.KyzzComment;
+import org.example.backend.biz.kyzz.entity.KyzzCommentLike;
 import org.example.backend.biz.kyzz.entity.KyzzQuestion;
+import org.example.backend.biz.kyzz.mapper.KyzzCommentLikeMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzCommentMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionMapper;
 import org.example.backend.biz.kyzz.support.KyzzCacheService;
@@ -16,15 +20,19 @@ import org.example.backend.common.exception.BusinessException;
 import org.example.backend.shared.account.entity.AppUser;
 import org.example.backend.shared.account.mapper.AppUserMapper;
 import org.example.backend.shared.storage.service.LocalFileStorage;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * AI 索引: KYZZ 用户侧题目评论服务。
@@ -41,17 +49,20 @@ public class KyzzQuestionCommentUserService {
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final KyzzCommentMapper kyzzCommentMapper;
+    private final KyzzCommentLikeMapper kyzzCommentLikeMapper;
     private final KyzzQuestionMapper kyzzQuestionMapper;
     private final AppUserMapper appUserMapper;
     private final LocalFileStorage localFileStorage;
     private final KyzzCacheService kyzzCacheService;
 
     public KyzzQuestionCommentUserService(KyzzCommentMapper kyzzCommentMapper,
+                                          KyzzCommentLikeMapper kyzzCommentLikeMapper,
                                           KyzzQuestionMapper kyzzQuestionMapper,
                                           AppUserMapper appUserMapper,
                                           LocalFileStorage localFileStorage,
                                           KyzzCacheService kyzzCacheService) {
         this.kyzzCommentMapper = kyzzCommentMapper;
+        this.kyzzCommentLikeMapper = kyzzCommentLikeMapper;
         this.kyzzQuestionMapper = kyzzQuestionMapper;
         this.appUserMapper = appUserMapper;
         this.localFileStorage = localFileStorage;
@@ -83,12 +94,14 @@ public class KyzzQuestionCommentUserService {
                         .eq(KyzzComment::getTargetId, questionId)
                         .eq(KyzzComment::getParentId, 0L)
                         .eq(KyzzComment::getStatus, STATUS_ACTIVE)
+                        .orderByDesc(KyzzComment::getLikeCount)
                         .orderByDesc(KyzzComment::getCreatedAt)
                         .orderByDesc(KyzzComment::getId)
         );
         Map<Long, AppUser> authorMap = buildAuthorMap(page.getRecords());
+        Map<Long, Boolean> likedMap = buildLikedMap(page.getRecords(), userId);
         List<KyzzQuestionCommentItemResponse> records = page.getRecords().stream()
-                .map(comment -> toItemResponse(comment, authorMap.get(comment.getUserId()), userId))
+                .map(comment -> toItemResponse(comment, authorMap.get(comment.getUserId()), userId, likedMap.getOrDefault(comment.getId(), false)))
                 .toList();
         return new KyzzQuestionCommentPageResponse(
                 records,
@@ -124,7 +137,49 @@ public class KyzzQuestionCommentUserService {
         if (savedComment == null) {
             throw new BusinessException(ApiResponseCode.INTERNAL_ERROR, "评论发布失败，请稍后重试");
         }
-        return toItemResponse(savedComment, user, userId);
+        return toItemResponse(savedComment, user, userId, false);
+    }
+
+    @Transactional
+    public KyzzQuestionCommentLikeToggleResponse likeQuestionComment(Long userId, Long commentId) {
+        requireActiveUser(userId);
+        KyzzComment comment = requireActiveRootQuestionComment(commentId);
+        KyzzCommentLike existing = selectCommentLike(userId, comment.getId());
+        boolean changed = false;
+        if (existing == null) {
+            KyzzCommentLike like = new KyzzCommentLike();
+            like.setUserId(userId);
+            like.setCommentId(comment.getId());
+            like.setCreatedAt(LocalDateTime.now());
+            try {
+                kyzzCommentLikeMapper.insert(like);
+                incrementCommentLikeCount(comment.getId());
+                changed = true;
+            } catch (DuplicateKeyException ignored) {
+                // 并发重复点赞时保持幂等，最终状态仍是已点赞。
+            }
+        }
+        if (changed) {
+            kyzzCacheService.evictQuestionCommentCaches(comment.getTargetId());
+        }
+        KyzzComment refreshedComment = kyzzCommentMapper.selectById(comment.getId());
+        return toLikeToggleResponse(refreshedComment == null ? comment : refreshedComment, true);
+    }
+
+    @Transactional
+    public KyzzQuestionCommentLikeToggleResponse unlikeQuestionComment(Long userId, Long commentId) {
+        requireActiveUser(userId);
+        KyzzComment comment = requireActiveRootQuestionComment(commentId);
+        KyzzCommentLike existing = selectCommentLike(userId, comment.getId());
+        if (existing != null) {
+            int deleted = kyzzCommentLikeMapper.deleteById(existing.getId());
+            if (deleted > 0) {
+                decrementCommentLikeCount(comment.getId());
+                kyzzCacheService.evictQuestionCommentCaches(comment.getTargetId());
+            }
+        }
+        KyzzComment refreshedComment = kyzzCommentMapper.selectById(comment.getId());
+        return toLikeToggleResponse(refreshedComment == null ? comment : refreshedComment, false);
     }
 
     private Map<Long, AppUser> buildAuthorMap(List<KyzzComment> comments) {
@@ -141,7 +196,32 @@ public class KyzzQuestionCommentUserService {
         return result;
     }
 
-    private KyzzQuestionCommentItemResponse toItemResponse(KyzzComment comment, AppUser author, Long currentUserId) {
+    private Map<Long, Boolean> buildLikedMap(List<KyzzComment> comments, Long userId) {
+        if (userId == null || comments.isEmpty()) {
+            return Map.of();
+        }
+        LinkedHashSet<Long> commentIds = comments.stream()
+                .map(KyzzComment::getId)
+                .filter(id -> id != null && id > 0)
+                .collect(LinkedHashSet::new, LinkedHashSet::add, LinkedHashSet::addAll);
+        if (commentIds.isEmpty()) {
+            return Map.of();
+        }
+        List<KyzzCommentLike> likes = kyzzCommentLikeMapper.selectList(new LambdaQueryWrapper<KyzzCommentLike>()
+                .eq(KyzzCommentLike::getUserId, userId)
+                .in(KyzzCommentLike::getCommentId, commentIds));
+        Set<Long> likedIds = new HashSet<>();
+        likes.forEach(like -> {
+            if (like.getCommentId() != null) {
+                likedIds.add(like.getCommentId());
+            }
+        });
+        Map<Long, Boolean> result = new LinkedHashMap<>();
+        commentIds.forEach(commentId -> result.put(commentId, likedIds.contains(commentId)));
+        return result;
+    }
+
+    private KyzzQuestionCommentItemResponse toItemResponse(KyzzComment comment, AppUser author, Long currentUserId, boolean isLiked) {
         KyzzQuestionCommentAuthorResponse authorResponse = new KyzzQuestionCommentAuthorResponse(
                 author == null ? comment.getUserId() : author.getId(),
                 resolveNickname(author),
@@ -155,8 +235,37 @@ public class KyzzQuestionCommentUserService {
                 normalizeCount(comment.getLikeCount()),
                 normalizeCount(comment.getReplyCount()),
                 authorResponse,
-                currentUserId != null && currentUserId.equals(comment.getUserId())
+                currentUserId != null && currentUserId.equals(comment.getUserId()),
+                isLiked
         );
+    }
+
+    private KyzzQuestionCommentLikeToggleResponse toLikeToggleResponse(KyzzComment comment, boolean isLiked) {
+        return new KyzzQuestionCommentLikeToggleResponse(
+                comment.getId(),
+                comment.getTargetId(),
+                isLiked,
+                normalizeCount(comment.getLikeCount())
+        );
+    }
+
+    private KyzzCommentLike selectCommentLike(Long userId, Long commentId) {
+        return kyzzCommentLikeMapper.selectOne(new LambdaQueryWrapper<KyzzCommentLike>()
+                .eq(KyzzCommentLike::getUserId, userId)
+                .eq(KyzzCommentLike::getCommentId, commentId)
+                .last("LIMIT 1"));
+    }
+
+    private void incrementCommentLikeCount(Long commentId) {
+        kyzzCommentMapper.update(null, new LambdaUpdateWrapper<KyzzComment>()
+                .eq(KyzzComment::getId, commentId)
+                .setSql("like_count = like_count + 1"));
+    }
+
+    private void decrementCommentLikeCount(Long commentId) {
+        kyzzCommentMapper.update(null, new LambdaUpdateWrapper<KyzzComment>()
+                .eq(KyzzComment::getId, commentId)
+                .setSql("like_count = GREATEST(like_count - 1, 0)"));
     }
 
     private int normalizeCount(Integer count) {
@@ -186,6 +295,22 @@ public class KyzzQuestionCommentUserService {
             throw new BusinessException(ApiResponseCode.NOT_FOUND, "题目不存在或暂不可评论");
         }
         return question;
+    }
+
+    private KyzzComment requireActiveRootQuestionComment(Long commentId) {
+        if (commentId == null || commentId <= 0) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "评论参数非法");
+        }
+        KyzzComment comment = kyzzCommentMapper.selectOne(new LambdaQueryWrapper<KyzzComment>()
+                .eq(KyzzComment::getId, commentId)
+                .eq(KyzzComment::getTargetType, TARGET_TYPE_QUESTION)
+                .eq(KyzzComment::getParentId, 0L)
+                .eq(KyzzComment::getStatus, STATUS_ACTIVE)
+                .last("LIMIT 1"));
+        if (comment == null) {
+            throw new BusinessException(ApiResponseCode.NOT_FOUND, "评论不存在或已删除");
+        }
+        return comment;
     }
 
     private Pagination normalizePagination(Long pageNo, Long pageSize) {

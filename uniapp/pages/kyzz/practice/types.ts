@@ -217,6 +217,14 @@ export interface KyzzPracticeCommentItem {
 	replyCount: number
 	author: KyzzPracticeCommentAuthor
 	isMine: boolean
+	isLiked: boolean
+}
+
+export interface KyzzPracticeCommentLikeToggleResponse {
+	commentId: number | string | null
+	questionId: number | string | null
+	isLiked: boolean
+	likeCount: number | string | null
 }
 
 export interface KyzzPracticeCommentPageResponse {
@@ -246,6 +254,7 @@ export interface KyzzPracticeCommentState {
 	loading: boolean
 	loadingMore: boolean
 	submitting: boolean
+	likingCommentIds: number[]
 	initialized: boolean
 	errorMessage: string
 	composerContent: string

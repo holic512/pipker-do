@@ -17,6 +17,19 @@
 			</view>
 
 			<text class="practice-comment-card__content">{{ comment.content }}</text>
+
+			<button
+				class="practice-comment-card__like"
+				:class="{ 'is-active': comment.isLiked }"
+				@tap.stop="handleToggleLike"
+			>
+				<uni-icons
+					:type="comment.isLiked ? 'hand-up-filled' : 'hand-up'"
+					size="15"
+					:color="comment.isLiked ? '#5f7d4f' : '#8b95a4'"
+				/>
+				<text class="practice-comment-card__like-count">{{ comment.likeCount }}</text>
+			</button>
 		</view>
 	</view>
 </template>
@@ -42,6 +55,12 @@ export default defineComponent({
 		},
 		authorInitial(): string {
 			return buildCommentAuthorInitial(this.authorName)
+		}
+	},
+	emits: ['toggle-like'],
+	methods: {
+		handleToggleLike(): void {
+			this.$emit('toggle-like', this.comment.commentId)
 		}
 	}
 })
@@ -137,5 +156,32 @@ export default defineComponent({
 	color: #35404d;
 	white-space: pre-wrap;
 	word-break: break-word;
+}
+
+.practice-comment-card__like {
+	display: inline-flex;
+	align-items: center;
+	gap: 6rpx;
+	margin: 14rpx 0 0;
+	padding: 0;
+	height: 34rpx;
+	min-width: 54rpx;
+	background: transparent;
+	color: #8b95a4;
+	line-height: 1;
+}
+
+.practice-comment-card__like.is-active {
+	color: #5f7d4f;
+}
+
+.practice-comment-card__like::after {
+	border: 0;
+}
+
+.practice-comment-card__like-count {
+	font-size: 21rpx;
+	line-height: 1;
+	color: currentColor;
 }
 </style>

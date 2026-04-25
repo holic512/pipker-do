@@ -89,6 +89,7 @@
 					:error-message="commentState.errorMessage"
 					@load-more="handleLoadMoreComments"
 					@retry="handleRetryComments"
+					@toggle-like="handleToggleCommentLike"
 				/>
 
 				<practice-footer-actions
@@ -183,7 +184,12 @@ import {
 	setCachedPracticeSession
 } from '@/shared/preload/kyzz'
 import { favoriteQuestion, unfavoriteQuestion } from '@/pages/kyzz/api/favorite'
-import { createPracticeQuestionComment, getPracticeQuestionComments } from '@/pages/kyzz/api/comment'
+import {
+	createPracticeQuestionComment,
+	getPracticeQuestionComments,
+	likePracticeQuestionComment,
+	unlikePracticeQuestionComment
+} from '@/pages/kyzz/api/comment'
 import { consumePracticeLaunchTarget } from '@/pages/kyzz/practice/navigation'
 import {
 	cachePracticeSettings,
@@ -196,6 +202,7 @@ import type {
 	KyzzPracticeAnswerDraftState,
 	KyzzPracticeBankViewRecord,
 	KyzzPracticeBankRecordResponse,
+	KyzzPracticeCommentItem,
 	KyzzPracticeCommentState,
 	KyzzPracticeCommentCreateRequest,
 	KyzzPracticeNoticeViewModel,
@@ -222,11 +229,13 @@ import {
 	createEmptyPracticeReviewState,
 	createEmptyPracticeSession,
 	createEmptyPracticeUiState,
+	normalizePracticeCommentLikeToggleResponse,
 	normalizePracticeCommentItem,
 	normalizePracticeCommentPage,
 	normalizePracticeReviewResult,
 	normalizePracticeSession,
-	resolvePracticeEmptyState
+	resolvePracticeEmptyState,
+	sortPracticeCommentsByLike
 } from '@/pages/kyzz/practice/view'
 
 interface PracticePageQuery {
@@ -1085,7 +1094,7 @@ export default defineComponent({
 				this.commentState = {
 					...this.commentState,
 					questionId,
-					records: options.reset ? result.records : this.commentState.records.concat(result.records),
+					records: sortPracticeCommentsByLike(options.reset ? result.records : this.commentState.records.concat(result.records)),
 					pageNo: Number(result.pageNo || targetPageNo),
 					pageSize: Number(result.pageSize || this.commentState.pageSize),
 					total: Number(result.total || 0),
@@ -1145,7 +1154,7 @@ export default defineComponent({
 				this.commentState = {
 					...this.commentState,
 					questionId: this.sessionState.question.id,
-					records: [createdComment, ...this.commentState.records],
+					records: sortPracticeCommentsByLike([createdComment, ...this.commentState.records]),
 					total: this.commentState.total + 1,
 					initialized: true,
 					composerContent: '',
@@ -1162,6 +1171,64 @@ export default defineComponent({
 					icon: 'none'
 				})
 			}
+		},
+		async handleToggleCommentLike(commentId: number): Promise<void> {
+			if (this.autoJumping || this.commentState.likingCommentIds.includes(commentId)) {
+				return
+			}
+			const currentComment = this.commentState.records.find((item) => item.commentId === commentId)
+			if (!currentComment) {
+				return
+			}
+			const wasLiked = currentComment.isLiked
+			const optimisticLikeCount = Math.max(0, currentComment.likeCount + (wasLiked ? -1 : 1))
+			this.commentState = {
+				...this.commentState,
+				likingCommentIds: [...this.commentState.likingCommentIds, commentId],
+				records: this.updateCommentRecord(commentId, {
+					isLiked: !wasLiked,
+					likeCount: optimisticLikeCount
+				})
+			}
+			try {
+				const result = normalizePracticeCommentLikeToggleResponse(
+					wasLiked
+						? await unlikePracticeQuestionComment(commentId)
+						: await likePracticeQuestionComment(commentId)
+				)
+				const resolvedCommentId = Number(result.commentId || commentId)
+				this.commentState = {
+					...this.commentState,
+					likingCommentIds: this.commentState.likingCommentIds.filter((item) => item !== commentId),
+					records: this.updateCommentRecord(resolvedCommentId, {
+						isLiked: Boolean(result.isLiked),
+						likeCount: Number(result.likeCount || 0)
+					})
+				}
+			} catch (error) {
+				this.commentState = {
+					...this.commentState,
+					likingCommentIds: this.commentState.likingCommentIds.filter((item) => item !== commentId),
+					records: this.updateCommentRecord(commentId, {
+						isLiked: wasLiked,
+						likeCount: currentComment.likeCount
+					})
+				}
+				uni.showToast({
+					title: resolveErrorMessage(error, '操作失败'),
+					icon: 'none'
+				})
+			}
+		},
+		updateCommentRecord(commentId: number, patch: Partial<Pick<KyzzPracticeCommentItem, 'isLiked' | 'likeCount'>>): KyzzPracticeCommentItem[] {
+			return sortPracticeCommentsByLike(this.commentState.records.map((item) => {
+				return item.commentId === commentId
+					? {
+						...item,
+						...patch
+					}
+					: item
+			}))
 		},
 		async handleToggleFavorite(): Promise<void> {
 			if (!this.question || this.uiState.submitting || this.autoJumping) {

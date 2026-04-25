@@ -2,6 +2,7 @@ import request from '@/shared/network/request'
 import type {
 	KyzzPracticeCommentCreateRequest,
 	KyzzPracticeCommentItem,
+	KyzzPracticeCommentLikeToggleResponse,
 	KyzzPracticeCommentPageResponse,
 	KyzzPracticeCommentQuery
 } from '@/pages/kyzz/practice/types'
@@ -30,5 +31,19 @@ export function createPracticeQuestionComment(
 			'Content-Type': 'application/json'
 		},
 		data
+	})
+}
+
+export function likePracticeQuestionComment(commentId: number): Promise<KyzzPracticeCommentLikeToggleResponse> {
+	return request({
+		url: `/api/kyzz/comments/${commentId}/like`,
+		method: 'PUT'
+	})
+}
+
+export function unlikePracticeQuestionComment(commentId: number): Promise<KyzzPracticeCommentLikeToggleResponse> {
+	return request({
+		url: `/api/kyzz/comments/${commentId}/like`,
+		method: 'DELETE'
 	})
 }

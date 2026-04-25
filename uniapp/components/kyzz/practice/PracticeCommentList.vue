@@ -31,6 +31,7 @@
 				v-for="item in records"
 				:key="item.commentId"
 				:comment="item"
+				@toggle-like="$emit('toggle-like', $event)"
 			/>
 
 			<view class="practice-comment-list__footer">
@@ -87,7 +88,7 @@ export default defineComponent({
 			default: ''
 		}
 	},
-	emits: ['load-more', 'retry']
+	emits: ['load-more', 'retry', 'toggle-like']
 })
 </script>
 

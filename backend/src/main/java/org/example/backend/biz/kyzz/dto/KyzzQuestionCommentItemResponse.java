@@ -27,4 +27,6 @@ public class KyzzQuestionCommentItemResponse implements Serializable {
     private KyzzQuestionCommentAuthorResponse author;
 
     private Boolean isMine;
+
+    private Boolean isLiked;
 }

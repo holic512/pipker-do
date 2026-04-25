@@ -3,6 +3,7 @@ import type {
 	KyzzPracticeBankRecordResponse,
 	KyzzPracticeBankViewRecord,
 	KyzzPracticeCommentItem,
+	KyzzPracticeCommentLikeToggleResponse,
 	KyzzPracticeCommentPageResponse,
 	KyzzPracticeCommentState,
 	KyzzPracticeDashboardResponse,
@@ -107,6 +108,7 @@ export function createEmptyPracticeCommentState(): KyzzPracticeCommentState {
 		loading: false,
 		loadingMore: false,
 		submitting: false,
+		likingCommentIds: [],
 		initialized: false,
 		errorMessage: '',
 		composerContent: ''
@@ -215,9 +217,36 @@ export function normalizePracticeCommentItem(item: KyzzPracticeCommentItem): Kyz
 			avatarUrl: item?.author?.avatarUrl || null
 		},
 		isMine: Boolean(item.isMine),
+		isLiked: toBoolean(item.isLiked),
 		createdAt: item.createdAt || null,
 		createdAtLabel: formatCommentTime(item.createdAt || null)
 	}
+}
+
+export function normalizePracticeCommentLikeToggleResponse(
+	result: KyzzPracticeCommentLikeToggleResponse
+): KyzzPracticeCommentLikeToggleResponse {
+	return {
+		commentId: toNumber(result?.commentId),
+		questionId: toNumber(result?.questionId),
+		isLiked: toBoolean(result?.isLiked),
+		likeCount: toNumber(result?.likeCount)
+	}
+}
+
+export function sortPracticeCommentsByLike(records: KyzzPracticeCommentItem[]): KyzzPracticeCommentItem[] {
+	return [...records].sort((left, right) => {
+		const likeDiff = toNumber(right.likeCount) - toNumber(left.likeCount)
+		if (likeDiff !== 0) {
+			return likeDiff
+		}
+		const leftCreatedAt = left.createdAt || ''
+		const rightCreatedAt = right.createdAt || ''
+		if (leftCreatedAt !== rightCreatedAt) {
+			return rightCreatedAt.localeCompare(leftCreatedAt)
+		}
+		return toNumber(right.commentId) - toNumber(left.commentId)
+	})
 }
 
 export function normalizePracticeCommentPage(result: KyzzPracticeCommentPageResponse): KyzzPracticeCommentPageResponse {
