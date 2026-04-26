@@ -789,11 +789,6 @@ export default defineComponent({
   width: 58rpx;
   height: 58rpx;
   flex: 0 0 58rpx;
-  border-radius: 20rpx;
-  background: #f7f9fc;
-  box-shadow:
-    0 8rpx 18rpx rgba(54, 68, 90, 0.06),
-    inset 0 0 0 1rpx #cbd5e4;
 }
 
 .study-page__shortcut-copy {
