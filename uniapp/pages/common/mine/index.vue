@@ -117,7 +117,12 @@
 <script>
 import { bootstrapAuth, getSessionSnapshot, setCurrentUser, subscribeSession } from '@/shared/session/session'
 import { getVipStatus, redeemVipKey } from '@/shared/api/vip'
-import { resolveAvatarUserKey, resolveDisplayAvatarUrl, warmAvatarCache } from '@/shared/media/avatar-cache'
+import {
+	resolveAvatarRemoteUrl,
+	resolveAvatarUserKey,
+	resolveUserDisplayAvatarUrl,
+	syncUserAvatarCache
+} from '@/shared/media/avatar-cache'
 import PracticeSettingsPopup from '@/components/kyzz/practice/PracticeSettingsPopup.vue'
 import {
 	cachePracticeSettings,
@@ -155,6 +160,7 @@ export default {
 			practiceSettings: readCachedPracticeSettings(),
 			practiceSettingsPopupVisible: false,
 			unsubscribeSession: null,
+			avatarRefreshKey: '',
 			vipFeatures: [
 				{ key: 'unlimited', text: '无限提问', icon: 'loop' },
 				{ key: 'priority', text: '优先处理', icon: 'headphones' },
@@ -199,11 +205,13 @@ export default {
 			const isVip = !!(vipInfo && (vipInfo.isVip || vipInfo.vip))
 			const vipType = vipInfo && vipInfo.vipType ? vipInfo.vipType : ''
 			const expireAt = vipInfo && vipInfo.expireAt ? vipInfo.expireAt : ''
-			const avatarRemoteUrl = currentUser && currentUser.avatarUrl ? currentUser.avatarUrl : ''
+			const avatarRemoteUrl = resolveAvatarRemoteUrl(currentUser)
 			const avatarUserKey = resolveAvatarUserKey(currentUser)
+			const avatarRefreshKey = `${avatarUserKey}::${avatarRemoteUrl}`
+			this.avatarRefreshKey = avatarRefreshKey
 			this.user = {
 				name: currentUser && currentUser.nickname ? currentUser.nickname : '微信用户',
-				avatarUrl: resolveDisplayAvatarUrl(avatarRemoteUrl, avatarUserKey),
+				avatarUrl: resolveUserDisplayAvatarUrl(currentUser),
 				isVip,
 				vipType,
 				vipTitle: isVip ? (VIP_TYPE_TEXT[vipType] || 'VIP会员') : 'VIP会员',
@@ -211,13 +219,21 @@ export default {
 					? `有效期至 ${expireAt || '长期有效'}`
 					: '未开通，兑换后可解锁完整会员权益'
 			}
-			this.refreshAvatarCache(avatarRemoteUrl, avatarUserKey)
+			this.refreshAvatarCache(currentUser, avatarRefreshKey)
 		},
-		async refreshAvatarCache(remoteUrl, userKey) {
-			if (!remoteUrl) return
+		async refreshAvatarCache(user, expectedRefreshKey) {
 			try {
-				const localPath = await warmAvatarCache(remoteUrl, userKey)
-				if (localPath && this.user.avatarUrl !== localPath) {
+				const localPath = await syncUserAvatarCache(user)
+				const currentUser = getSessionSnapshot().currentUser
+				const currentRemoteUrl = resolveAvatarRemoteUrl(currentUser)
+				const currentRefreshKey = `${resolveAvatarUserKey(currentUser)}::${currentRemoteUrl}`
+				if (
+					localPath
+					&& expectedRefreshKey
+					&& this.avatarRefreshKey === expectedRefreshKey
+					&& currentRefreshKey === expectedRefreshKey
+					&& this.user.avatarUrl !== localPath
+				) {
 					this.user = {
 						...this.user,
 						avatarUrl: localPath

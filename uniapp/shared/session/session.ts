@@ -3,6 +3,7 @@
 import env from '@/shared/config/env'
 import { cacheAgreementAcceptance, clearAgreementAcceptanceCache } from '@/shared/auth/agreement'
 import { clearCachedUser, clearToken, getCachedUser, getToken, setCachedUser, setToken } from '@/shared/auth/storage'
+import { syncUserAvatarCache } from '@/shared/media/avatar-cache'
 import {
 	buildAntiCrawlerHeaders,
 	buildRiskMessage,
@@ -139,6 +140,19 @@ function resolveMessage(payload: unknown, fallback: string): string {
 	return fallback
 }
 
+function syncSessionAvatarCache(user: unknown): void {
+	if (!user) {
+		return
+	}
+	try {
+		syncUserAvatarCache(user).catch((error) => {
+			console.warn('[session] sync avatar cache failed', error)
+		})
+	} catch (error) {
+		console.warn('[session] sync avatar cache failed', error)
+	}
+}
+
 function setSession(
 	token: string,
 	user: unknown,
@@ -169,6 +183,7 @@ function setSession(
 	if (agreementUser?.agreementAccepted) {
 		cacheAgreementAcceptance(state.currentUser, agreementUser.agreementAcceptedAt)
 	}
+	syncSessionAvatarCache(state.currentUser)
 	notify()
 }
 

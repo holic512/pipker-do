@@ -96,7 +96,13 @@
 <script>
 import { bootstrapAuth, getSessionSnapshot, setCurrentUser } from '@/shared/session/session'
 import { updateProfile, uploadAvatar } from '@/shared/api/user'
-import { cacheLocalAvatar, resolveAvatarUserKey, resolveDisplayAvatarUrl, warmAvatarCache } from '@/shared/media/avatar-cache'
+import {
+	cacheLocalAvatar,
+	resolveAvatarRemoteUrl,
+	resolveAvatarUserKey,
+	resolveUserDisplayAvatarUrl,
+	syncUserAvatarCache
+} from '@/shared/media/avatar-cache'
 import { resolveWechatAvatarPath, resolveWechatNickname, supportsWechatNativeProfile } from '@/shared/platform/wechat-profile'
 
 export default {
@@ -114,6 +120,7 @@ export default {
 				gender: 0,
 				bio: ''
 			},
+			avatarRefreshKey: '',
 			genderOptions: [
 				{ label: '保密', value: 0 },
 				{ label: '男', value: 1 },
@@ -145,23 +152,36 @@ export default {
 	methods: {
 		initForm() {
 			const currentUser = getSessionSnapshot().currentUser
-			const avatarRemoteUrl = currentUser && currentUser.avatarUrl ? currentUser.avatarUrl : ''
+			const avatarRemoteUrl = resolveAvatarRemoteUrl(currentUser)
 			const avatarUserKey = resolveAvatarUserKey(currentUser)
+			const avatarRefreshKey = `${avatarUserKey}::${avatarRemoteUrl}`
+			this.avatarRefreshKey = avatarRefreshKey
 			this.form = {
 				nickname: currentUser && currentUser.nickname ? currentUser.nickname : '',
-				avatarUrl: resolveDisplayAvatarUrl(avatarRemoteUrl, avatarUserKey),
+				avatarUrl: resolveUserDisplayAvatarUrl(currentUser),
 				avatarRemoteUrl,
 				avatarStorageKey: '',
 				gender: currentUser && typeof currentUser.gender === 'number' ? currentUser.gender : 0,
 				bio: currentUser && currentUser.bio ? currentUser.bio : ''
 			}
-			this.refreshAvatarCache(avatarRemoteUrl, avatarUserKey)
+			this.refreshAvatarCache(currentUser, avatarRefreshKey)
 		},
-		async refreshAvatarCache(remoteUrl, userKey) {
-			if (!remoteUrl) return
+		async refreshAvatarCache(user, expectedRefreshKey) {
 			try {
-				const localPath = await warmAvatarCache(remoteUrl, userKey)
-				if (localPath && !this.form.avatarStorageKey && this.form.avatarUrl !== localPath) {
+				const localPath = await syncUserAvatarCache(user)
+				const currentUser = getSessionSnapshot().currentUser
+				const currentRemoteUrl = resolveAvatarRemoteUrl(currentUser)
+				const currentRefreshKey = `${resolveAvatarUserKey(currentUser)}::${currentRemoteUrl}`
+				if (
+					localPath
+					&& !this.uploadingAvatar
+					&& !this.form.avatarStorageKey
+					&& this.form.avatarRemoteUrl === currentRemoteUrl
+					&& expectedRefreshKey
+					&& this.avatarRefreshKey === expectedRefreshKey
+					&& currentRefreshKey === expectedRefreshKey
+					&& this.form.avatarUrl !== localPath
+				) {
 					this.form.avatarUrl = localPath
 				}
 			} catch (error) {
@@ -207,6 +227,7 @@ export default {
 			if (this.uploadingAvatar) return
 
 			this.uploadingAvatar = true
+			this.avatarRefreshKey = ''
 			uni.showLoading({ title: '上传中...' })
 			try {
 				const uploadResult = await uploadAvatar(filePath)

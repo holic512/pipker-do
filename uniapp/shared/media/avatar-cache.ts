@@ -22,6 +22,11 @@ type UserLike = {
 }
 
 const inflightTasks = new Map<string, Promise<string>>()
+const desiredRemoteUrls = new Map<string, string>()
+
+function asUserLike(user: unknown): UserLike | null {
+	return user && typeof user === 'object' ? (user as UserLike) : null
+}
 
 function readStore(): AvatarCacheStore {
 	const cached = uni.getStorageSync(AVATAR_CACHE_KEY)
@@ -37,11 +42,27 @@ function normalizeUrl(url: unknown): string {
 }
 
 function isLocalPath(path: string): boolean {
-	return /^(wxfile|ttfile|ksfile|qfile|file|unifile):\/\//.test(path) || path.startsWith('_doc/') || path.startsWith('http://tmp/') || path.startsWith('https://tmp/')
+	return /^(wxfile|ttfile|ksfile|qfile|file|unifile):\/\//.test(path)
+		|| path.startsWith('_doc/')
+		|| path.startsWith('/')
+		|| path.startsWith('http://tmp/')
+		|| path.startsWith('https://tmp/')
 }
 
 function buildCacheKey(userKey: string): string {
 	return userKey || DEFAULT_USER_KEY
+}
+
+function setDesiredRemoteUrl(cacheKey: string, remoteUrl: string): void {
+	if (remoteUrl) {
+		desiredRemoteUrls.set(cacheKey, remoteUrl)
+		return
+	}
+	desiredRemoteUrls.delete(cacheKey)
+}
+
+function getDesiredRemoteUrl(cacheKey: string): string {
+	return desiredRemoteUrls.get(cacheKey) || ''
 }
 
 function downloadFile(url: string): Promise<string> {
@@ -91,9 +112,13 @@ function removeSavedFile(filePath: string): void {
 }
 
 export function resolveAvatarUserKey(user: unknown): string {
-	const currentUser = user && typeof user === 'object' ? (user as UserLike) : null
+	const currentUser = asUserLike(user)
 	const userKey = currentUser?.id ?? currentUser?.userId ?? currentUser?.openid ?? currentUser?.openId ?? currentUser?.unionId
 	return userKey === undefined || userKey === null || userKey === '' ? DEFAULT_USER_KEY : String(userKey)
+}
+
+export function resolveAvatarRemoteUrl(user: unknown): string {
+	return normalizeUrl(asUserLike(user)?.avatarUrl)
 }
 
 export function getCachedAvatarPath(remoteUrl: unknown, userKey = DEFAULT_USER_KEY): string {
@@ -122,8 +147,7 @@ export function resolveDisplayAvatarUrl(remoteUrl: unknown, userKey = DEFAULT_US
 }
 
 export function resolveUserDisplayAvatarUrl(user: unknown): string {
-	const currentUser = user && typeof user === 'object' ? (user as UserLike) : null
-	return resolveDisplayAvatarUrl(currentUser?.avatarUrl, resolveAvatarUserKey(user))
+	return resolveDisplayAvatarUrl(resolveAvatarRemoteUrl(user), resolveAvatarUserKey(user))
 }
 
 export async function warmAvatarCache(remoteUrl: unknown, userKey = DEFAULT_USER_KEY): Promise<string> {
@@ -132,6 +156,7 @@ export async function warmAvatarCache(remoteUrl: unknown, userKey = DEFAULT_USER
 		return ''
 	}
 	const cacheKey = buildCacheKey(userKey)
+	setDesiredRemoteUrl(cacheKey, normalizedUrl)
 	const cachedPath = getCachedAvatarPath(normalizedUrl, cacheKey)
 	if (cachedPath) {
 		return cachedPath
@@ -142,10 +167,14 @@ export async function warmAvatarCache(remoteUrl: unknown, userKey = DEFAULT_USER
 		return inflightTask
 	}
 	const task = (async () => {
-		const store = readStore()
-		const previousRecord = store[cacheKey]
 		const tempFilePath = await downloadFile(normalizedUrl)
 		const localPath = await saveFile(tempFilePath)
+		const store = readStore()
+		const previousRecord = store[cacheKey]
+		if (getDesiredRemoteUrl(cacheKey) !== normalizedUrl) {
+			removeSavedFile(localPath)
+			return previousRecord?.localPath || ''
+		}
 		store[cacheKey] = {
 			userKey: cacheKey,
 			remoteUrl: normalizedUrl,
@@ -165,8 +194,21 @@ export async function warmAvatarCache(remoteUrl: unknown, userKey = DEFAULT_USER
 }
 
 export function warmUserAvatarCache(user: unknown): Promise<string> {
-	const currentUser = user && typeof user === 'object' ? (user as UserLike) : null
-	return warmAvatarCache(currentUser?.avatarUrl, resolveAvatarUserKey(user))
+	return syncUserAvatarCache(user)
+}
+
+export function syncUserAvatarCache(user: unknown): Promise<string> {
+	const currentUser = asUserLike(user)
+	if (!currentUser) {
+		return Promise.resolve('')
+	}
+	const userKey = resolveAvatarUserKey(currentUser)
+	const remoteUrl = resolveAvatarRemoteUrl(currentUser)
+	if (!remoteUrl) {
+		clearAvatarCache(userKey)
+		return Promise.resolve('')
+	}
+	return warmAvatarCache(remoteUrl, userKey)
 }
 
 export async function cacheLocalAvatar(remoteUrl: unknown, userKey: string, tempFilePath: string): Promise<string> {
@@ -175,6 +217,7 @@ export async function cacheLocalAvatar(remoteUrl: unknown, userKey: string, temp
 		return ''
 	}
 	const cacheKey = buildCacheKey(userKey)
+	setDesiredRemoteUrl(cacheKey, normalizedUrl)
 	const store = readStore()
 	const previousRecord = store[cacheKey]
 	const localPath = isLocalPath(tempFilePath) ? await saveFile(tempFilePath) : tempFilePath
@@ -195,11 +238,13 @@ export function clearAvatarCache(userKey?: string): void {
 	const store = readStore()
 	if (userKey) {
 		const cacheKey = buildCacheKey(userKey)
+		setDesiredRemoteUrl(cacheKey, '')
 		removeSavedFile(store[cacheKey]?.localPath || '')
 		delete store[cacheKey]
 		writeStore(store)
 		return
 	}
 	Object.values(store).forEach((record) => removeSavedFile(record.localPath))
+	desiredRemoteUrls.clear()
 	uni.removeStorageSync(AVATAR_CACHE_KEY)
 }
