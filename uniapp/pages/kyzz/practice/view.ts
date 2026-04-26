@@ -262,7 +262,7 @@ export function normalizePracticeCommentPage(result: KyzzPracticeCommentPageResp
 }
 
 export function normalizePracticeSourceType(value: unknown): KyzzPracticeSourceType {
-	if (value === 'wrong_book' || value === 'favorite') {
+	if (value === 'wrong_book' || value === 'favorite' || value === 'random') {
 		return value
 	}
 	return 'bank'
@@ -274,6 +274,9 @@ export function sourceTypeLabel(value: KyzzPracticeSourceType): string {
 	}
 	if (value === 'favorite') {
 		return '收藏练习'
+	}
+	if (value === 'random') {
+		return '随机一题'
 	}
 	return '题库练习'
 }

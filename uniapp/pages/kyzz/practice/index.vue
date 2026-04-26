@@ -300,7 +300,7 @@ function parseOptionalBoolean(value: string | undefined): boolean | null {
 }
 
 function parseSourceType(value: string | undefined): KyzzPracticeSourceType | null {
-	if (value === 'bank' || value === 'wrong_book' || value === 'favorite') {
+	if (value === 'bank' || value === 'wrong_book' || value === 'favorite' || value === 'random') {
 		return value
 	}
 	return null

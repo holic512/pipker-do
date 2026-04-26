@@ -4,7 +4,7 @@ export type KyzzPracticeResumeStatus = 'not_started' | 'in_progress' | 'complete
 export type KyzzPracticeQuestionType = 'single' | 'multiple' | 'short'
 export type KyzzPracticeNoticeVariant = 'default' | 'accent' | 'success'
 export type KyzzPracticeEmptyState = 'no_bank' | 'no_question'
-export type KyzzPracticeSourceType = 'bank' | 'wrong_book' | 'favorite'
+export type KyzzPracticeSourceType = 'bank' | 'wrong_book' | 'favorite' | 'random'
 export type KyzzPracticeSourceStatus = 'all' | 'active' | 'mastered'
 
 export interface KyzzPracticeBankRecordResponse {

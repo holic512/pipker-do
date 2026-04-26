@@ -49,6 +49,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 /**
@@ -63,11 +64,12 @@ public class KyzzPracticeUserService {
     private static final String SOURCE_TYPE_BANK = "bank";
     private static final String SOURCE_TYPE_WRONG_BOOK = "wrong_book";
     private static final String SOURCE_TYPE_FAVORITE = "favorite";
+    private static final String SOURCE_TYPE_RANDOM = "random";
     private static final String WRONG_STATUS_ALL = "all";
     private static final String WRONG_STATUS_ACTIVE = "active";
     private static final String WRONG_STATUS_MASTERED = "mastered";
     private static final boolean DEFAULT_AUTO_JUMP_ON_CORRECT = true;
-    private static final Set<String> SUPPORTED_SOURCE_TYPES = Set.of(SOURCE_TYPE_BANK, SOURCE_TYPE_WRONG_BOOK, SOURCE_TYPE_FAVORITE);
+    private static final Set<String> SUPPORTED_SOURCE_TYPES = Set.of(SOURCE_TYPE_BANK, SOURCE_TYPE_WRONG_BOOK, SOURCE_TYPE_FAVORITE, SOURCE_TYPE_RANDOM);
     private static final Set<String> SUPPORTED_WRONG_STATUSES = Set.of(WRONG_STATUS_ALL, WRONG_STATUS_ACTIVE, WRONG_STATUS_MASTERED);
     private static final Set<String> SUPPORTED_QUESTION_TYPES = Set.of(
             QUESTION_TYPE_SINGLE,
@@ -162,6 +164,10 @@ public class KyzzPracticeUserService {
             throw new BusinessException(ApiResponseCode.NOT_FOUND, "还没有可刷题库，先去添加一套题库吧");
         }
 
+        if (SOURCE_TYPE_RANDOM.equals(normalizedSourceType)) {
+            return buildRandomSession(userId, context);
+        }
+
         if (!SOURCE_TYPE_BANK.equals(normalizedSourceType)) {
             return buildSourceSession(
                     userId,
@@ -224,6 +230,35 @@ public class KyzzPracticeUserService {
                         ),
                 SOURCE_TYPE_BANK,
                 sourceTitle(SOURCE_TYPE_BANK)
+        );
+    }
+
+    private KyzzPracticeSessionResponse buildRandomSession(Long userId,
+                                                           DashboardContext context) {
+        List<KyzzQuestion> questions = flattenQuestionMap(context.questionMap()).values().stream().toList();
+        if (questions.isEmpty()) {
+            throw new BusinessException(ApiResponseCode.NOT_FOUND, sourceEmptyMessage(SOURCE_TYPE_RANDOM));
+        }
+
+        KyzzQuestion targetQuestion = questions.get(ThreadLocalRandom.current().nextInt(questions.size()));
+        KyzzPracticeBankRecordResponse activeBank = context.recordMap().get(targetQuestion.getQuestionBankId());
+        if (activeBank == null) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "请先把题目所属题库加入我的题库再开始刷题");
+        }
+
+        Map<Long, List<KyzzQuestionOption>> optionMap = kyzzPracticeSupport.buildQuestionOptionMap(List.of(targetQuestion.getId()));
+        return new KyzzPracticeSessionResponse(
+                activeBank,
+                context.records(),
+                new KyzzPracticeSessionProgressResponse(1, 1),
+                toQuestionResponse(userId, targetQuestion, optionMap.getOrDefault(targetQuestion.getId(), List.of())),
+                null,
+                null,
+                null,
+                null,
+                null,
+                SOURCE_TYPE_RANDOM,
+                sourceTitle(SOURCE_TYPE_RANDOM)
         );
     }
 
@@ -570,6 +605,15 @@ public class KyzzPracticeUserService {
         String normalizedSourceType = normalizeSourceType(sourceType);
         if (SOURCE_TYPE_BANK.equals(normalizedSourceType)) {
             return null;
+        }
+        if (SOURCE_TYPE_RANDOM.equals(normalizedSourceType)) {
+            return new PracticeSourceNavigation(
+                    SOURCE_TYPE_RANDOM,
+                    sourceTitle(SOURCE_TYPE_RANDOM),
+                    null,
+                    null,
+                    true
+            );
         }
         DashboardContext context = buildDashboardContext(userId);
         SourceQuestionQueue queue = buildSourceQuestionQueue(
@@ -1215,6 +1259,9 @@ public class KyzzPracticeUserService {
         if (SOURCE_TYPE_FAVORITE.equals(sourceType)) {
             return "收藏练习";
         }
+        if (SOURCE_TYPE_RANDOM.equals(sourceType)) {
+            return "随机一题";
+        }
         if (SOURCE_TYPE_WRONG_BOOK.equals(sourceType)) {
             if (WRONG_STATUS_ACTIVE.equals(wrongStatus)) {
                 return "待巩固错题";
@@ -1233,6 +1280,9 @@ public class KyzzPracticeUserService {
         }
         if (SOURCE_TYPE_WRONG_BOOK.equals(sourceType)) {
             return "当前错题暂无可练习题目";
+        }
+        if (SOURCE_TYPE_RANDOM.equals(sourceType)) {
+            return "当前题库暂无可随机练习题目";
         }
         return "当前暂无可练习题目";
     }

@@ -87,7 +87,7 @@
                 v-for="item in shortcutItems"
                 :key="item.key"
                 class="study-page__shortcut-item"
-                @tap="openShortcut(item.pagePath)"
+                @tap="openShortcut(item)"
             >
               <view class="study-page__shortcut-card">
                 <view class="study-page__shortcut-card-glow"></view>
@@ -125,7 +125,7 @@
 import { defineComponent } from 'vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getCachedPracticeDashboard, preloadPracticeDashboard, warmKyzzCorePreload } from '@/shared/preload/kyzz'
-import { openBankPracticeTab } from '@/pages/kyzz/practice/navigation'
+import { openBankPracticeTab, openPracticeTab } from '@/pages/kyzz/practice/navigation'
 import type { KyzzPracticeBankViewRecord, KyzzPracticeDashboardState } from '@/pages/kyzz/practice/types'
 import { createEmptyPracticeDashboard, formatProgress, normalizePracticeDashboard } from '@/pages/kyzz/practice/view'
 
@@ -135,7 +135,7 @@ interface StudyShortcutItem {
   description: string
   icon: string
   iconColor: string
-  pagePath: string
+  pagePath?: string
 }
 
 interface StudyPageState {
@@ -185,12 +185,11 @@ export default defineComponent({
           pagePath: '/pages/kyzz/wrong-book/index'
         },
         {
-          key: 'note',
-          title: '笔记',
-          description: '知识沉淀',
-          icon: 'compose',
+          key: 'random',
+          title: '随机一题',
+          description: '全库抽题',
+          icon: 'reload',
           iconColor: '#315f42',
-          pagePath: '/pages/kyzz/note/index'
         },
         {
           key: 'leaderboard',
@@ -305,9 +304,24 @@ export default defineComponent({
       }
       openBankPracticeTab({ bankId: this.recommendedBank.bankId }).catch(() => {})
     },
-    openShortcut(pagePath: string): void {
+    openShortcut(item: StudyShortcutItem): void {
+      if (item.key === 'random') {
+        openPracticeTab({
+          sourceType: 'random',
+          freshAttempt: true
+        }).catch(() => {
+          uni.showToast({
+            title: '跳转刷题失败',
+            icon: 'none'
+          })
+        })
+        return
+      }
+      if (!item.pagePath) {
+        return
+      }
       uni.navigateTo({
-        url: pagePath
+        url: item.pagePath
       })
     },
     goPublicBanks(): void {
