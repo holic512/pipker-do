@@ -2,6 +2,7 @@ package org.example.backend.biz.kyzz.controller;
 
 import org.example.backend.biz.kyzz.dto.KyzzPracticeAnswerPreviewResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeDashboardResponse;
+import org.example.backend.biz.kyzz.dto.KyzzPracticeProgressResetResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeReviewRequest;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeReviewResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeSettingRequest;
@@ -71,6 +72,11 @@ public class KyzzPracticeUserController {
                 LoginUserContext.requireUserId(),
                 request
         ));
+    }
+
+    @PostMapping("/progress/reset")
+    public ApiResponse<KyzzPracticeProgressResetResponse> resetProgress() {
+        return responseFactory.success(kyzzPracticeUserService.resetPracticeProgress(LoginUserContext.requireUserId()));
     }
 
     @GetMapping("/questions/{questionId}/answer-preview")

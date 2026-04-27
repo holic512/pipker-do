@@ -1,9 +1,11 @@
 package org.example.backend.biz.kyzz.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeAnswerPreviewResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeBankRecordResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeDashboardResponse;
+import org.example.backend.biz.kyzz.dto.KyzzPracticeProgressResetResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeQuestionOptionResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeQuestionResponse;
 import org.example.backend.biz.kyzz.dto.KyzzPracticeReviewRequest;
@@ -149,6 +151,29 @@ public class KyzzPracticeUserService {
         existing.setAutoJumpOnCorrect(autoJumpOnCorrect ? 1 : 0);
         kyzzUserPracticeSettingMapper.updateById(existing);
         return toPracticeSettingResponse(existing);
+    }
+
+    @Transactional
+    public KyzzPracticeProgressResetResponse resetPracticeProgress(Long userId) {
+        int deletedAnswerCount = kyzzUserAnswerMapper.delete(new LambdaQueryWrapper<KyzzUserAnswer>()
+                .eq(KyzzUserAnswer::getUserId, userId));
+        int deletedWrongQuestionCount = kyzzUserWrongQuestionMapper.delete(new LambdaQueryWrapper<KyzzUserWrongQuestion>()
+                .eq(KyzzUserWrongQuestion::getUserId, userId));
+        int resetQuestionBankCount = kyzzUserQuestionBankMapper.update(null, new LambdaUpdateWrapper<KyzzUserQuestionBank>()
+                .eq(KyzzUserQuestionBank::getUserId, userId)
+                .set(KyzzUserQuestionBank::getCurrentProgress, KyzzPracticeSupport.ZERO_PROGRESS)
+                .set(KyzzUserQuestionBank::getStudiedCount, 0)
+                .set(KyzzUserQuestionBank::getCorrectCount, 0)
+                .set(KyzzUserQuestionBank::getWrongCount, 0)
+                .set(KyzzUserQuestionBank::getLastPracticeAt, null));
+
+        kyzzCacheService.evictUserAggregateCaches(userId);
+        kyzzCacheService.evictLeaderboardCaches();
+        return new KyzzPracticeProgressResetResponse(
+                deletedAnswerCount,
+                deletedWrongQuestionCount,
+                resetQuestionBankCount
+        );
     }
 
     public KyzzPracticeSessionResponse getSession(Long userId,

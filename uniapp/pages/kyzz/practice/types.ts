@@ -128,6 +128,12 @@ export interface KyzzPracticeSettingRequest {
 	autoJumpOnCorrect: boolean
 }
 
+export interface KyzzPracticeProgressResetResponse {
+	deletedAnswerCount: number | string | null
+	deletedWrongQuestionCount: number | string | null
+	resetQuestionBankCount: number | string | null
+}
+
 export interface KyzzPracticeSettingState {
 	autoJumpOnCorrect: boolean
 	loaded: boolean

@@ -2,6 +2,7 @@ import request from '@/shared/network/request'
 import type {
 	KyzzPracticeAnswerPreviewResponse,
 	KyzzPracticeDashboardResponse,
+	KyzzPracticeProgressResetResponse,
 	KyzzPracticeReviewRequest,
 	KyzzPracticeReviewResponse,
 	KyzzPracticeSettingRequest,
@@ -56,6 +57,13 @@ export function updatePracticeSettings(data: KyzzPracticeSettingRequest): Promis
 			'Content-Type': 'application/json'
 		},
 		data
+	})
+}
+
+export function resetPracticeProgress(): Promise<KyzzPracticeProgressResetResponse> {
+	return request({
+		url: '/api/kyzz/practice/progress/reset',
+		method: 'POST'
 	})
 }
 

@@ -117,6 +117,7 @@
 <script>
 import { bootstrapAuth, getSessionSnapshot, setCurrentUser, subscribeSession } from '@/shared/session/session'
 import { getVipStatus, redeemVipKey } from '@/shared/api/vip'
+import { invalidateKyzzPreload } from '@/shared/preload/kyzz'
 import {
 	resolveAvatarRemoteUrl,
 	resolveAvatarUserKey,
@@ -124,6 +125,7 @@ import {
 	syncUserAvatarCache
 } from '@/shared/media/avatar-cache'
 import PracticeSettingsPopup from '@/components/kyzz/practice/PracticeSettingsPopup.vue'
+import { resetPracticeProgress } from '@/pages/kyzz/api/practice'
 import {
 	cachePracticeSettings,
 	loadPracticeSettingsWithFallback,
@@ -154,6 +156,7 @@ export default {
 			},
 			redeemVisible: false,
 			redeeming: false,
+			resettingProgress: false,
 			redeemForm: {
 				key: ''
 			},
@@ -169,6 +172,7 @@ export default {
 			menuItems: [
 				{ key: 'redeem', text: '激活兑换码', icon: 'scan' },
 				{ key: 'setting', text: '刷题设置', icon: 'gear' },
+				{ key: 'resetProgress', text: '重置刷题进度', icon: 'refreshempty' },
 				{ key: 'agreement', text: '用户协议', icon: 'paperclip' },
 				{ key: 'service', text: '联系客服', icon: 'headphones' },
 				{ key: 'feedback', text: '意见反馈', icon: 'chatboxes' },
@@ -257,6 +261,10 @@ export default {
 				this.openPracticeSettingsPopup()
 				return
 			}
+			if (key === 'resetProgress') {
+				this.confirmAndResetPracticeProgress()
+				return
+			}
 			if (key === 'agreement') {
 				uni.navigateTo({
 					url: '/pages/common/agreement/index'
@@ -267,6 +275,7 @@ export default {
 				profile: '更新资料',
 				redeem: '激活兑换码',
 				setting: '刷题设置',
+				resetProgress: '重置刷题进度',
 				agreement: '用户协议',
 				service: '联系客服',
 				feedback: '意见反馈',
@@ -277,6 +286,46 @@ export default {
 				title: `${actionTextMap[key] || '功能'}开发中`,
 				icon: 'none'
 			});
+		},
+		showResetPracticeProgressConfirm() {
+			return new Promise((resolve) => {
+				uni.showModal({
+					title: '重置刷题进度',
+					content: '将清空你的答题记录和错题本，题库、收藏和刷题设置会保留。确认重置后不可恢复。',
+					confirmText: '确认重置',
+					cancelText: '再想想',
+					confirmColor: '#d9480f',
+					success: (result) => resolve(!!result.confirm),
+					fail: () => resolve(false)
+				})
+			})
+		},
+		async confirmAndResetPracticeProgress() {
+			if (this.resettingProgress) return
+			const confirmed = await this.showResetPracticeProgressConfirm()
+			if (!confirmed) {
+				return
+			}
+
+			this.resettingProgress = true
+			uni.showLoading({ title: '重置中...' })
+			try {
+				await resetPracticeProgress()
+				invalidateKyzzPreload()
+				uni.hideLoading()
+				uni.showToast({
+					title: '刷题进度已重置',
+					icon: 'none'
+				})
+			} catch (error) {
+				uni.hideLoading()
+				uni.showToast({
+					title: error.message || '重置失败',
+					icon: 'none'
+				})
+			} finally {
+				this.resettingProgress = false
+			}
 		},
 		async refreshPracticeSettings() {
 			this.practiceSettings = {

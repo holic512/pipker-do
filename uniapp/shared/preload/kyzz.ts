@@ -16,6 +16,10 @@ const PRACTICE_DASHBOARD_KEY = 'kyzz:practice-dashboard'
 const MINE_QUESTION_BANKS_KEY = 'kyzz:mine-question-banks'
 const CORE_TTL_MS = 30 * 1000
 const PRACTICE_DETAIL_TTL_MS = 2 * 60 * 1000
+const kyzzPreloadKeys = new Set<string>([
+	PRACTICE_DASHBOARD_KEY,
+	MINE_QUESTION_BANKS_KEY
+])
 
 interface UserKeyShape {
 	id?: string | number | null
@@ -46,8 +50,13 @@ function normalizeQueryValue(value: unknown): string {
 	return String(value)
 }
 
+function trackKyzzPreloadKey(key: string): string {
+	kyzzPreloadKeys.add(key)
+	return key
+}
+
 function practiceSessionKey(query: KyzzPracticeSessionQuery = {}): string {
-	return [
+	return trackKyzzPreloadKey([
 		'kyzz:practice-session',
 		resolveCurrentUserKey(),
 		`bank:${normalizeQueryValue(query.bankId)}`,
@@ -56,16 +65,16 @@ function practiceSessionKey(query: KyzzPracticeSessionQuery = {}): string {
 		`source:${normalizeQueryValue(query.sourceType)}`,
 		`status:${normalizeQueryValue(query.sourceStatus)}`,
 		`keyword:${normalizeQueryValue(query.keyword)}`
-	].join(':')
+	].join(':'))
 }
 
 function practiceAnswerPreviewKey(questionId: number, bankId: number): string {
-	return [
+	return trackKyzzPreloadKey([
 		'kyzz:practice-answer-preview',
 		resolveCurrentUserKey(),
 		`bank:${normalizeQueryValue(bankId)}`,
 		`question:${normalizeQueryValue(questionId)}`
-	].join(':')
+	].join(':'))
 }
 
 export function preloadPracticeDashboard(options: { force?: boolean } = {}): Promise<KyzzPracticeDashboardResponse> {
@@ -133,4 +142,8 @@ export function warmKyzzCorePreload(): void {
 export function invalidateKyzzCorePreload(): void {
 	invalidatePreloadCache(PRACTICE_DASHBOARD_KEY)
 	invalidatePreloadCache(MINE_QUESTION_BANKS_KEY)
+}
+
+export function invalidateKyzzPreload(): void {
+	kyzzPreloadKeys.forEach((key) => invalidatePreloadCache(key))
 }

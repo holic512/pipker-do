@@ -161,6 +161,10 @@ public class KyzzCacheService {
         deleteByPattern("kyzz:user:" + userId + ":favorite:*");
     }
 
+    public void evictLeaderboardCaches() {
+        deleteByPattern("kyzz:leaderboard:*");
+    }
+
     public void evictQuestionCommentCaches(Long questionId) {
         if (questionId == null) {
             return;
