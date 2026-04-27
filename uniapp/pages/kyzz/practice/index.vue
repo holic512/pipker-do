@@ -46,12 +46,9 @@
 					v-if="reviewState.result"
 					:review-result="reviewState.result"
 					:awaiting-self-judgement="awaitingSelfJudgement"
-					:user-answer-display="userAnswerDisplay"
 					:standard-answer-display="standardAnswerDisplay"
-					:show-wrong-book-hint="showWrongBookHint"
 					:syncing="reviewSyncing"
 					:sync-error-message="reviewSyncErrorMessage"
-					@open-wrong-book="goWrongBook"
 					@retry-review-sync="handleRetryReviewSync"
 				/>
 
@@ -493,26 +490,6 @@ export default defineComponent({
 				return '再刷一遍'
 			}
 			return '下一题'
-		},
-		showWrongBookHint(): boolean {
-			return Boolean(
-				this.reviewState.result
-				&& this.reviewState.result.isCorrect === false
-				&& !this.awaitingSelfJudgement
-				&& !this.reviewSyncing
-				&& !this.reviewSyncErrorMessage
-			)
-		},
-		userAnswerDisplay(): string {
-			if (!this.reviewState.result) {
-				return '未作答'
-			}
-			if (this.reviewState.result.questionType === 'short') {
-				return this.reviewState.result.submittedAnswerText || '暂未填写'
-			}
-			return this.reviewState.result.submittedOptionKeys.length
-				? this.reviewState.result.submittedOptionKeys.join('、')
-				: '未选择'
 		},
 		standardAnswerDisplay(): string {
 			if (!this.reviewState.result) {
@@ -1510,11 +1487,6 @@ export default defineComponent({
 		goPublicBanks(): void {
 			uni.navigateTo({
 				url: '/pages/kyzz/question-bank/public'
-			})
-		},
-		goWrongBook(): void {
-			uni.navigateTo({
-				url: '/pages/kyzz/wrong-book/index'
 			})
 		},
 		scrollToTop(): void {
