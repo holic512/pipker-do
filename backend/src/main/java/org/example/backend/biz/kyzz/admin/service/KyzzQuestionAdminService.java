@@ -26,7 +26,6 @@ import org.example.backend.biz.kyzz.entity.KyzzQuestionOption;
 import org.example.backend.biz.kyzz.entity.KyzzQuestionTagRel;
 import org.example.backend.biz.kyzz.entity.KyzzTag;
 import org.example.backend.biz.kyzz.entity.KyzzUserAnswer;
-import org.example.backend.biz.kyzz.entity.KyzzUserNote;
 import org.example.backend.biz.kyzz.entity.KyzzUserWrongQuestion;
 import org.example.backend.biz.kyzz.mapper.KyzzCategoryMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzCommentMapper;
@@ -36,7 +35,6 @@ import org.example.backend.biz.kyzz.mapper.KyzzQuestionOptionMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzQuestionTagRelMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzTagMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserAnswerMapper;
-import org.example.backend.biz.kyzz.mapper.KyzzUserNoteMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserWrongQuestionMapper;
 import org.example.backend.biz.kyzz.support.KyzzCacheService;
 import org.example.backend.common.api.ApiResponseCode;
@@ -83,7 +81,6 @@ public class KyzzQuestionAdminService {
     private final KyzzTagMapper kyzzTagMapper;
     private final KyzzUserAnswerMapper kyzzUserAnswerMapper;
     private final KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper;
-    private final KyzzUserNoteMapper kyzzUserNoteMapper;
     private final KyzzCommentMapper kyzzCommentMapper;
     private final KyzzQuestionTagRelMapper kyzzQuestionTagRelMapper;
     private final KyzzAdminAccessSupport kyzzAdminAccessSupport;
@@ -98,7 +95,6 @@ public class KyzzQuestionAdminService {
                                     KyzzTagMapper kyzzTagMapper,
                                     KyzzUserAnswerMapper kyzzUserAnswerMapper,
                                     KyzzUserWrongQuestionMapper kyzzUserWrongQuestionMapper,
-                                    KyzzUserNoteMapper kyzzUserNoteMapper,
                                     KyzzCommentMapper kyzzCommentMapper,
                                     KyzzQuestionTagRelMapper kyzzQuestionTagRelMapper,
                                     KyzzAdminAccessSupport kyzzAdminAccessSupport,
@@ -112,7 +108,6 @@ public class KyzzQuestionAdminService {
         this.kyzzTagMapper = kyzzTagMapper;
         this.kyzzUserAnswerMapper = kyzzUserAnswerMapper;
         this.kyzzUserWrongQuestionMapper = kyzzUserWrongQuestionMapper;
-        this.kyzzUserNoteMapper = kyzzUserNoteMapper;
         this.kyzzCommentMapper = kyzzCommentMapper;
         this.kyzzQuestionTagRelMapper = kyzzQuestionTagRelMapper;
         this.kyzzAdminAccessSupport = kyzzAdminAccessSupport;
@@ -644,11 +639,6 @@ public class KyzzQuestionAdminService {
                         .select("question_id AS relationId", "COUNT(*) AS relationCount")
                         .in("question_id", normalizedIds)
                         .groupBy("question_id")));
-        Map<Long, Integer> noteCountMap = loadRelationCountMap(kyzzUserNoteMapper.selectMaps(
-                new QueryWrapper<KyzzUserNote>()
-                        .select("question_id AS relationId", "COUNT(*) AS relationCount")
-                        .in("question_id", normalizedIds)
-                        .groupBy("question_id")));
         Map<Long, Integer> commentCountMap = loadRelationCountMap(kyzzCommentMapper.selectMaps(
                 new QueryWrapper<KyzzComment>()
                         .select("target_id AS relationId", "COUNT(*) AS relationCount")
@@ -661,7 +651,6 @@ public class KyzzQuestionAdminService {
             String reason = buildDeleteBlockReason(
                     answerCountMap.getOrDefault(questionId, 0),
                     wrongCountMap.getOrDefault(questionId, 0),
-                    noteCountMap.getOrDefault(questionId, 0),
                     commentCountMap.getOrDefault(questionId, 0)
             );
             if (StringUtils.hasText(reason)) {
@@ -671,16 +660,13 @@ public class KyzzQuestionAdminService {
         return result;
     }
 
-    private String buildDeleteBlockReason(int answerCount, int wrongCount, int noteCount, int commentCount) {
+    private String buildDeleteBlockReason(int answerCount, int wrongCount, int commentCount) {
         List<String> segments = new ArrayList<>();
         if (answerCount > 0) {
             segments.add("答题记录 " + answerCount + " 条");
         }
         if (wrongCount > 0) {
             segments.add("错题记录 " + wrongCount + " 条");
-        }
-        if (noteCount > 0) {
-            segments.add("笔记 " + noteCount + " 条");
         }
         if (commentCount > 0) {
             segments.add("评论 " + commentCount + " 条");

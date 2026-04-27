@@ -301,31 +301,10 @@ CREATE TABLE IF NOT EXISTS kyzz_user_wrong_question (
     CONSTRAINT fk_kyzz_user_wrong_question_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户错题表';
 
-CREATE TABLE IF NOT EXISTS kyzz_user_note (
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '笔记ID',
-    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
-    question_id BIGINT UNSIGNED DEFAULT NULL COMMENT '题目ID',
-    question_bank_id BIGINT UNSIGNED DEFAULT NULL COMMENT '题库ID',
-    note_title VARCHAR(100) DEFAULT NULL COMMENT '笔记标题',
-    note_content TEXT NOT NULL COMMENT '笔记内容',
-    is_public TINYINT NOT NULL DEFAULT 0 COMMENT '是否公开：0否 1是',
-    like_count INT NOT NULL DEFAULT 0 COMMENT '点赞数',
-    favorite_count INT NOT NULL DEFAULT 0 COMMENT '收藏数',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (id),
-    KEY idx_kyzz_user_note_user_created_at (user_id, created_at),
-    KEY idx_kyzz_user_note_question_id (question_id),
-    KEY idx_kyzz_user_note_bank_public_created_at (question_bank_id, is_public, created_at),
-    CONSTRAINT fk_kyzz_user_note_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
-    CONSTRAINT fk_kyzz_user_note_question_id FOREIGN KEY (question_id) REFERENCES kyzz_question (id),
-    CONSTRAINT fk_kyzz_user_note_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户笔记表';
-
 CREATE TABLE IF NOT EXISTS kyzz_comment (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '评论ID',
     user_id BIGINT UNSIGNED NOT NULL COMMENT '评论用户ID',
-    target_type VARCHAR(20) NOT NULL COMMENT '评论目标：question/bank/note',
+    target_type VARCHAR(20) NOT NULL COMMENT '评论目标：question/bank',
     target_id BIGINT UNSIGNED NOT NULL COMMENT '目标ID',
     parent_id BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '父评论ID，0表示一级评论',
     reply_to_user_id BIGINT UNSIGNED DEFAULT NULL COMMENT '回复目标用户ID',

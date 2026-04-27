@@ -59,13 +59,6 @@
 			}
 		},
 		{
-			"path": "pages/kyzz/note/index",
-			"style": {
-				"navigationBarTitleText": "笔记",
-				"navigationStyle": "default"
-			}
-		},
-		{
 			"path": "pages/common/mine/index",
 			"style": {
 				"navigationBarTitleText": "我的"
