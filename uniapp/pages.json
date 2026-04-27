@@ -38,6 +38,12 @@
 			}
 		},
 		{
+			"path": "pages/kyzz/exam/session",
+			"style": {
+				"navigationBarTitleText": "考试答题"
+			}
+		},
+		{
 			"path": "pages/kyzz/wrong-book/index",
 			"style": {
 				"navigationBarTitleText": "错题本",

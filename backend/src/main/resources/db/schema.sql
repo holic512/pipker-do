@@ -241,6 +241,56 @@ CREATE TABLE IF NOT EXISTS kyzz_user_practice_setting (
     CONSTRAINT fk_kyzz_user_practice_setting_user_id FOREIGN KEY (user_id) REFERENCES app_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYZZ用户刷题设置表';
 
+CREATE TABLE IF NOT EXISTS kyzz_exam_session (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '考试会话ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    exam_no VARCHAR(40) NOT NULL COMMENT '考试编号',
+    exam_type VARCHAR(20) NOT NULL COMMENT '考试类型：choice/short/full',
+    difficulty_mode VARCHAR(20) NOT NULL DEFAULT 'balanced' COMMENT '难度模式：balanced/easy/normal/hard',
+    duration_minutes INT NOT NULL DEFAULT 180 COMMENT '考试时长分钟',
+    single_count INT NOT NULL DEFAULT 0 COMMENT '单选题数',
+    multiple_count INT NOT NULL DEFAULT 0 COMMENT '多选题数',
+    short_count INT NOT NULL DEFAULT 0 COMMENT '简答题数',
+    total_question_count INT NOT NULL DEFAULT 0 COMMENT '总题数',
+    answered_count INT NOT NULL DEFAULT 0 COMMENT '已答题数',
+    total_score DECIMAL(6,2) NOT NULL DEFAULT 0.00 COMMENT '总分',
+    status VARCHAR(20) NOT NULL DEFAULT 'in_progress' COMMENT '状态：in_progress/submitted/expired',
+    started_at DATETIME NOT NULL COMMENT '开始时间',
+    deadline_at DATETIME NOT NULL COMMENT '截止时间',
+    submitted_at DATETIME DEFAULT NULL COMMENT '交卷时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_exam_session_exam_no (exam_no),
+    KEY idx_kyzz_exam_session_user_status_deadline (user_id, status, deadline_at),
+    KEY idx_kyzz_exam_session_user_started_at (user_id, started_at),
+    CONSTRAINT fk_kyzz_exam_session_user_id FOREIGN KEY (user_id) REFERENCES app_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYZZ VIP考试会话表';
+
+CREATE TABLE IF NOT EXISTS kyzz_exam_question (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '考试题目ID',
+    session_id BIGINT UNSIGNED NOT NULL COMMENT '考试会话ID',
+    question_id BIGINT UNSIGNED NOT NULL COMMENT '题目ID',
+    question_bank_id BIGINT UNSIGNED NOT NULL COMMENT '题库ID',
+    question_type VARCHAR(20) NOT NULL COMMENT '题型：single/multiple/short',
+    question_order INT NOT NULL DEFAULT 0 COMMENT '试卷内排序',
+    score DECIMAL(6,2) NOT NULL DEFAULT 0.00 COMMENT '本题分值',
+    answer_content TEXT COMMENT '用户暂存答案',
+    answer_status TINYINT NOT NULL DEFAULT 0 COMMENT '答题状态：0未答 1已答',
+    used_seconds INT NOT NULL DEFAULT 0 COMMENT '本题累计耗时秒',
+    answered_at DATETIME DEFAULT NULL COMMENT '最后作答时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyzz_exam_question_session_question (session_id, question_id),
+    KEY idx_kyzz_exam_question_session_order (session_id, question_order),
+    KEY idx_kyzz_exam_question_question_id (question_id),
+    KEY idx_kyzz_exam_question_bank_id (question_bank_id),
+    CONSTRAINT fk_kyzz_exam_question_session_id FOREIGN KEY (session_id) REFERENCES kyzz_exam_session (id),
+    CONSTRAINT fk_kyzz_exam_question_question_id FOREIGN KEY (question_id) REFERENCES kyzz_question (id),
+    CONSTRAINT fk_kyzz_exam_question_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYZZ VIP考试题目快照表';
+
 CREATE TABLE IF NOT EXISTS kyzz_user_answer (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户答题记录ID',
     user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
