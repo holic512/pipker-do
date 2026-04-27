@@ -49,16 +49,14 @@ public class LlmService {
     private final SystemConfigService systemConfigService;
     private final LlmCallRecordMapper llmCallRecordMapper;
     private final LlmPromptHashService promptHashService;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public LlmService(SystemConfigService systemConfigService,
                       LlmCallRecordMapper llmCallRecordMapper,
-                      LlmPromptHashService promptHashService,
-                      ObjectMapper objectMapper) {
+                      LlmPromptHashService promptHashService) {
         this.systemConfigService = systemConfigService;
         this.llmCallRecordMapper = llmCallRecordMapper;
         this.promptHashService = promptHashService;
-        this.objectMapper = objectMapper;
     }
 
     public LlmGenerateResult generateText(String scene, String systemPrompt, String userPrompt) {
@@ -278,9 +276,29 @@ public class LlmService {
         if (!StringUtils.hasText(config.apiKey())) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "OpenAI API Key 未配置");
         }
+        if (looksLikeMaskedApiKey(config.apiKey())) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "OpenAI API Key 不能使用脱敏值，请重新保存完整密钥");
+        }
+        if (!isAsciiHeaderValue(config.apiKey())) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "OpenAI API Key 包含非法字符，请重新保存完整密钥");
+        }
         if (!StringUtils.hasText(config.model())) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "OpenAI 模型未配置");
         }
+    }
+
+    private boolean looksLikeMaskedApiKey(String apiKey) {
+        return apiKey.contains("…") || apiKey.contains("****") || apiKey.contains("***");
+    }
+
+    private boolean isAsciiHeaderValue(String value) {
+        for (int index = 0; index < value.length(); index++) {
+            char item = value.charAt(index);
+            if (item < 0x21 || item > 0x7E) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private String extractOutputText(Response response) {

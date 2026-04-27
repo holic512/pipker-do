@@ -195,6 +195,9 @@ public class SystemConfigService {
 
     private String normalizeValue(SysConfig config, String value) {
         String normalizedValue = value == null ? "" : value.trim();
+        if (KEY_OPENAI_API_KEY.equals(config.getConfigKey()) && StringUtils.hasText(normalizedValue)) {
+            validateOpenAiApiKey(normalizedValue);
+        }
         if ("boolean".equals(config.getConfigType()) && !List.of("true", "false").contains(normalizedValue.toLowerCase())) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "布尔配置仅支持 true 或 false");
         }
@@ -209,6 +212,18 @@ public class SystemConfigService {
             }
         }
         return normalizedValue;
+    }
+
+    private void validateOpenAiApiKey(String apiKey) {
+        if (apiKey.contains("…") || apiKey.contains("****") || apiKey.contains("***")) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "OpenAI API Key 不能保存脱敏值，请输入完整密钥");
+        }
+        for (int index = 0; index < apiKey.length(); index++) {
+            char item = apiKey.charAt(index);
+            if (item < 0x21 || item > 0x7E) {
+                throw new BusinessException(ApiResponseCode.BAD_REQUEST, "OpenAI API Key 包含非法字符，请输入完整密钥");
+            }
+        }
     }
 
     private void validateEnabled(Integer enabled) {

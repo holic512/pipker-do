@@ -47,7 +47,7 @@ wechat:
     read-timeout: 5s
 
 llm:
-  config-secret: ${LLM_CONFIG_SECRET:}
+  config-secret: ${LLM_CONFIG_SECRET:ashdkjadjkabkjhsdhkjansdjkasbjk}
 
 anti-crawler:
   enabled: true

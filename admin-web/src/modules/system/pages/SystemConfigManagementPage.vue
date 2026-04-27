@@ -263,14 +263,15 @@
           <el-switch v-model="configForm.enabled" :active-value="1" :inactive-value="0" active-text="启用" inactive-text="停用" />
         </el-form-item>
         <template v-if="editingConfig.sensitive">
-          <el-form-item label="当前值">
-            <el-input :model-value="editingConfig.maskedValue || '未配置'" disabled />
-          </el-form-item>
-          <el-form-item>
-            <el-checkbox v-model="configForm.keepSensitiveValue">保留原密钥</el-checkbox>
-          </el-form-item>
-          <el-form-item label="新值">
-            <el-input v-model="configForm.value" type="password" show-password :disabled="configForm.keepSensitiveValue" />
+          <el-alert
+            class="system-config-page__config-alert"
+            type="warning"
+            show-icon
+            :closable="false"
+            title="敏感配置不会回显原值；保存前请确认后端已配置 LLM_CONFIG_SECRET。"
+          />
+          <el-form-item label="配置值">
+            <el-input v-model="configForm.value" type="password" show-password placeholder="输入新的配置值" />
           </el-form-item>
         </template>
         <el-form-item v-else label="配置值">
@@ -344,8 +345,7 @@ const savingConfig = ref(false)
 const editingConfig = ref<SystemConfigItem | null>(null)
 const configForm = reactive({
   value: '',
-  enabled: 1,
-  keepSensitiveValue: true
+  enabled: 1
 })
 
 const testing = ref(false)
@@ -444,7 +444,6 @@ function displayConfigValue(row: SystemConfigItem) {
 function openConfigDialog(row: SystemConfigItem) {
   editingConfig.value = row
   configForm.enabled = row.enabled
-  configForm.keepSensitiveValue = row.sensitive
   configForm.value = row.sensitive ? '' : row.value || ''
   configDialogVisible.value = true
 }
@@ -457,12 +456,13 @@ async function submitConfig() {
   try {
     await updateSystemConfig(editingConfig.value.configKey, {
       value: configForm.value,
-      enabled: configForm.enabled,
-      keepSensitiveValue: configForm.keepSensitiveValue
+      enabled: configForm.enabled
     })
     ElMessage.success('配置已保存')
     configDialogVisible.value = false
     await Promise.all([loadConfigs(), loadChangeLogs()])
+  } catch (error) {
+    ElMessage.warning(error instanceof Error ? error.message : '配置保存失败')
   } finally {
     savingConfig.value = false
   }
@@ -474,6 +474,11 @@ async function submitLlmTest() {
     const response = await testLlm({ ...testForm })
     testResult.value = response.result
     ElMessage.success('测试调用已完成')
+    recordPage.pageNo = 1
+    await loadRecords()
+  } catch (error) {
+    testResult.value = null
+    ElMessage.warning(error instanceof Error ? error.message : 'AI 测试调用失败')
     recordPage.pageNo = 1
     await loadRecords()
   } finally {
@@ -655,6 +660,10 @@ function formatDateTime(value: string | null | undefined) {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.system-config-page__config-alert {
+  margin-bottom: 16px;
 }
 
 .system-config-page__result-head {

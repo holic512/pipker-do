@@ -14,7 +14,6 @@ export interface SystemConfigQuery {
 
 export interface SystemConfigUpdateRequest {
   value?: string
-  keepSensitiveValue?: boolean
   enabled?: number
 }
 

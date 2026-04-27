@@ -1,6 +1,7 @@
 package org.example.backend.shared.config.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
  * AI 索引: 系统配置实体。
  */
 @Data
-@TableName("sys_config")
+@TableName(value = "sys_config", autoResultMap = true)
 public class SysConfig implements Serializable {
 
     @TableId(type = IdType.AUTO)
@@ -28,6 +29,7 @@ public class SysConfig implements Serializable {
 
     private String configValue;
 
+    @TableField("is_sensitive")
     private Integer sensitive;
 
     private Integer enabled;

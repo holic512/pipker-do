@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS sys_config (
     config_name VARCHAR(100) NOT NULL COMMENT '配置名称',
     config_type VARCHAR(20) NOT NULL DEFAULT 'string' COMMENT '配置类型：string/number/boolean/secret/json',
     config_value TEXT COMMENT '配置值，敏感配置为密文',
-    sensitive TINYINT NOT NULL DEFAULT 0 COMMENT '是否敏感：0否 1是',
+    is_sensitive TINYINT NOT NULL DEFAULT 0 COMMENT '是否敏感：0否 1是',
     enabled TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用：0否 1是',
     description VARCHAR(255) DEFAULT NULL COMMENT '配置说明',
     sort_no INT NOT NULL DEFAULT 0 COMMENT '排序值',
