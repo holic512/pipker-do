@@ -173,6 +173,7 @@
 import { defineComponent } from 'vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getLeaderboard } from '@/pages/kyzz/api/leaderboard'
+import { openPracticeTab } from '@/pages/kyzz/practice/navigation'
 import type {
 	KyzzLeaderboardDashboardState,
 	KyzzLeaderboardRecordState,
@@ -387,8 +388,11 @@ export default defineComponent({
 		},
 		goPractice(): void {
 			this.showRulePopover = false
-			uni.switchTab({
-				url: '/pages/kyzz/practice/index'
+			openPracticeTab().catch(() => {
+				uni.showToast({
+					title: '跳转刷题失败',
+					icon: 'none'
+				})
 			})
 		}
 	}

@@ -165,7 +165,7 @@ public class KyzzPracticeUserService {
         }
 
         if (SOURCE_TYPE_RANDOM.equals(normalizedSourceType)) {
-            return buildRandomSession(userId, context);
+            return buildRandomSession(userId, context, questionId);
         }
 
         if (!SOURCE_TYPE_BANK.equals(normalizedSourceType)) {
@@ -234,13 +234,19 @@ public class KyzzPracticeUserService {
     }
 
     private KyzzPracticeSessionResponse buildRandomSession(Long userId,
-                                                           DashboardContext context) {
+                                                           DashboardContext context,
+                                                           Long questionId) {
         List<KyzzQuestion> questions = flattenQuestionMap(context.questionMap()).values().stream().toList();
         if (questions.isEmpty()) {
             throw new BusinessException(ApiResponseCode.NOT_FOUND, sourceEmptyMessage(SOURCE_TYPE_RANDOM));
         }
 
-        KyzzQuestion targetQuestion = questions.get(ThreadLocalRandom.current().nextInt(questions.size()));
+        KyzzQuestion targetQuestion = questionId == null
+                ? questions.get(ThreadLocalRandom.current().nextInt(questions.size()))
+                : questions.stream()
+                        .filter(item -> Objects.equals(item.getId(), questionId))
+                        .findFirst()
+                        .orElseThrow(() -> new BusinessException(ApiResponseCode.NOT_FOUND, "当前随机题目已失效，请重新随机一题"));
         KyzzPracticeBankRecordResponse activeBank = context.recordMap().get(targetQuestion.getQuestionBankId());
         if (activeBank == null) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "请先把题目所属题库加入我的题库再开始刷题");

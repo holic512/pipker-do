@@ -190,7 +190,18 @@ import {
 	likePracticeQuestionComment,
 	unlikePracticeQuestionComment
 } from '@/pages/kyzz/api/comment'
-import { consumePracticeLaunchTarget } from '@/pages/kyzz/practice/navigation'
+import {
+	consumePracticeLaunchTarget,
+	resolveInitialPracticeLaunchTarget,
+	resolvePracticeEntryTarget
+} from '@/pages/kyzz/practice/navigation'
+import {
+	clearSourcePracticeProgress,
+	isSourcePracticeType,
+	readSourcePracticeProgress,
+	saveSourcePracticeProgress,
+	sourceProgressMatchesQuestion
+} from '@/pages/kyzz/practice/progress'
 import {
 	cachePracticeSettings,
 	loadPracticeSettingsWithFallback,
@@ -262,11 +273,22 @@ interface PracticePageState {
 	settingsPopupVisible: boolean
 	autoJumping: boolean
 	autoJumpTimer: ReturnType<typeof setTimeout> | null
+	sourceFreshAttempt: boolean | null
 }
 
 interface PracticeReviewSyncTask {
 	questionId: number
 	payload: KyzzPracticeReviewRequest
+}
+
+interface SourcePracticeProgressPatch {
+	bankId?: number | null
+	bankName?: string | null
+	questionId?: number | null
+	currentQuestionIndex?: number | null
+	totalQuestionCount?: number | null
+	freshAttempt?: boolean | null
+	answerDraft?: Pick<KyzzPracticeAnswerDraftState, 'selectedOptionKeys' | 'answerText'> | null
 }
 
 interface UniPopupChangeEvent {
@@ -418,7 +440,8 @@ export default defineComponent({
 			switchPopupVisible: false,
 			settingsPopupVisible: false,
 			autoJumping: false,
-			autoJumpTimer: null
+			autoJumpTimer: null,
+			sourceFreshAttempt: null
 		}
 	},
 	computed: {
@@ -576,23 +599,37 @@ export default defineComponent({
 			animation: false,
 			fail: () => {}
 		})
-		const launchTarget = consumePracticeLaunchTarget()
-		if (hasRouteTarget(launchTarget)) {
-			this.routeQuery = mergeSessionQuery(this.routeQuery, launchTarget)
-			this.bootstrapAndLoad(this.routeQuery)
-			return
-		}
-		if (!this.uiState.loadedOnce) {
-			this.bootstrapAndLoad(this.routeQuery)
-		}
+		this.handlePracticePageShow().catch((error) => {
+			uni.showToast({
+				title: resolveErrorMessage(error, '刷题页面加载失败'),
+				icon: 'none'
+			})
+		})
 	},
 	onHide() {
+		this.saveCurrentSourcePracticeProgress()
 		this.cancelAutoJump()
 	},
 	onUnload() {
+		this.saveCurrentSourcePracticeProgress()
 		this.cancelAutoJump()
 	},
 	methods: {
+		async handlePracticePageShow(): Promise<void> {
+			const launchTarget = consumePracticeLaunchTarget()
+			if (hasRouteTarget(launchTarget)) {
+				this.routeQuery = mergeSessionQuery(this.routeQuery, launchTarget)
+				await this.bootstrapAndLoad(this.routeQuery)
+				return
+			}
+			if (!this.uiState.loadedOnce) {
+				const initialTarget = await resolveInitialPracticeLaunchTarget()
+				if (hasRouteTarget(initialTarget)) {
+					this.routeQuery = mergeSessionQuery(this.routeQuery, initialTarget)
+				}
+				await this.bootstrapAndLoad(this.routeQuery)
+			}
+		},
 		async bootstrapAndLoad(query: KyzzPracticeSessionQuery): Promise<void> {
 			try {
 				await bootstrapAuth({ silent: true })
@@ -621,6 +658,81 @@ export default defineComponent({
 				syncing: false
 			}
 		},
+		resolveCachedSourceAnswerDraft(): Pick<KyzzPracticeAnswerDraftState, 'selectedOptionKeys' | 'answerText'> | null {
+			const progress = readSourcePracticeProgress()
+			if (!this.sessionState.question || !sourceProgressMatchesQuestion(progress, this.sessionState.sourceType, this.sessionState.question.id)) {
+				return null
+			}
+			return progress?.answerDraft ?? null
+		},
+		saveCurrentSourcePracticeProgress(patch: SourcePracticeProgressPatch = {}): void {
+			const sourceType = this.sessionState.sourceType
+			if (!isSourcePracticeType(sourceType)) {
+				return
+			}
+			if (!patch.questionId && this.reviewState.result && isSourcePracticeType(this.reviewState.result.sourceType) && !this.awaitingSelfJudgement) {
+				if (this.reviewSyncing || this.reviewSyncErrorMessage) {
+					return
+				}
+				this.syncSourcePracticeProgressAfterReview(this.reviewState.result)
+				return
+			}
+			const questionId = patch.questionId ?? this.sessionState.question?.id ?? null
+			if (!questionId) {
+				return
+			}
+			const answerDraft = patch.answerDraft !== undefined
+				? patch.answerDraft
+				: this.reviewState.result && !this.awaitingSelfJudgement
+					? null
+					: {
+						selectedOptionKeys: [...this.answerDraft.selectedOptionKeys],
+						answerText: this.answerDraft.answerText
+					}
+			saveSourcePracticeProgress({
+				sourceType,
+				sourceStatus: this.routeQuery.sourceStatus ?? null,
+				keyword: this.routeQuery.keyword ?? null,
+				bankId: patch.bankId ?? this.currentBank?.bankId ?? null,
+				questionId,
+				sourceTitle: this.sessionState.sourceTitle,
+				bankName: patch.bankName !== undefined ? patch.bankName : this.currentBank?.bankName ?? null,
+				currentQuestionIndex: patch.currentQuestionIndex ?? this.sessionState.progress.currentQuestionIndex,
+				totalQuestionCount: patch.totalQuestionCount ?? this.sessionState.progress.totalQuestionCount,
+				freshAttempt: patch.freshAttempt !== undefined ? patch.freshAttempt : this.sourceFreshAttempt,
+				answerDraft,
+				dismissed: false
+			})
+		},
+		refreshSourcePracticeProgressFromSession(): void {
+			if (!isSourcePracticeType(this.sessionState.sourceType)) {
+				return
+			}
+			if (this.reviewState.result && !this.awaitingSelfJudgement) {
+				this.syncSourcePracticeProgressAfterReview(this.reviewState.result)
+				return
+			}
+			this.saveCurrentSourcePracticeProgress()
+		},
+		syncSourcePracticeProgressAfterReview(result: KyzzPracticeReviewViewResult | null): void {
+			if (!result || !isSourcePracticeType(result.sourceType)) {
+				return
+			}
+			this.sourceFreshAttempt = null
+			if (result.completedSource || !result.nextQuestionId) {
+				clearSourcePracticeProgress()
+				return
+			}
+			this.saveCurrentSourcePracticeProgress({
+				bankId: null,
+				bankName: null,
+				questionId: result.nextQuestionId,
+				currentQuestionIndex: result.nextQuestionIndex || this.sessionState.progress.currentQuestionIndex + 1,
+				totalQuestionCount: this.sessionState.progress.totalQuestionCount,
+				freshAttempt: null,
+				answerDraft: null
+			})
+		},
 		applySessionResult(result: KyzzPracticeSessionResponse, query: KyzzPracticeSessionQuery): void {
 			this.sessionState = normalizePracticeSession(result)
 			this.reviewState = {
@@ -629,13 +741,23 @@ export default defineComponent({
 			this.reviewSyncing = false
 			this.reviewSyncErrorMessage = ''
 			this.pendingReviewSync = null
+			this.sourceFreshAttempt = isSourcePracticeType(this.sessionState.sourceType) && query.freshAttempt === true && !this.reviewState.result
+				? true
+				: null
+			const cachedSourceDraft = this.resolveCachedSourceAnswerDraft()
 			this.answerDraft = this.reviewState.result
 				? {
 					selectedOptionKeys: [...this.reviewState.result.submittedOptionKeys],
 					answerText: this.reviewState.result.submittedAnswerText || '',
 					questionStartedAt: Date.now()
 				}
-				: createEmptyPracticeAnswerDraft()
+				: cachedSourceDraft
+					? {
+						selectedOptionKeys: [...cachedSourceDraft.selectedOptionKeys],
+						answerText: cachedSourceDraft.answerText,
+						questionStartedAt: Date.now()
+					}
+					: createEmptyPracticeAnswerDraft()
 			this.routeQuery = {
 				bankId: this.sessionState.activeBank?.bankId ?? query.bankId ?? null,
 				questionId: this.sessionState.question?.id ?? query.questionId ?? null,
@@ -653,6 +775,7 @@ export default defineComponent({
 			}
 			this.uiState.emptyState = null
 			this.uiState.loadedOnce = true
+			this.refreshSourcePracticeProgressFromSession()
 			this.warmNextPracticeSession()
 			uni.pageScrollTo({
 				scrollTop: 0,
@@ -686,6 +809,9 @@ export default defineComponent({
 				this.resetComments()
 				this.uiState.loadedOnce = true
 				this.uiState.emptyState = resolvePracticeEmptyState(error)
+				if (this.uiState.emptyState && isSourcePracticeType(query.sourceType)) {
+					clearSourcePracticeProgress()
+				}
 				if (!this.uiState.emptyState) {
 					uni.showToast({
 						title: resolveErrorMessage(error, '刷题页面加载失败'),
@@ -892,6 +1018,7 @@ export default defineComponent({
 		},
 		handleAnswerTextChange(value: string): void {
 			this.answerDraft.answerText = value
+			this.saveCurrentSourcePracticeProgress()
 			if (value.trim()) {
 				this.warmAnswerPreviewForCurrentQuestion()
 			}
@@ -902,6 +1029,7 @@ export default defineComponent({
 			}
 			if (this.question.questionType === 'single') {
 				this.answerDraft.selectedOptionKeys = [optionKey]
+				this.saveCurrentSourcePracticeProgress()
 				this.warmAnswerPreviewForCurrentQuestion()
 				return
 			}
@@ -913,6 +1041,7 @@ export default defineComponent({
 					selected.add(optionKey)
 				}
 				this.answerDraft.selectedOptionKeys = Array.from(selected).sort()
+				this.saveCurrentSourcePracticeProgress()
 				if (this.answerDraft.selectedOptionKeys.length) {
 					this.warmAnswerPreviewForCurrentQuestion()
 				}
@@ -942,6 +1071,7 @@ export default defineComponent({
 				if (preview) {
 					this.reviewState.result = this.buildPreviewReviewResult(preview, payload)
 					if (this.question.questionType === 'short') {
+						this.saveCurrentSourcePracticeProgress()
 						this.uiState.submitting = false
 						await this.loadComments({ reset: true, questionId, silent: true })
 						return
@@ -963,6 +1093,7 @@ export default defineComponent({
 					this.reviewState.result.updatedBank
 				)
 				this.replaceBankRecord(this.reviewState.result.updatedBank)
+				this.syncSourcePracticeProgressAfterReview(this.reviewState.result)
 				if (!this.scheduleAutoJumpIfNeeded(this.reviewState.result)) {
 					await this.loadComments({ reset: true, questionId, silent: true })
 				}
@@ -992,6 +1123,7 @@ export default defineComponent({
 					this.reviewState.result.updatedBank
 				)
 				this.replaceBankRecord(this.reviewState.result.updatedBank)
+				this.syncSourcePracticeProgressAfterReview(this.reviewState.result)
 				this.reviewSyncing = false
 				this.reviewSyncErrorMessage = ''
 				this.pendingReviewSync = null
@@ -1040,6 +1172,7 @@ export default defineComponent({
 					this.reviewState.result.updatedBank
 				)
 				this.replaceBankRecord(this.reviewState.result.updatedBank)
+				this.syncSourcePracticeProgressAfterReview(this.reviewState.result)
 				if (!this.scheduleAutoJumpIfNeeded(this.reviewState.result)) {
 					await this.loadComments({ reset: true, questionId: this.question.id, silent: true })
 				}
@@ -1330,12 +1463,13 @@ export default defineComponent({
 			}
 			this.closeSwitchPopup()
 			this.cancelAutoJump()
-			await this.loadSession({
+			const resolvedTarget = await resolvePracticeEntryTarget({
 				bankId: item.bankId,
-				sourceType: null,
+				sourceType: 'bank',
 				sourceStatus: null,
 				keyword: null
 			})
+			await this.loadSession(mergeSessionQuery(this.routeQuery, resolvedTarget))
 		},
 		openSwitchPopup(): void {
 			if (this.autoJumping || !this.sessionState.switchableBanks.length || this.uiState.emptyState === 'no_bank') {

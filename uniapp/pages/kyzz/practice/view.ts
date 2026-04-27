@@ -441,7 +441,7 @@ export function resolvePracticeEmptyState(error: unknown): KyzzPracticeEmptyStat
 	if (message.includes('可刷题库') || message.includes('已选择题库') || message.includes('先去添加')) {
 		return 'no_bank'
 	}
-	if (message.includes('暂无可练习题目') || message.includes('没有可展示的题目')) {
+	if (message.includes('暂无可练习题目') || message.includes('没有可展示的题目') || message.includes('已失效')) {
 		return 'no_question'
 	}
 	return null
