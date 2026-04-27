@@ -65,3 +65,6 @@ wechat:
   miniapp:
     app-id: wx_your_miniapp_appid
     app-secret: replace_with_your_wechat_miniapp_secret
+
+llm:
+  config-secret: ${LLM_CONFIG_SECRET}

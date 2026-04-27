@@ -9,6 +9,7 @@ import {
   Management,
   Medal,
   PriceTag,
+  SetUp,
   Setting,
   Ticket,
   User,
@@ -110,6 +111,14 @@ export function buildAdminMenus(projectCode: string | null, currentRoles: string
           route: '/system/admin-roles',
           icon: Medal,
           iconTone: '#d97706',
+          roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN']
+        },
+        {
+          key: 'system-configs',
+          label: '系统配置',
+          route: '/system/configs',
+          icon: SetUp,
+          iconTone: '#0f766e',
           roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN']
         }
       ]

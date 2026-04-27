@@ -93,6 +93,13 @@
             <artifactId>commons-pool2</artifactId>
         </dependency>
 
+        <!-- OpenAI Java SDK for shared LLM capabilities -->
+        <dependency>
+            <groupId>com.openai</groupId>
+            <artifactId>openai-java</artifactId>
+            <version>4.32.0</version>
+        </dependency>
+
     </dependencies>
 
     <build>

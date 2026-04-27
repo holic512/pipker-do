@@ -63,6 +63,82 @@ export interface ApiResponse<T> {
   timestamp: string
 }
 
+export interface PageResponse<T> {
+  pageNo: number
+  pageSize: number
+  total: number
+  totalPages: number
+  records: T[]
+}
+
+export interface SystemConfigItem {
+  id: number
+  configGroup: string
+  configKey: string
+  configName: string
+  configType: string
+  value: string | null
+  maskedValue: string | null
+  sensitive: boolean
+  hasValue: boolean
+  enabled: number
+  description: string | null
+  sortNo: number
+  updatedBy: number | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SystemConfigChangeLog {
+  id: number
+  configGroup: string
+  configKey: string
+  oldValueMasked: string | null
+  newValueMasked: string | null
+  changedBy: number | null
+  requestId: string | null
+  createdAt: string
+}
+
+export interface LlmUsage {
+  inputTokens: number | null
+  outputTokens: number | null
+  totalTokens: number | null
+}
+
+export interface LlmGenerateResult {
+  content: string | null
+  jsonContent: string | null
+  model: string
+  usage: LlmUsage
+  latencyMs: number
+  recordId: number
+  requestId: string
+}
+
+export interface AdminLlmTestResponse {
+  mode: string
+  result: LlmGenerateResult
+}
+
+export interface LlmCallRecord {
+  id: number
+  scene: string
+  model: string | null
+  status: string
+  latencyMs: number
+  inputTokens: number | null
+  outputTokens: number | null
+  totalTokens: number | null
+  requestId: string | null
+  promptHash: string | null
+  inputPreview: string | null
+  outputPreview: string | null
+  errorMessage: string | null
+  operatorId: number | null
+  createdAt: string
+}
+
 export interface UploadFileResponse {
   storageKey: string
   url: string

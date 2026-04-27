@@ -91,6 +91,120 @@ CREATE TABLE IF NOT EXISTS vip_card_key (
     CONSTRAINT fk_vip_card_key_redeemed_user_id FOREIGN KEY (redeemed_user_id) REFERENCES app_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='VIP兑换Key表';
 
+CREATE TABLE IF NOT EXISTS admin_user (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '后台管理员ID',
+    username VARCHAR(50) NOT NULL COMMENT '登录账号',
+    display_name VARCHAR(50) NOT NULL COMMENT '显示名称',
+    password_hash VARCHAR(255) NOT NULL COMMENT '密码哈希',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0停用 1启用',
+    default_project_code VARCHAR(50) DEFAULT NULL COMMENT '默认项目编码',
+    last_login_at DATETIME DEFAULT NULL COMMENT '最近登录时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_admin_user_username (username),
+    KEY idx_admin_user_status_created_at (status, created_at),
+    KEY idx_admin_user_default_project_code (default_project_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='后台管理员表';
+
+CREATE TABLE IF NOT EXISTS admin_role (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '后台角色ID',
+    role_code VARCHAR(50) NOT NULL COMMENT '角色编码',
+    role_name VARCHAR(50) NOT NULL COMMENT '角色名称',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0停用 1启用',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_admin_role_code (role_code),
+    KEY idx_admin_role_status_created_at (status, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='后台角色表';
+
+CREATE TABLE IF NOT EXISTS admin_user_role (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '管理员角色关系ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '管理员ID',
+    role_id BIGINT UNSIGNED NOT NULL COMMENT '角色ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_admin_user_role_user_role (user_id, role_id),
+    KEY idx_admin_user_role_role_id (role_id),
+    CONSTRAINT fk_admin_user_role_user_id FOREIGN KEY (user_id) REFERENCES admin_user (id),
+    CONSTRAINT fk_admin_user_role_role_id FOREIGN KEY (role_id) REFERENCES admin_role (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='后台管理员角色关系表';
+
+CREATE TABLE IF NOT EXISTS admin_project_access (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '管理员项目授权ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '管理员ID',
+    project_code VARCHAR(50) NOT NULL COMMENT '项目编码',
+    enabled TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用：0否 1是',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_admin_project_access_user_project (user_id, project_code),
+    KEY idx_admin_project_access_project_enabled (project_code, enabled),
+    CONSTRAINT fk_admin_project_access_user_id FOREIGN KEY (user_id) REFERENCES admin_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='后台管理员项目授权表';
+
+CREATE TABLE IF NOT EXISTS sys_config (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '系统配置ID',
+    config_group VARCHAR(50) NOT NULL COMMENT '配置分组',
+    config_key VARCHAR(100) NOT NULL COMMENT '配置键',
+    config_name VARCHAR(100) NOT NULL COMMENT '配置名称',
+    config_type VARCHAR(20) NOT NULL DEFAULT 'string' COMMENT '配置类型：string/number/boolean/secret/json',
+    config_value TEXT COMMENT '配置值，敏感配置为密文',
+    sensitive TINYINT NOT NULL DEFAULT 0 COMMENT '是否敏感：0否 1是',
+    enabled TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用：0否 1是',
+    description VARCHAR(255) DEFAULT NULL COMMENT '配置说明',
+    sort_no INT NOT NULL DEFAULT 0 COMMENT '排序值',
+    updated_by BIGINT UNSIGNED DEFAULT NULL COMMENT '最后更新管理员ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_sys_config_key (config_key),
+    KEY idx_sys_config_group_sort (config_group, sort_no),
+    KEY idx_sys_config_updated_by (updated_by),
+    CONSTRAINT fk_sys_config_updated_by FOREIGN KEY (updated_by) REFERENCES admin_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统配置表';
+
+CREATE TABLE IF NOT EXISTS sys_config_change_log (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '配置变更日志ID',
+    config_group VARCHAR(50) NOT NULL COMMENT '配置分组',
+    config_key VARCHAR(100) NOT NULL COMMENT '配置键',
+    old_value_masked TEXT COMMENT '旧值脱敏快照',
+    new_value_masked TEXT COMMENT '新值脱敏快照',
+    changed_by BIGINT UNSIGNED DEFAULT NULL COMMENT '操作管理员ID',
+    request_id VARCHAR(64) DEFAULT NULL COMMENT '请求ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_sys_config_change_log_key_created_at (config_key, created_at),
+    KEY idx_sys_config_change_log_group_created_at (config_group, created_at),
+    KEY idx_sys_config_change_log_changed_by (changed_by),
+    CONSTRAINT fk_sys_config_change_log_changed_by FOREIGN KEY (changed_by) REFERENCES admin_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统配置变更日志表';
+
+CREATE TABLE IF NOT EXISTS llm_call_record (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'LLM调用记录ID',
+    scene VARCHAR(80) NOT NULL COMMENT '调用场景',
+    model VARCHAR(80) DEFAULT NULL COMMENT '模型',
+    status VARCHAR(20) NOT NULL COMMENT '状态：success/failed',
+    latency_ms BIGINT NOT NULL DEFAULT 0 COMMENT '耗时毫秒',
+    input_tokens INT DEFAULT NULL COMMENT '输入token数',
+    output_tokens INT DEFAULT NULL COMMENT '输出token数',
+    total_tokens INT DEFAULT NULL COMMENT '总token数',
+    request_id VARCHAR(64) DEFAULT NULL COMMENT '请求ID',
+    prompt_hash VARCHAR(64) DEFAULT NULL COMMENT 'prompt摘要哈希',
+    input_preview TEXT COMMENT '输入截断预览',
+    output_preview TEXT COMMENT '输出截断预览',
+    error_message VARCHAR(500) DEFAULT NULL COMMENT '错误信息',
+    operator_id BIGINT UNSIGNED DEFAULT NULL COMMENT '触发后台管理员ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_llm_call_record_status_created_at (status, created_at),
+    KEY idx_llm_call_record_scene_created_at (scene, created_at),
+    KEY idx_llm_call_record_request_id (request_id),
+    KEY idx_llm_call_record_operator_id (operator_id),
+    CONSTRAINT fk_llm_call_record_operator_id FOREIGN KEY (operator_id) REFERENCES admin_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='LLM调用记录表';
+
 
 CREATE TABLE IF NOT EXISTS kyzz_category (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '分类ID',
