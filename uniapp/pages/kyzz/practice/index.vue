@@ -143,9 +143,11 @@
 			>
 				<practice-settings-popup
 					:auto-jump-on-correct="practiceSettings.autoJumpOnCorrect"
+					:bank-practice-choice-only="practiceSettings.bankPracticeChoiceOnly"
 					:syncing="practiceSettings.syncing"
 					@close="closeSettingsPopup"
 					@change-auto-jump="handleAutoJumpSettingChange"
+					@change-bank-practice-choice-only="handleBankPracticeChoiceOnlySettingChange"
 				/>
 			</uni-popup>
 
@@ -176,6 +178,7 @@ import { getPracticeSession, reviewPracticeQuestion, selfJudgePracticeQuestion }
 import {
 	getCachedPracticeAnswerPreview,
 	getCachedPracticeSession,
+	invalidateKyzzPreload,
 	preloadPracticeAnswerPreview,
 	preloadPracticeSession,
 	setCachedPracticeSession
@@ -927,6 +930,48 @@ export default defineComponent({
 				uni.showToast({
 					title: '设置已在本机生效',
 					icon: 'none'
+				})
+			}
+		},
+		async handleBankPracticeChoiceOnlySettingChange(value: boolean): Promise<void> {
+			const previousSettings = { ...this.practiceSettings }
+			const bankPracticeChoiceOnly = Boolean(value)
+			this.practiceSettings = {
+				...this.practiceSettings,
+				bankPracticeChoiceOnly,
+				loaded: true,
+				syncing: true
+			}
+			cachePracticeSettings(this.practiceSettings)
+			invalidateKyzzPreload()
+			try {
+				this.practiceSettings = await syncPracticeSettings({
+					bankPracticeChoiceOnly
+				})
+			} catch (error) {
+				this.practiceSettings = {
+					...previousSettings,
+					loaded: true,
+					syncing: false
+				}
+				cachePracticeSettings(this.practiceSettings)
+				uni.showToast({
+					title: '设置同步失败',
+					icon: 'none'
+				})
+				return
+			}
+			if (this.sessionState.sourceType === 'bank') {
+				const currentQuestionId = this.question && this.question.questionType !== 'short'
+					? this.question.id
+					: null
+				await this.loadSession({
+					bankId: this.currentBank?.bankId ?? this.routeQuery.bankId ?? null,
+					questionId: currentQuestionId,
+					freshAttempt: null,
+					sourceType: null,
+					sourceStatus: null,
+					keyword: null
 				})
 			}
 		},

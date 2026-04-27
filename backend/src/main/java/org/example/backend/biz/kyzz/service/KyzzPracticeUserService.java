@@ -40,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -71,6 +72,8 @@ public class KyzzPracticeUserService {
     private static final String WRONG_STATUS_ACTIVE = "active";
     private static final String WRONG_STATUS_MASTERED = "mastered";
     private static final boolean DEFAULT_AUTO_JUMP_ON_CORRECT = true;
+    private static final boolean DEFAULT_BANK_PRACTICE_CHOICE_ONLY = false;
+    private static final String BANK_CHOICE_ONLY_EMPTY_MESSAGE = "当前自选题库没有可展示的题目，开启只刷选择题后会跳过简答题";
     private static final Set<String> SUPPORTED_SOURCE_TYPES = Set.of(SOURCE_TYPE_BANK, SOURCE_TYPE_WRONG_BOOK, SOURCE_TYPE_FAVORITE, SOURCE_TYPE_RANDOM);
     private static final Set<String> SUPPORTED_WRONG_STATUSES = Set.of(WRONG_STATUS_ALL, WRONG_STATUS_ACTIVE, WRONG_STATUS_MASTERED);
     private static final Set<String> SUPPORTED_QUESTION_TYPES = Set.of(
@@ -122,7 +125,7 @@ public class KyzzPracticeUserService {
     }
 
     private KyzzPracticeDashboardResponse loadDashboard(Long userId) {
-        DashboardContext context = buildDashboardContext(userId);
+        DashboardContext context = buildDashboardContext(userId, isBankPracticeChoiceOnlyEnabled(userId));
         KyzzPracticeBankRecordResponse recommended = resolveRecommendedRecord(context.records());
         return new KyzzPracticeDashboardResponse(
                 recommended == null ? null : recommended.getBankId(),
@@ -137,19 +140,32 @@ public class KyzzPracticeUserService {
 
     @Transactional
     public KyzzPracticeSettingResponse updateSettings(Long userId, KyzzPracticeSettingRequest request) {
-        boolean autoJumpOnCorrect = request == null || request.getAutoJumpOnCorrect() == null
-                ? DEFAULT_AUTO_JUMP_ON_CORRECT
-                : request.getAutoJumpOnCorrect();
         KyzzUserPracticeSetting existing = loadPracticeSetting(userId);
         if (existing == null) {
             KyzzUserPracticeSetting setting = new KyzzUserPracticeSetting();
             setting.setUserId(userId);
-            setting.setAutoJumpOnCorrect(autoJumpOnCorrect ? 1 : 0);
+            setting.setAutoJumpOnCorrect(resolveRequestedBoolean(
+                    request == null ? null : request.getAutoJumpOnCorrect(),
+                    DEFAULT_AUTO_JUMP_ON_CORRECT
+            ) ? 1 : 0);
+            setting.setBankPracticeChoiceOnly(resolveRequestedBoolean(
+                    request == null ? null : request.getBankPracticeChoiceOnly(),
+                    DEFAULT_BANK_PRACTICE_CHOICE_ONLY
+            ) ? 1 : 0);
             kyzzUserPracticeSettingMapper.insert(setting);
+            kyzzCacheService.evictUserAggregateCaches(userId);
             return toPracticeSettingResponse(setting);
         }
-        existing.setAutoJumpOnCorrect(autoJumpOnCorrect ? 1 : 0);
-        kyzzUserPracticeSettingMapper.updateById(existing);
+        if (request != null) {
+            if (request.getAutoJumpOnCorrect() != null) {
+                existing.setAutoJumpOnCorrect(request.getAutoJumpOnCorrect() ? 1 : 0);
+            }
+            if (request.getBankPracticeChoiceOnly() != null) {
+                existing.setBankPracticeChoiceOnly(request.getBankPracticeChoiceOnly() ? 1 : 0);
+            }
+            kyzzUserPracticeSettingMapper.updateById(existing);
+            kyzzCacheService.evictUserAggregateCaches(userId);
+        }
         return toPracticeSettingResponse(existing);
     }
 
@@ -184,8 +200,12 @@ public class KyzzPracticeUserService {
                                                   String sourceStatus,
                                                   String keyword) {
         String normalizedSourceType = normalizeSourceType(sourceType);
-        DashboardContext context = buildDashboardContext(userId);
+        boolean bankPracticeChoiceOnly = SOURCE_TYPE_BANK.equals(normalizedSourceType) && isBankPracticeChoiceOnlyEnabled(userId);
+        DashboardContext context = buildDashboardContext(userId, bankPracticeChoiceOnly);
         if (context.records().isEmpty()) {
+            if (bankPracticeChoiceOnly && hasAnyBankPracticeContext(userId)) {
+                throw new BusinessException(ApiResponseCode.NOT_FOUND, BANK_CHOICE_ONLY_EMPTY_MESSAGE);
+            }
             throw new BusinessException(ApiResponseCode.NOT_FOUND, "还没有可刷题库，先去添加一套题库吧");
         }
 
@@ -216,6 +236,9 @@ public class KyzzPracticeUserService {
 
         KyzzPracticeBankRecordResponse activeBank = context.recordMap().get(resolvedBankId);
         if (activeBank == null) {
+            if (bankPracticeChoiceOnly && hasBankInFullDashboardContext(userId, resolvedBankId)) {
+                throw new BusinessException(ApiResponseCode.BAD_REQUEST, "当前题库没有可展示的题目，开启只刷选择题后会跳过简答题");
+            }
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "请先从已选择题库中开始刷题");
         }
 
@@ -315,6 +338,10 @@ public class KyzzPracticeUserService {
         validateUsedSeconds(request == null ? null : request.getUsedSeconds());
         String questionType = context.question().getQuestionType();
         String normalizedSourceType = normalizeSourceType(request == null ? null : request.getSourceType());
+        boolean bankPracticeChoiceOnly = SOURCE_TYPE_BANK.equals(normalizedSourceType) && isBankPracticeChoiceOnlyEnabled(userId);
+        if (bankPracticeChoiceOnly && !isChoiceQuestion(context.question())) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "当前题目不在只刷选择题范围内");
+        }
 
         if (QUESTION_TYPE_SHORT.equals(questionType)) {
             return buildShortQuestionPreviewResponse(context, request);
@@ -339,7 +366,7 @@ public class KyzzPracticeUserService {
                 answerResult.correct()
         );
         syncWrongQuestion(userId, context.bank().getId(), context.question().getId(), answerResult.correct());
-        KyzzPracticeBankRecordResponse updatedBank = refreshBankRecord(userId, context.bank().getId());
+        KyzzPracticeBankRecordResponse updatedBank = refreshBankRecord(userId, context.bank().getId(), bankPracticeChoiceOnly);
         kyzzCacheService.evictUserAggregateCaches(userId);
         return buildFinalReviewResponse(
                 context.question().getId(),
@@ -371,6 +398,10 @@ public class KyzzPracticeUserService {
 
         antiCrawlerSecurityService.inspectPracticeSubmitBehavior(userId, request.getUsedSeconds());
         String normalizedSourceType = normalizeSourceType(request.getSourceType());
+        boolean bankPracticeChoiceOnly = SOURCE_TYPE_BANK.equals(normalizedSourceType) && isBankPracticeChoiceOnlyEnabled(userId);
+        if (bankPracticeChoiceOnly) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "当前题目不在只刷选择题范围内");
+        }
         String submittedAnswerText = trimToEmpty(request.getAnswerText());
         PracticeSourceNavigation sourceNavigation = buildSourceNavigation(
                 userId,
@@ -389,7 +420,7 @@ public class KyzzPracticeUserService {
                 request.getSelfJudgedCorrect()
         );
         syncWrongQuestion(userId, context.bank().getId(), context.question().getId(), request.getSelfJudgedCorrect());
-        KyzzPracticeBankRecordResponse updatedBank = refreshBankRecord(userId, context.bank().getId());
+        KyzzPracticeBankRecordResponse updatedBank = refreshBankRecord(userId, context.bank().getId(), bankPracticeChoiceOnly);
         kyzzCacheService.evictUserAggregateCaches(userId);
         return buildFinalReviewResponse(
                 context.question().getId(),
@@ -407,6 +438,10 @@ public class KyzzPracticeUserService {
     }
 
     private DashboardContext buildDashboardContext(Long userId) {
+        return buildDashboardContext(userId, false);
+    }
+
+    private DashboardContext buildDashboardContext(Long userId, boolean bankPracticeChoiceOnly) {
         List<KyzzUserQuestionBank> relations = kyzzUserQuestionBankMapper.selectList(new LambdaQueryWrapper<KyzzUserQuestionBank>()
                 .eq(KyzzUserQuestionBank::getUserId, userId)
                 .orderByDesc(KyzzUserQuestionBank::getCreatedAt)
@@ -429,7 +464,10 @@ public class KyzzPracticeUserService {
             return DashboardContext.empty();
         }
 
-        Map<Long, List<KyzzQuestion>> questionMap = kyzzPracticeSupport.buildActiveQuestionMap(toBankIds(activeBanks));
+        Map<Long, List<KyzzQuestion>> rawQuestionMap = kyzzPracticeSupport.buildActiveQuestionMap(toBankIds(activeBanks));
+        Map<Long, List<KyzzQuestion>> questionMap = bankPracticeChoiceOnly
+                ? filterChoiceQuestionMap(rawQuestionMap)
+                : rawQuestionMap;
         List<KyzzQuestionBank> practiceBanks = activeBanks.stream()
                 .filter(bank -> !questionMap.getOrDefault(bank.getId(), List.of()).isEmpty())
                 .toList();
@@ -439,15 +477,20 @@ public class KyzzPracticeUserService {
 
         Map<Long, KyzzCategory> categoryMap = kyzzPracticeSupport.buildCategoryMap();
         Map<Long, Map<Long, KyzzUserAnswer>> latestAnswerMap = kyzzPracticeSupport.buildLatestAnswerByBankQuestionMap(userId, toBankIds(practiceBanks));
-        Map<Long, KyzzPracticeSupport.QuestionBankProgressSnapshot> progressMap = kyzzPracticeSupport.buildProgressSnapshotMap(
-                toBankIds(practiceBanks),
-                practiceBanks,
-                latestAnswerMap
-        );
+        Map<Long, Map<Long, KyzzUserAnswer>> practiceLatestAnswerMap = bankPracticeChoiceOnly
+                ? filterLatestAnswerMap(latestAnswerMap, questionMap)
+                : latestAnswerMap;
+        Map<Long, KyzzPracticeSupport.QuestionBankProgressSnapshot> progressMap = bankPracticeChoiceOnly
+                ? buildQueueProgressSnapshotMap(practiceBanks, questionMap, practiceLatestAnswerMap)
+                : kyzzPracticeSupport.buildProgressSnapshotMap(
+                        toBankIds(practiceBanks),
+                        practiceBanks,
+                        practiceLatestAnswerMap
+                );
         Map<Long, KyzzPracticeSupport.QuestionBankResumeSnapshot> resumeMap = kyzzPracticeSupport.buildResumeSnapshotMap(
                 practiceBanks,
                 questionMap,
-                latestAnswerMap
+                practiceLatestAnswerMap
         );
 
         List<KyzzPracticeBankRecordResponse> records = practiceBanks.stream()
@@ -456,7 +499,8 @@ public class KyzzPracticeUserService {
                         relationMap.get(bank.getId()),
                         categoryMap.get(bank.getCategoryId()),
                         progressMap.get(bank.getId()),
-                        resumeMap.get(bank.getId())
+                        resumeMap.get(bank.getId()),
+                        bankPracticeChoiceOnly ? questionMap.getOrDefault(bank.getId(), List.of()).size() : null
                 ))
                 .sorted(this::compareDashboardRecord)
                 .toList();
@@ -866,7 +910,7 @@ public class KyzzPracticeUserService {
         return new PracticeQuestionContext(bank, relation, question, questions, optionMap);
     }
 
-    private KyzzPracticeBankRecordResponse refreshBankRecord(Long userId, Long bankId) {
+    private KyzzPracticeBankRecordResponse refreshBankRecord(Long userId, Long bankId, boolean bankPracticeChoiceOnly) {
         KyzzQuestionBank bank = kyzzPracticeSupport.requireActiveQuestionBank(bankId);
         KyzzUserQuestionBank relation = kyzzUserQuestionBankMapper.selectOne(new LambdaQueryWrapper<KyzzUserQuestionBank>()
                 .eq(KyzzUserQuestionBank::getUserId, userId)
@@ -875,25 +919,45 @@ public class KyzzPracticeUserService {
         if (relation == null) {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "题库关系不存在，无法更新刷题进度");
         }
-        Map<Long, KyzzPracticeSupport.QuestionBankProgressSnapshot> progressMap = kyzzPracticeSupport.buildProgressSnapshotMap(
+        Map<Long, KyzzPracticeSupport.QuestionBankProgressSnapshot> persistedProgressMap = kyzzPracticeSupport.buildProgressSnapshotMap(
                 userId,
                 List.of(bankId),
                 List.of(bank)
         );
+        KyzzPracticeSupport.QuestionBankProgressSnapshot persistedSnapshot = persistedProgressMap.getOrDefault(
+                bankId,
+                KyzzPracticeSupport.QuestionBankProgressSnapshot.empty()
+        );
+        kyzzPracticeSupport.syncRelationSnapshot(relation.getId(), persistedSnapshot);
+
+        Map<Long, List<KyzzQuestion>> questionMap = bankPracticeChoiceOnly
+                ? filterChoiceQuestionMap(kyzzPracticeSupport.buildActiveQuestionMap(List.of(bankId)))
+                : Map.of();
+        Map<Long, Map<Long, KyzzUserAnswer>> latestAnswerMap = bankPracticeChoiceOnly
+                ? filterLatestAnswerMap(
+                        kyzzPracticeSupport.buildLatestAnswerByBankQuestionMap(userId, List.of(bankId)),
+                        questionMap
+                )
+                : Map.of();
+        Map<Long, KyzzPracticeSupport.QuestionBankProgressSnapshot> progressMap = bankPracticeChoiceOnly
+                ? buildQueueProgressSnapshotMap(List.of(bank), questionMap, latestAnswerMap)
+                : persistedProgressMap;
         KyzzPracticeSupport.QuestionBankProgressSnapshot snapshot = progressMap.getOrDefault(
                 bankId,
                 KyzzPracticeSupport.QuestionBankProgressSnapshot.empty()
         );
-        kyzzPracticeSupport.syncRelationSnapshot(relation.getId(), snapshot);
         KyzzUserQuestionBank refreshedRelation = kyzzUserQuestionBankMapper.selectById(relation.getId());
-        Map<Long, KyzzPracticeSupport.QuestionBankResumeSnapshot> resumeMap = kyzzPracticeSupport.buildResumeSnapshotMap(userId, List.of(bank));
+        Map<Long, KyzzPracticeSupport.QuestionBankResumeSnapshot> resumeMap = bankPracticeChoiceOnly
+                ? kyzzPracticeSupport.buildResumeSnapshotMap(List.of(bank), questionMap, latestAnswerMap)
+                : kyzzPracticeSupport.buildResumeSnapshotMap(userId, List.of(bank));
         KyzzCategory category = bank.getCategoryId() == null ? null : kyzzPracticeSupport.buildCategoryMap().get(bank.getCategoryId());
         return toPracticeBankRecord(
                 bank,
                 refreshedRelation,
                 category,
                 snapshot,
-                resumeMap.get(bankId)
+                resumeMap.get(bankId),
+                bankPracticeChoiceOnly ? questionMap.getOrDefault(bankId, List.of()).size() : null
         );
     }
 
@@ -985,7 +1049,21 @@ public class KyzzPracticeUserService {
         boolean autoJumpOnCorrect = setting == null || setting.getAutoJumpOnCorrect() == null
                 ? DEFAULT_AUTO_JUMP_ON_CORRECT
                 : Objects.equals(setting.getAutoJumpOnCorrect(), 1);
-        return new KyzzPracticeSettingResponse(autoJumpOnCorrect);
+        return new KyzzPracticeSettingResponse(autoJumpOnCorrect, isBankPracticeChoiceOnlyEnabled(setting));
+    }
+
+    private boolean resolveRequestedBoolean(Boolean requestedValue, boolean defaultValue) {
+        return requestedValue == null ? defaultValue : requestedValue;
+    }
+
+    private boolean isBankPracticeChoiceOnlyEnabled(Long userId) {
+        return isBankPracticeChoiceOnlyEnabled(loadPracticeSetting(userId));
+    }
+
+    private boolean isBankPracticeChoiceOnlyEnabled(KyzzUserPracticeSetting setting) {
+        return setting != null
+                && setting.getBankPracticeChoiceOnly() != null
+                && Objects.equals(setting.getBankPracticeChoiceOnly(), 1);
     }
 
     private KyzzPracticeBankRecordResponse toPracticeBankRecord(KyzzQuestionBank bank,
@@ -993,19 +1071,31 @@ public class KyzzPracticeUserService {
                                                                 KyzzCategory category,
                                                                 KyzzPracticeSupport.QuestionBankProgressSnapshot progressSnapshot,
                                                                 KyzzPracticeSupport.QuestionBankResumeSnapshot resumeSnapshot) {
+        return toPracticeBankRecord(bank, relation, category, progressSnapshot, resumeSnapshot, null);
+    }
+
+    private KyzzPracticeBankRecordResponse toPracticeBankRecord(KyzzQuestionBank bank,
+                                                                KyzzUserQuestionBank relation,
+                                                                KyzzCategory category,
+                                                                KyzzPracticeSupport.QuestionBankProgressSnapshot progressSnapshot,
+                                                                KyzzPracticeSupport.QuestionBankResumeSnapshot resumeSnapshot,
+                                                                Integer questionCountOverride) {
         KyzzPracticeSupport.QuestionBankProgressSnapshot resolvedProgress = progressSnapshot == null
                 ? KyzzPracticeSupport.QuestionBankProgressSnapshot.empty()
                 : progressSnapshot;
         KyzzPracticeSupport.QuestionBankResumeSnapshot resolvedResume = resumeSnapshot == null
                 ? KyzzPracticeSupport.QuestionBankResumeSnapshot.empty()
                 : resumeSnapshot;
+        int questionCount = questionCountOverride == null
+                ? (bank.getQuestionCount() == null ? 0 : bank.getQuestionCount())
+                : Math.max(questionCountOverride, 0);
         return new KyzzPracticeBankRecordResponse(
                 bank.getId(),
                 bank.getBankName(),
                 kyzzPracticeSupport.resolveCoverUrl(bank.getCoverUrl()),
                 category == null ? null : category.getCategoryName(),
                 bank.getDifficultyLevel(),
-                bank.getQuestionCount() == null ? 0 : bank.getQuestionCount(),
+                questionCount,
                 resolvedProgress.currentProgress(),
                 resolvedProgress.studiedCount(),
                 resolvedProgress.wrongCount(),
@@ -1046,6 +1136,112 @@ public class KyzzPracticeUserService {
             return null;
         }
         return questions.get(currentQuestionIndex);
+    }
+
+    private Map<Long, List<KyzzQuestion>> filterChoiceQuestionMap(Map<Long, List<KyzzQuestion>> questionMap) {
+        if (questionMap == null || questionMap.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<KyzzQuestion>> result = new LinkedHashMap<>();
+        questionMap.forEach((bankId, questions) -> {
+            List<KyzzQuestion> choiceQuestions = questions == null
+                    ? List.of()
+                    : questions.stream().filter(this::isChoiceQuestion).toList();
+            result.put(bankId, choiceQuestions);
+        });
+        return result;
+    }
+
+    private Map<Long, Map<Long, KyzzUserAnswer>> filterLatestAnswerMap(Map<Long, Map<Long, KyzzUserAnswer>> latestAnswerMap,
+                                                                        Map<Long, List<KyzzQuestion>> questionMap) {
+        if (questionMap == null || questionMap.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, Map<Long, KyzzUserAnswer>> result = new LinkedHashMap<>();
+        questionMap.forEach((bankId, questions) -> {
+            Map<Long, KyzzUserAnswer> sourceAnswers = latestAnswerMap == null
+                    ? Map.of()
+                    : latestAnswerMap.getOrDefault(bankId, Map.of());
+            Map<Long, KyzzUserAnswer> filteredAnswers = new LinkedHashMap<>();
+            if (questions != null) {
+                questions.stream()
+                        .map(KyzzQuestion::getId)
+                        .filter(Objects::nonNull)
+                        .forEach(questionId -> {
+                            KyzzUserAnswer answer = sourceAnswers.get(questionId);
+                            if (answer != null) {
+                                filteredAnswers.put(questionId, answer);
+                            }
+                        });
+            }
+            result.put(bankId, filteredAnswers);
+        });
+        return result;
+    }
+
+    private Map<Long, KyzzPracticeSupport.QuestionBankProgressSnapshot> buildQueueProgressSnapshotMap(Collection<KyzzQuestionBank> banks,
+                                                                                                       Map<Long, List<KyzzQuestion>> questionMap,
+                                                                                                       Map<Long, Map<Long, KyzzUserAnswer>> latestAnswerMap) {
+        if (banks == null || banks.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, KyzzPracticeSupport.QuestionBankProgressSnapshot> result = new LinkedHashMap<>();
+        for (KyzzQuestionBank bank : banks) {
+            if (bank == null || bank.getId() == null) {
+                continue;
+            }
+            List<KyzzQuestion> questions = questionMap == null ? List.of() : questionMap.getOrDefault(bank.getId(), List.of());
+            Map<Long, KyzzUserAnswer> latestAnswers = latestAnswerMap == null ? Map.of() : latestAnswerMap.getOrDefault(bank.getId(), Map.of());
+            int studiedCount = 0;
+            int correctCount = 0;
+            int wrongCount = 0;
+            LocalDateTime lastPracticeAt = null;
+            for (KyzzUserAnswer answer : latestAnswers.values()) {
+                if (answer.getSubmittedAt() != null && (lastPracticeAt == null || answer.getSubmittedAt().isAfter(lastPracticeAt))) {
+                    lastPracticeAt = answer.getSubmittedAt();
+                }
+                if (!Objects.equals(answer.getAnswerStatus(), 1)) {
+                    continue;
+                }
+                studiedCount++;
+                if (Objects.equals(answer.getIsCorrect(), 1)) {
+                    correctCount++;
+                } else {
+                    wrongCount++;
+                }
+            }
+            result.put(bank.getId(), new KyzzPracticeSupport.QuestionBankProgressSnapshot(
+                    buildQueueProgress(studiedCount, questions.size()),
+                    studiedCount,
+                    correctCount,
+                    wrongCount,
+                    lastPracticeAt
+            ));
+        }
+        return result;
+    }
+
+    private BigDecimal buildQueueProgress(int studiedCount, int questionCount) {
+        if (studiedCount <= 0 || questionCount <= 0) {
+            return KyzzPracticeSupport.ZERO_PROGRESS;
+        }
+        BigDecimal progress = BigDecimal.valueOf(studiedCount)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(questionCount), 2, RoundingMode.HALF_UP);
+        return progress.compareTo(KyzzPracticeSupport.FULL_PROGRESS) > 0 ? KyzzPracticeSupport.FULL_PROGRESS : progress;
+    }
+
+    private boolean isChoiceQuestion(KyzzQuestion question) {
+        return question != null
+                && (QUESTION_TYPE_SINGLE.equals(question.getQuestionType()) || QUESTION_TYPE_MULTIPLE.equals(question.getQuestionType()));
+    }
+
+    private boolean hasAnyBankPracticeContext(Long userId) {
+        return !buildDashboardContext(userId, false).records().isEmpty();
+    }
+
+    private boolean hasBankInFullDashboardContext(Long userId, Long bankId) {
+        return bankId != null && buildDashboardContext(userId, false).recordMap().containsKey(bankId);
     }
 
     private List<String> resolveCorrectOptionKeys(List<KyzzQuestionOption> options) {

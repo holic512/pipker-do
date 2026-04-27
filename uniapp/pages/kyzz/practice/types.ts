@@ -122,10 +122,12 @@ export interface KyzzPracticeSessionQuery {
 
 export interface KyzzPracticeSettingResponse {
 	autoJumpOnCorrect: boolean | number | string | null
+	bankPracticeChoiceOnly: boolean | number | string | null
 }
 
 export interface KyzzPracticeSettingRequest {
-	autoJumpOnCorrect: boolean
+	autoJumpOnCorrect?: boolean
+	bankPracticeChoiceOnly?: boolean
 }
 
 export interface KyzzPracticeProgressResetResponse {
@@ -136,6 +138,7 @@ export interface KyzzPracticeProgressResetResponse {
 
 export interface KyzzPracticeSettingState {
 	autoJumpOnCorrect: boolean
+	bankPracticeChoiceOnly: boolean
 	loaded: boolean
 	syncing: boolean
 }

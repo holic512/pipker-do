@@ -106,9 +106,11 @@
 		>
 			<practice-settings-popup
 				:auto-jump-on-correct="practiceSettings.autoJumpOnCorrect"
+				:bank-practice-choice-only="practiceSettings.bankPracticeChoiceOnly"
 				:syncing="practiceSettings.syncing"
 				@close="closePracticeSettingsPopup"
 				@change-auto-jump="handlePracticeAutoJumpChange"
+				@change-bank-practice-choice-only="handlePracticeBankChoiceOnlyChange"
 			/>
 		</uni-popup>
 	</page-shell>
@@ -377,6 +379,34 @@ export default {
 				}
 				uni.showToast({
 					title: '设置已在本机生效',
+					icon: 'none'
+				})
+			}
+		},
+		async handlePracticeBankChoiceOnlyChange(value) {
+			const previousSettings = { ...this.practiceSettings }
+			const bankPracticeChoiceOnly = !!value
+			this.practiceSettings = {
+				...this.practiceSettings,
+				bankPracticeChoiceOnly,
+				loaded: true,
+				syncing: true
+			}
+			cachePracticeSettings(this.practiceSettings)
+			invalidateKyzzPreload()
+			try {
+				this.practiceSettings = await syncPracticeSettings({
+					bankPracticeChoiceOnly
+				})
+			} catch (error) {
+				this.practiceSettings = {
+					...previousSettings,
+					loaded: true,
+					syncing: false
+				}
+				cachePracticeSettings(this.practiceSettings)
+				uni.showToast({
+					title: '设置同步失败',
 					icon: 'none'
 				})
 			}

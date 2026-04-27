@@ -13,4 +13,6 @@ import java.io.Serializable;
 public class KyzzPracticeSettingResponse implements Serializable {
 
     private Boolean autoJumpOnCorrect;
+
+    private Boolean bankPracticeChoiceOnly;
 }

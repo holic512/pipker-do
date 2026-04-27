@@ -23,6 +23,19 @@
 					@change="handleAutoJumpChange"
 				/>
 			</view>
+
+			<view class="practice-settings-popup__item">
+				<view class="practice-settings-popup__item-copy">
+					<text class="practice-settings-popup__item-title">刷自选题库只刷选择题</text>
+					<text class="practice-settings-popup__item-desc">开启后，我的题库练习只出现单选题和多选题</text>
+				</view>
+				<switch
+					:checked="bankPracticeChoiceOnly"
+					:disabled="syncing"
+					color="#5f7493"
+					@change="handleBankPracticeChoiceOnlyChange"
+				/>
+			</view>
 		</view>
 	</view>
 </template>
@@ -39,15 +52,22 @@ export default defineComponent({
 			type: Boolean,
 			default: true
 		},
+		bankPracticeChoiceOnly: {
+			type: Boolean,
+			default: false
+		},
 		syncing: {
 			type: Boolean,
 			default: false
 		}
 	},
-	emits: ['close', 'change-auto-jump'],
+	emits: ['close', 'change-auto-jump', 'change-bank-practice-choice-only'],
 	methods: {
 		handleAutoJumpChange(event: { detail?: { value?: boolean } }): void {
 			this.$emit('change-auto-jump', Boolean(event?.detail?.value))
+		},
+		handleBankPracticeChoiceOnlyChange(event: { detail?: { value?: boolean } }): void {
+			this.$emit('change-bank-practice-choice-only', Boolean(event?.detail?.value))
 		}
 	}
 })
@@ -108,6 +128,9 @@ export default defineComponent({
 
 .practice-settings-popup__body {
 	margin-top: 28rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 18rpx;
 }
 
 .practice-settings-popup__item {

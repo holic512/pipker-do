@@ -8,6 +8,7 @@ const PRACTICE_SETTINGS_CACHE_KEY = 'KYZZ_PRACTICE_SETTINGS'
 
 interface PracticeSettingsCache {
 	autoJumpOnCorrect?: boolean | number | string | null
+	bankPracticeChoiceOnly?: boolean | number | string | null
 }
 
 function normalizeCachedSettings(value: unknown): KyzzPracticeSettingState {
@@ -17,6 +18,7 @@ function normalizeCachedSettings(value: unknown): KyzzPracticeSettingState {
 	const cache = value as PracticeSettingsCache
 	return {
 		autoJumpOnCorrect: toBoolean(cache.autoJumpOnCorrect, true),
+		bankPracticeChoiceOnly: toBoolean(cache.bankPracticeChoiceOnly, false),
 		loaded: true,
 		syncing: false
 	}
@@ -30,10 +32,11 @@ export function readCachedPracticeSettings(): KyzzPracticeSettingState {
 	}
 }
 
-export function cachePracticeSettings(settings: Pick<KyzzPracticeSettingState, 'autoJumpOnCorrect'>): void {
+export function cachePracticeSettings(settings: Pick<KyzzPracticeSettingState, 'autoJumpOnCorrect' | 'bankPracticeChoiceOnly'>): void {
 	try {
 		uni.setStorageSync(PRACTICE_SETTINGS_CACHE_KEY, {
-			autoJumpOnCorrect: Boolean(settings.autoJumpOnCorrect)
+			autoJumpOnCorrect: Boolean(settings.autoJumpOnCorrect),
+			bankPracticeChoiceOnly: Boolean(settings.bankPracticeChoiceOnly)
 		})
 	} catch (error) {
 		console.warn('[practice-settings] cache failed', error)

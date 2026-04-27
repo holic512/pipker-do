@@ -9,4 +9,6 @@ import lombok.Data;
 public class KyzzPracticeSettingRequest {
 
     private Boolean autoJumpOnCorrect;
+
+    private Boolean bankPracticeChoiceOnly;
 }

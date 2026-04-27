@@ -118,6 +118,7 @@ export function createEmptyPracticeCommentState(): KyzzPracticeCommentState {
 export function createDefaultPracticeSettings(): KyzzPracticeSettingState {
 	return {
 		autoJumpOnCorrect: true,
+		bankPracticeChoiceOnly: false,
 		loaded: false,
 		syncing: false
 	}
@@ -135,6 +136,7 @@ export function createEmptyPracticeUiState(): KyzzPracticeUiState {
 export function normalizePracticeSettings(result: KyzzPracticeSettingResponse | null | undefined): KyzzPracticeSettingState {
 	return {
 		autoJumpOnCorrect: toBoolean(result?.autoJumpOnCorrect, true),
+		bankPracticeChoiceOnly: toBoolean(result?.bankPracticeChoiceOnly, false),
 		loaded: true,
 		syncing: false
 	}

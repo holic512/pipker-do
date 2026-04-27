@@ -25,6 +25,9 @@ public class KyzzUserPracticeSetting implements Serializable {
     /** 答案正确后是否自动进入下一题：0否 1是。 */
     private Integer autoJumpOnCorrect;
 
+    /** 刷自选题库时是否只刷选择题：0否 1是。 */
+    private Integer bankPracticeChoiceOnly;
+
     /** 创建时间。 */
     private LocalDateTime createdAt;
 
