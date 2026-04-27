@@ -1,13 +1,8 @@
 <template>
 	<!-- AI 索引: KYZZ VIP 独立考试答题页 -->
-	<page-shell
-		current="exam"
-		root-class="exam-session"
-		content-class="exam-session__content"
-		:show-tabbar="false"
-		@menu-click="goBack"
-	>
-		<view class="exam-session__inner">
+	<view class="exam-session">
+		<view class="exam-session__content">
+			<view class="exam-session__inner">
 			<view class="exam-session__topbar">
 				<view class="exam-session__top-main">
 					<text class="exam-session__type">{{ summaryText }}</text>
@@ -21,22 +16,62 @@
 				</view>
 			</view>
 
-			<scroll-view v-if="questions.length" class="exam-session__nav" scroll-x>
-				<view class="exam-session__nav-inner">
-					<view
-						v-for="(item, index) in questions"
-						:key="item.questionId"
-						class="exam-session__nav-item"
-						:class="{
-							'is-active': index === currentIndex,
-							'is-answered': isAnswered(item)
-						}"
-						@tap="currentIndex = index"
-					>
-						<text>{{ index + 1 }}</text>
+			<view v-if="questions.length" class="exam-session__progress-panel">
+				<view class="exam-session__progress-row">
+					<view class="exam-session__progress-bar">
+						<view
+							class="exam-session__progress-fill"
+							:class="{ 'is-complete': isAnswerProgressComplete }"
+							:style="answerProgressStyle"
+						></view>
 					</view>
+					<text class="exam-session__progress-percent" :class="{ 'is-complete': isAnswerProgressComplete }">
+						{{ answerProgressPercent }}%
+					</text>
+					<button class="exam-session__switch-button" aria-label="选择题目" @tap="openQuestionPicker">
+						<uni-icons type="bottom" size="12" :color="isAnswerProgressComplete ? '#2f9f62' : '#59677c'" />
+					</button>
 				</view>
-			</scroll-view>
+			</view>
+
+			<uni-popup
+				ref="questionPickerPopup"
+				type="bottom"
+				background-color="#ffffff"
+				border-radius="28rpx 28rpx 0 0"
+				:is-mask-click="true"
+			>
+				<view class="exam-session__picker">
+					<view class="exam-session__picker-head">
+						<view>
+							<text class="exam-session__picker-title">选择题目</text>
+							<text class="exam-session__picker-subtitle">已答 {{ answeredCount }}/{{ totalQuestionCount }} 题</text>
+						</view>
+						<button class="exam-session__picker-close" @tap="closeQuestionPicker">收起</button>
+					</view>
+					<view class="exam-session__picker-legend">
+						<text>当前题</text>
+						<text>已答</text>
+						<text>未答</text>
+					</view>
+					<scroll-view class="exam-session__picker-scroll" scroll-y>
+						<view class="exam-session__picker-grid">
+							<view
+								v-for="(item, index) in questions"
+								:key="item.questionId"
+								class="exam-session__picker-item"
+								:class="{
+									'is-active': index === currentIndex,
+									'is-answered': isAnswered(item)
+								}"
+								@tap="selectQuestion(index)"
+							>
+								<text>{{ index + 1 }}</text>
+							</view>
+						</view>
+					</scroll-view>
+				</view>
+			</uni-popup>
 
 			<view v-if="currentQuestion" class="exam-session__question-card">
 				<view class="exam-session__question-head">
@@ -84,14 +119,14 @@
 				<text>没有可作答的题目</text>
 			</view>
 
-			<view class="exam-session__footer">
+			<view class="exam-session__footer" :class="{ 'without-submit': !canSubmit }">
 				<button class="exam-session__footer-button" :disabled="currentIndex <= 0" @tap="goPrevious">
 					上一题
 				</button>
 				<button class="exam-session__footer-button" :disabled="currentIndex >= questions.length - 1" @tap="goNext">
 					下一题
 				</button>
-				<button class="exam-session__submit-button" :disabled="submitting || !detail" @tap="confirmSubmit">
+				<button v-if="canSubmit" class="exam-session__submit-button" :disabled="submitting || !detail" @tap="confirmSubmit">
 					{{ submitting ? '交卷中...' : '交卷' }}
 				</button>
 			</view>
@@ -102,16 +137,16 @@
 					<text>正在进入考试</text>
 				</view>
 			</view>
+			</view>
 		</view>
-	</page-shell>
+	</view>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import PageShell from '@/components/page-shell/page-shell.vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getExamDetail, saveExamAnswer, submitExam } from '@/pages/kyzz/api/exam'
-import type { KyzzExamDetailResponse, KyzzExamQuestion, KyzzExamSummary } from '@/pages/kyzz/exam/types'
+import type { KyzzExamDetailResponse, KyzzExamQuestion, KyzzExamSummary, UniPopupRef } from '@/pages/kyzz/exam/types'
 
 interface ExamSessionState {
 	sessionId: number
@@ -141,9 +176,6 @@ function resolveErrorMessage(error: unknown, fallback: string): string {
 
 export default defineComponent({
 	name: 'ExamSessionPage',
-	components: {
-		PageShell
-	},
 	data(): ExamSessionState {
 		return {
 			sessionId: 0,
@@ -172,6 +204,9 @@ export default defineComponent({
 		canAnswer(): boolean {
 			return !!(this.detail?.canAnswer && this.remainingSeconds > 0)
 		},
+		canSubmit(): boolean {
+			return !!(this.detail?.canSubmit && this.detail?.summary?.status === 'in_progress')
+		},
 		summaryText(): string {
 			return this.summary?.examTypeLabel || '模拟考试'
 		},
@@ -183,6 +218,17 @@ export default defineComponent({
 		},
 		totalQuestionCount(): number {
 			return toNumber(this.summary?.totalQuestionCount)
+		},
+		answerProgressPercent(): number {
+			const total = Math.max(1, this.totalQuestionCount)
+			const answered = Math.min(total, Math.max(0, this.answeredCount))
+			return Math.round((answered / total) * 100)
+		},
+		isAnswerProgressComplete(): boolean {
+			return this.totalQuestionCount > 0 && this.answerProgressPercent >= 100
+		},
+		answerProgressStyle(): string {
+			return `width: ${this.answerProgressPercent}%`
 		},
 		remainingText(): string {
 			const seconds = Math.max(0, this.remainingSeconds)
@@ -270,6 +316,22 @@ export default defineComponent({
 		isAnswered(question: KyzzExamQuestion): boolean {
 			return toNumber(question.answerStatus) === 1
 		},
+		openQuestionPicker(): void {
+			;(this.$refs.questionPickerPopup as UniPopupRef | undefined)?.open()
+		},
+		closeQuestionPicker(): void {
+			;(this.$refs.questionPickerPopup as UniPopupRef | undefined)?.close()
+		},
+		selectQuestion(index: number): void {
+			if (index < 0 || index >= this.questions.length) {
+				return
+			}
+			if (index !== this.currentIndex) {
+				this.saveCurrentAnswer()
+				this.currentIndex = index
+			}
+			this.closeQuestionPicker()
+		},
 		questionTypeLabel(questionType: string): string {
 			if (questionType === 'single') return '单选题'
 			if (questionType === 'multiple') return '多选题'
@@ -345,17 +407,8 @@ export default defineComponent({
 				this.currentIndex += 1
 			}
 		},
-		goBack(): void {
-			uni.navigateBack({
-				fail: () => {
-					uni.switchTab({
-						url: '/pages/kyzz/exam/index'
-					})
-				}
-			})
-		},
 		confirmSubmit(): void {
-			if (!this.detail || this.submitting) {
+			if (!this.detail || !this.canSubmit || this.submitting) {
 				return
 			}
 			uni.showModal({
@@ -473,38 +526,176 @@ export default defineComponent({
 	color: #b46a67;
 }
 
-.exam-session__nav {
-	margin-top: 22rpx;
-	white-space: nowrap;
+.exam-session__progress-panel {
+	margin-top: 18rpx;
+	padding: 0 4rpx;
+	box-sizing: border-box;
 }
 
-.exam-session__nav-inner {
+.exam-session__progress-row {
 	display: flex;
-	gap: 12rpx;
-	padding: 4rpx 0;
+	align-items: center;
+	gap: 10rpx;
 }
 
-.exam-session__nav-item {
+.exam-session__switch-button,
+.exam-session__picker-close {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 58rpx;
-	height: 58rpx;
-	border: 1rpx solid #dce4ed;
-	border-radius: 16rpx;
-	background: #ffffff;
-	font-size: 24rpx;
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 999rpx;
+	background: #eef3f8;
+	color: #4f5d73;
 	font-weight: 800;
-	color: #667386;
+	line-height: 1.2;
+	text-align: center;
 }
 
-.exam-session__nav-item.is-answered {
+.exam-session__switch-button {
+	flex: 0 0 auto;
+	width: 44rpx;
+	height: 44rpx;
+	padding: 0;
+}
+
+.exam-session__switch-button::after,
+.exam-session__picker-close::after {
+	border: 0;
+}
+
+.exam-session__progress-bar {
+	flex: 1;
+	min-width: 0;
+	height: 8rpx;
+	overflow: hidden;
+	border-radius: 999rpx;
+	background: #e8eef6;
+}
+
+.exam-session__progress-fill {
+	height: 100%;
+	border-radius: 999rpx;
+	background: #2f8cff;
+	transition: width 0.2s ease;
+}
+
+.exam-session__progress-fill.is-complete {
+	background: #2f9f62;
+}
+
+.exam-session__progress-percent {
+	flex: 0 0 auto;
+	min-width: 58rpx;
+	font-size: 22rpx;
+	line-height: 1;
+	color: #667386;
+	text-align: right;
+}
+
+.exam-session__progress-percent.is-complete {
+	color: #2f9f62;
+	font-weight: 800;
+}
+
+.exam-session__picker {
+	padding: 28rpx 24rpx calc(env(safe-area-inset-bottom) + 32rpx);
+	box-sizing: border-box;
+}
+
+.exam-session__picker-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 20rpx;
+}
+
+.exam-session__picker-title {
+	display: block;
+	font-size: 31rpx;
+	line-height: 1.25;
+	font-weight: 800;
+	color: #303849;
+}
+
+.exam-session__picker-subtitle {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 23rpx;
+	color: #738097;
+}
+
+.exam-session__picker-close {
+	flex: 0 0 auto;
+	height: 56rpx;
+	padding: 0 18rpx;
+	font-size: 23rpx;
+}
+
+.exam-session__picker-legend {
+	display: flex;
+	align-items: center;
+	gap: 18rpx;
+	margin-top: 24rpx;
+	font-size: 22rpx;
+	font-weight: 700;
+	color: #7a8596;
+}
+
+.exam-session__picker-legend text::before {
+	display: inline-block;
+	width: 14rpx;
+	height: 14rpx;
+	margin-right: 8rpx;
+	border-radius: 50%;
+	background: #dce4ed;
+	content: '';
+}
+
+.exam-session__picker-legend text:nth-child(1)::before {
+	background: #344052;
+}
+
+.exam-session__picker-legend text:nth-child(2)::before {
+	background: #4f7258;
+}
+
+.exam-session__picker-scroll {
+	max-height: 520rpx;
+	margin-top: 22rpx;
+}
+
+.exam-session__picker-grid {
+	display: grid;
+	grid-template-columns: repeat(6, 1fr);
+	gap: 14rpx;
+	padding-bottom: 6rpx;
+}
+
+.exam-session__picker-item {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	aspect-ratio: 1;
+	border: 1rpx solid #dce4ed;
+	border-radius: 16rpx;
+	background: #f9fbfd;
+	font-size: 25rpx;
+	font-weight: 800;
+	color: #667386;
+	box-sizing: border-box;
+}
+
+.exam-session__picker-item.is-answered {
 	background: #e7eee8;
 	border-color: #b9cbbd;
 	color: #4f7258;
 }
 
-.exam-session__nav-item.is-active {
+.exam-session__picker-item.is-active {
 	background: #344052;
 	border-color: #344052;
 	color: #ffffff;
@@ -633,15 +824,28 @@ export default defineComponent({
 }
 
 .exam-session__save-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
 	width: 100%;
 	height: 82rpx;
 	margin-top: 18rpx;
+	padding: 0;
 	border: 0;
 	border-radius: 16rpx;
 	background: #4f5d73;
 	color: #ffffff;
 	font-size: 27rpx;
 	font-weight: 800;
+	line-height: 1.2;
+	text-align: center;
+}
+
+.exam-session__save-button::after,
+.exam-session__footer-button::after,
+.exam-session__submit-button::after {
+	border: 0;
 }
 
 .exam-session__footer {
@@ -659,14 +863,25 @@ export default defineComponent({
 	box-sizing: border-box;
 }
 
+.exam-session__footer.without-submit {
+	grid-template-columns: 1fr 1fr;
+}
+
 .exam-session__footer-button,
 .exam-session__submit-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
 	height: 76rpx;
 	margin: 0;
+	padding: 0;
 	border: 0;
 	border-radius: 16rpx;
 	font-size: 26rpx;
 	font-weight: 800;
+	line-height: 1.2;
+	text-align: center;
 }
 
 .exam-session__footer-button {

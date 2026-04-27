@@ -96,3 +96,8 @@ export interface KyzzExamAnswerSaveResponse {
 	answeredCount: number | string | null
 	totalQuestionCount: number | string | null
 }
+
+export interface UniPopupRef {
+	open: () => void
+	close: () => void
+}

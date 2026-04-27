@@ -7,14 +7,19 @@
 	>
 		<view class="exam-page__inner">
 			<view class="exam-page__header">
-				<view>
-					<text class="exam-page__eyebrow">VIP EXAM</text>
+				<view class="exam-page__header-copy">
 					<text class="exam-page__title">模拟考试</text>
 					<text class="exam-page__subtitle">按考研政治题型比例组卷，独立计时、独立保存考试记录。</text>
 				</view>
-				<view class="exam-page__vip-badge" :class="{ 'is-active': isVip }">
-					<uni-icons type="star-filled" size="17" :color="isVip ? '#fff7e5' : '#8792a4'" />
-					<text>{{ isVip ? 'VIP' : 'LOCKED' }}</text>
+				<view class="exam-page__header-actions">
+					<button class="exam-page__history-button" @tap="openHistory">
+						<uni-icons type="calendar" size="15" color="#4f5d73" />
+						<text>历史</text>
+					</button>
+					<view class="exam-page__vip-badge" :class="{ 'is-active': isVip }">
+						<uni-icons type="star-filled" size="17" :color="isVip ? '#fff7e5' : '#8792a4'" />
+						<text>{{ isVip ? 'VIP' : 'LOCKED' }}</text>
+					</view>
 				</view>
 			</view>
 
@@ -33,27 +38,48 @@
 				<view class="exam-page__section-head">
 					<view>
 						<text class="exam-page__section-kicker">考试配置</text>
-						<text class="exam-page__section-title">选择测验类型</text>
+						<text class="exam-page__section-title">测验类型</text>
 					</view>
 				</view>
 
-				<view class="exam-page__preset-grid">
-					<view
-						v-for="preset in presets"
-						:key="preset.examType"
-						class="exam-page__preset"
-						:class="{ 'is-active': form.examType === preset.examType }"
-						@tap="selectPreset(preset)"
-					>
-						<view class="exam-page__preset-top">
-							<text class="exam-page__preset-title">{{ preset.title }}</text>
-							<text class="exam-page__preset-time">{{ formatMinutes(preset.defaultDurationMinutes) }}</text>
+				<view class="exam-page__select-wrap">
+					<view class="exam-page__select" :class="{ 'is-open': presetDropdownOpen }" @tap="togglePresetDropdown">
+						<view class="exam-page__select-main">
+							<text class="exam-page__select-title">{{ selectedPreset ? selectedPreset.title : '请选择测验类型' }}</text>
+							<text class="exam-page__select-desc">{{ selectedPreset ? selectedPreset.description : '正在加载可用测验' }}</text>
+							<view v-if="selectedPreset" class="exam-page__select-meta">
+								<text v-if="formatCount(selectedPreset.singleCount) > 0">单选 {{ formatCount(selectedPreset.singleCount) }}</text>
+								<text v-if="formatCount(selectedPreset.multipleCount) > 0">多选 {{ formatCount(selectedPreset.multipleCount) }}</text>
+								<text v-if="formatCount(selectedPreset.shortCount) > 0">简答 {{ formatCount(selectedPreset.shortCount) }}</text>
+							</view>
 						</view>
-						<text class="exam-page__preset-desc">{{ preset.description }}</text>
-						<view class="exam-page__preset-meta">
-							<text v-if="formatCount(preset.singleCount) > 0">单选 {{ formatCount(preset.singleCount) }}</text>
-							<text v-if="formatCount(preset.multipleCount) > 0">多选 {{ formatCount(preset.multipleCount) }}</text>
-							<text v-if="formatCount(preset.shortCount) > 0">简答 {{ formatCount(preset.shortCount) }}</text>
+						<view class="exam-page__select-side">
+							<text v-if="selectedPreset">{{ formatMinutes(selectedPreset.defaultDurationMinutes) }}</text>
+							<uni-icons :type="presetDropdownOpen ? 'top' : 'bottom'" size="16" color="#667386" />
+						</view>
+					</view>
+
+					<view v-if="presetDropdownOpen" class="exam-page__select-menu">
+						<view
+							v-for="preset in presets"
+							:key="preset.examType"
+							class="exam-page__select-option"
+							:class="{ 'is-active': form.examType === preset.examType }"
+							@tap.stop="selectPreset(preset)"
+						>
+							<view class="exam-page__select-option-main">
+								<text class="exam-page__select-option-title">{{ preset.title }}</text>
+								<text class="exam-page__select-option-desc">{{ formatPresetSummary(preset) }}</text>
+							</view>
+							<view class="exam-page__select-option-side">
+								<text>{{ formatMinutes(preset.defaultDurationMinutes) }}</text>
+								<uni-icons
+									v-if="form.examType === preset.examType"
+									type="checkmarkempty"
+									size="17"
+									color="#344052"
+								/>
+							</view>
 						</view>
 					</view>
 				</view>
@@ -93,39 +119,6 @@
 				</button>
 			</view>
 
-			<view class="exam-page__panel">
-				<view class="exam-page__section-head">
-					<view>
-						<text class="exam-page__section-kicker">考试历史</text>
-						<text class="exam-page__section-title">最近试卷</text>
-					</view>
-					<button class="exam-page__text-button" @tap="loadHistory">刷新</button>
-				</view>
-
-				<view v-if="history.length" class="exam-page__history">
-					<view
-						v-for="record in history"
-						:key="record.sessionId"
-						class="exam-page__history-item"
-						@tap="openSession(record.sessionId)"
-					>
-						<view>
-							<text class="exam-page__history-title">{{ record.examTypeLabel }}</text>
-							<text class="exam-page__history-desc">
-								{{ record.difficultyLabel }} · {{ record.statusLabel }} · {{ record.startedAt || '未记录时间' }}
-							</text>
-						</view>
-						<view class="exam-page__history-score">
-							<text>{{ formatCount(record.answeredCount) }}/{{ formatCount(record.totalQuestionCount) }}</text>
-							<uni-icons type="right" size="15" color="#9aa4b5" />
-						</view>
-					</view>
-				</view>
-				<view v-else class="exam-page__empty">
-					<text>{{ historyLoading ? '正在同步历史...' : '还没有考试记录' }}</text>
-				</view>
-			</view>
-
 			<view v-if="loading" class="exam-page__loading-mask">
 				<view class="exam-page__loading-card">
 					<view class="exam-page__spinner"></view>
@@ -151,7 +144,7 @@
 import { defineComponent } from 'vue'
 import PageShell from '@/components/page-shell/page-shell.vue'
 import { bootstrapAuth } from '@/shared/session/session'
-import { getExamEntry, getExamHistory, startExam } from '@/pages/kyzz/api/exam'
+import { getExamEntry, startExam } from '@/pages/kyzz/api/exam'
 import type {
 	KyzzExamDifficultyMode,
 	KyzzExamDifficultyOption,
@@ -170,11 +163,10 @@ interface ExamFormState {
 interface ExamIndexState {
 	loading: boolean
 	starting: boolean
-	historyLoading: boolean
 	entry: KyzzExamEntryResponse | null
-	history: KyzzExamSummary[]
 	form: ExamFormState
 	durationInput: string
+	presetDropdownOpen: boolean
 }
 
 function toNumber(value: unknown, fallback = 0): number {
@@ -198,15 +190,14 @@ export default defineComponent({
 		return {
 			loading: false,
 			starting: false,
-			historyLoading: false,
 			entry: null,
-			history: [],
 			form: {
 				examType: 'full',
 				difficultyMode: 'balanced',
 				durationMinutes: 180
 			},
-			durationInput: '180'
+			durationInput: '180',
+			presetDropdownOpen: false
 		}
 	},
 	computed: {
@@ -219,6 +210,9 @@ export default defineComponent({
 		},
 		presets(): KyzzExamPreset[] {
 			return this.entry?.presets || []
+		},
+		selectedPreset(): KyzzExamPreset | null {
+			return this.presets.find((item) => item.examType === this.form.examType) || this.presets[0] || null
 		},
 		difficultyOptions(): KyzzExamDifficultyOption[] {
 			return this.entry?.difficultyOptions || []
@@ -238,9 +232,6 @@ export default defineComponent({
 				const entry = await getExamEntry()
 				this.entry = entry
 				this.applyDefaultPreset()
-				if (this.isVip) {
-					await this.loadHistory()
-				}
 			} catch (error) {
 				uni.showToast({
 					title: resolveErrorMessage(error, '考试入口加载失败'),
@@ -259,26 +250,17 @@ export default defineComponent({
 			this.form.durationMinutes = toNumber(preset.defaultDurationMinutes, 180)
 			this.durationInput = String(this.form.durationMinutes)
 		},
-		async loadHistory(): Promise<void> {
-			if (!this.isVip || this.historyLoading) {
-				return
-			}
-			this.historyLoading = true
-			try {
-				this.history = await getExamHistory(20)
-			} catch (error) {
-				uni.showToast({
-					title: resolveErrorMessage(error, '考试历史加载失败'),
-					icon: 'none'
-				})
-			} finally {
-				this.historyLoading = false
-			}
-		},
 		selectPreset(preset: KyzzExamPreset): void {
 			this.form.examType = preset.examType
 			this.form.durationMinutes = toNumber(preset.defaultDurationMinutes, this.form.durationMinutes)
 			this.durationInput = String(this.form.durationMinutes)
+			this.presetDropdownOpen = false
+		},
+		togglePresetDropdown(): void {
+			if (!this.presets.length) {
+				return
+			}
+			this.presetDropdownOpen = !this.presetDropdownOpen
 		},
 		async handleStartExam(): Promise<void> {
 			if (!this.isVip || this.starting) {
@@ -314,6 +296,18 @@ export default defineComponent({
 				url: `/pages/kyzz/exam/session?sessionId=${sessionId}`
 			})
 		},
+		openHistory(): void {
+			if (!this.isVip) {
+				uni.showToast({
+					title: '开通 VIP 后可查看考试历史',
+					icon: 'none'
+				})
+				return
+			}
+			uni.navigateTo({
+				url: '/pages/kyzz/exam/history'
+			})
+		},
 		goMine(): void {
 			uni.switchTab({
 				url: '/pages/common/mine/index'
@@ -324,6 +318,14 @@ export default defineComponent({
 		},
 		formatMinutes(value: unknown): string {
 			return `${toNumber(value)} 分钟`
+		},
+		formatPresetSummary(preset: KyzzExamPreset): string {
+			const parts = [
+				toNumber(preset.singleCount) > 0 ? `单选 ${toNumber(preset.singleCount)}` : '',
+				toNumber(preset.multipleCount) > 0 ? `多选 ${toNumber(preset.multipleCount)}` : '',
+				toNumber(preset.shortCount) > 0 ? `简答 ${toNumber(preset.shortCount)}` : ''
+			].filter(Boolean)
+			return parts.join(' · ')
 		},
 		formatDuration(value: unknown): string {
 			const seconds = Math.max(0, toNumber(value))
@@ -371,10 +373,22 @@ export default defineComponent({
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
+	gap: 18rpx;
 	padding: 34rpx 30rpx;
 }
 
-.exam-page__eyebrow,
+.exam-page__header-copy {
+	flex: 1;
+	min-width: 0;
+}
+
+.exam-page__header-actions {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	gap: 10rpx;
+}
+
 .exam-page__section-kicker {
 	display: block;
 	font-size: 21rpx;
@@ -404,7 +418,9 @@ export default defineComponent({
 .exam-page__vip-badge {
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	gap: 8rpx;
+	min-height: 58rpx;
 	padding: 12rpx 16rpx;
 	border-radius: 999rpx;
 	background: #eef2f6;
@@ -449,18 +465,32 @@ export default defineComponent({
 .exam-page__small-button,
 .exam-page__primary-button,
 .exam-page__vip-dialog-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
 	margin: 0;
+	padding: 0;
 	border: 0;
 	border-radius: 16rpx;
 	background: #4f5c72;
 	color: #ffffff;
 	font-size: 26rpx;
 	font-weight: 700;
-	line-height: 1;
+	line-height: 1.2;
+	text-align: center;
+}
+
+.exam-page__small-button::after,
+.exam-page__primary-button::after,
+.exam-page__history-button::after,
+.exam-page__vip-dialog-button::after {
+	border: 0;
 }
 
 .exam-page__small-button {
 	flex: 0 0 auto;
+	min-height: 68rpx;
 	padding: 22rpx 24rpx;
 	background: #fff7e5;
 	color: #3b4656;
@@ -490,77 +520,157 @@ export default defineComponent({
 	color: #2f3747;
 }
 
-.exam-page__text-button {
-	margin: 0;
-	padding: 0;
-	border: 0;
-	background: transparent;
-	color: #59677c;
-	font-size: 24rpx;
-	line-height: 1;
-}
-
-.exam-page__preset-grid {
+.exam-page__history-button {
 	display: flex;
-	flex-direction: column;
-	gap: 18rpx;
+	align-items: center;
+	justify-content: center;
+	gap: 6rpx;
+	min-width: 88rpx;
+	height: 58rpx;
+	margin: 0;
+	padding: 0 14rpx;
+	border: 0;
+	border-radius: 999rpx;
+	background: #eef3f8;
+	color: #4f5d73;
+	font-size: 22rpx;
+	font-weight: 800;
+	line-height: 1.2;
+	box-sizing: border-box;
 }
 
-.exam-page__preset {
+.exam-page__select-wrap {
+	position: relative;
+	z-index: 3;
+}
+
+.exam-page__select {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	min-height: 118rpx;
 	padding: 22rpx;
-	border: 2rpx solid #e3e9f0;
+	border: 2rpx solid #dce4ed;
 	border-radius: 18rpx;
 	background: #f9fbfd;
 	box-sizing: border-box;
 }
 
-.exam-page__preset.is-active {
+.exam-page__select.is-open {
 	border-color: #59677e;
 	background: #eef3f8;
 }
 
-.exam-page__preset-top,
-.exam-page__history-item,
-.exam-page__duration-row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
+.exam-page__select-main {
+	flex: 1;
+	min-width: 0;
 }
 
-.exam-page__preset-title,
-.exam-page__history-title {
-	font-size: 28rpx;
+.exam-page__select-title {
+	display: block;
+	font-size: 29rpx;
+	line-height: 1.25;
 	font-weight: 800;
 	color: #303849;
 }
 
-.exam-page__preset-time {
-	font-size: 22rpx;
-	font-weight: 700;
-	color: #68758a;
-}
-
-.exam-page__preset-desc {
+.exam-page__select-desc {
 	display: block;
-	margin-top: 12rpx;
-	font-size: 24rpx;
-	line-height: 1.55;
+	margin-top: 8rpx;
+	font-size: 23rpx;
+	line-height: 1.45;
 	color: #6f7b8d;
 }
 
-.exam-page__preset-meta {
+.exam-page__select-meta {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 12rpx;
-	margin-top: 16rpx;
+	gap: 10rpx;
+	margin-top: 12rpx;
 }
 
-.exam-page__preset-meta text {
-	padding: 7rpx 12rpx;
+.exam-page__select-meta text {
+	padding: 6rpx 11rpx;
 	border-radius: 999rpx;
 	background: #e8eef5;
-	font-size: 21rpx;
+	font-size: 20rpx;
 	color: #596779;
+}
+
+.exam-page__select-side {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 10rpx;
+	flex: 0 0 auto;
+	min-width: 126rpx;
+	font-size: 23rpx;
+	font-weight: 800;
+	color: #667386;
+}
+
+.exam-page__select-menu {
+	position: absolute;
+	top: calc(100% + 10rpx);
+	left: 0;
+	right: 0;
+	z-index: 20;
+	padding: 10rpx;
+	border: 1rpx solid #dce4ed;
+	border-radius: 18rpx;
+	background: #ffffff;
+	box-shadow: 0 18rpx 38rpx rgba(47, 58, 78, 0.16);
+	box-sizing: border-box;
+}
+
+.exam-page__select-option {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 18rpx;
+	padding: 18rpx 16rpx;
+	border-radius: 14rpx;
+}
+
+.exam-page__select-option.is-active {
+	background: #eef3f8;
+}
+
+.exam-page__select-option-main {
+	flex: 1;
+	min-width: 0;
+}
+
+.exam-page__select-option-title {
+	display: block;
+	font-size: 26rpx;
+	line-height: 1.25;
+	font-weight: 800;
+	color: #303849;
+}
+
+.exam-page__select-option-desc {
+	display: block;
+	margin-top: 6rpx;
+	font-size: 22rpx;
+	color: #7a8596;
+}
+
+.exam-page__select-option-side {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	flex: 0 0 auto;
+	font-size: 22rpx;
+	font-weight: 800;
+	color: #667386;
+}
+
+.exam-page__duration-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 }
 
 .exam-page__config-block {
@@ -633,48 +743,6 @@ export default defineComponent({
 .exam-page__primary-button[disabled] {
 	background: #b8c0cd;
 	color: #eef2f7;
-}
-
-.exam-page__history {
-	display: flex;
-	flex-direction: column;
-	gap: 16rpx;
-}
-
-.exam-page__history-item {
-	padding: 20rpx 0;
-	border-bottom: 1rpx solid #edf1f5;
-}
-
-.exam-page__history-item:last-child {
-	border-bottom: 0;
-}
-
-.exam-page__history-desc {
-	display: block;
-	margin-top: 8rpx;
-	font-size: 23rpx;
-	color: #7b8698;
-}
-
-.exam-page__history-score {
-	display: flex;
-	align-items: center;
-	gap: 8rpx;
-	font-size: 24rpx;
-	font-weight: 800;
-	color: #4a5668;
-}
-
-.exam-page__empty {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 130rpx;
-	border-radius: 18rpx;
-	background: #f7f9fc;
-	color: #7b8698;
-	font-size: 25rpx;
 }
 
 .exam-page__loading-mask,
