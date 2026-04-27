@@ -35,9 +35,31 @@ public class KyzzExamQuestion implements Serializable {
 
     private Integer answerStatus;
 
+    private BigDecimal awardedScore;
+
+    private Integer isCorrect;
+
+    private String gradingStatus;
+
+    private String gradingMethod;
+
+    private String referenceAnswer;
+
+    private String analysisSnapshot;
+
+    private String gradingComment;
+
+    private BigDecimal gradingConfidence;
+
+    private String gradingPointsJson;
+
+    private Long llmRecordId;
+
     private Integer usedSeconds;
 
     private LocalDateTime answeredAt;
+
+    private LocalDateTime gradedAt;
 
     private LocalDateTime createdAt;
 

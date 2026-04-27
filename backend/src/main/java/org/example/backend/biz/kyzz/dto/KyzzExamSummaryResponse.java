@@ -33,15 +33,29 @@ public class KyzzExamSummaryResponse implements Serializable {
 
     private BigDecimal totalScore;
 
+    private BigDecimal earnedScore;
+
+    private BigDecimal objectiveScore;
+
+    private BigDecimal subjectiveScore;
+
     private String status;
 
     private String statusLabel;
+
+    private String gradingStatus;
+
+    private String gradingStatusLabel;
 
     private String startedAt;
 
     private String deadlineAt;
 
     private String submittedAt;
+
+    private String gradedAt;
+
+    private String gradingErrorMessage;
 
     private Long remainingSeconds;
 }

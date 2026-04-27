@@ -2,6 +2,8 @@ package org.example.backend.biz.kyzz.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.backend.biz.kyzz.dto.KyzzExamAnswerSaveRequest;
 import org.example.backend.biz.kyzz.dto.KyzzExamAnswerSaveResponse;
 import org.example.backend.biz.kyzz.dto.KyzzExamDetailResponse;
@@ -28,6 +30,8 @@ import org.example.backend.shared.account.dto.VipInfoResponse;
 import org.example.backend.shared.account.service.UserProfileService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -67,6 +71,10 @@ public class KyzzExamUserService {
     private static final String STATUS_IN_PROGRESS = "in_progress";
     private static final String STATUS_SUBMITTED = "submitted";
     private static final String STATUS_EXPIRED = "expired";
+    private static final String GRADING_STATUS_NOT_STARTED = "not_started";
+    private static final String GRADING_STATUS_GRADING = "grading";
+    private static final String GRADING_STATUS_GRADED = "graded";
+    private static final String GRADING_STATUS_FAILED = "failed";
     private static final int ANSWER_STATUS_BLANK = 0;
     private static final int ANSWER_STATUS_ANSWERED = 1;
     private static final int MAX_DURATION_MINUTES = 240;
@@ -85,19 +93,23 @@ public class KyzzExamUserService {
     private final KyzzQuestionOptionMapper kyzzQuestionOptionMapper;
     private final KyzzQuestionBankMapper kyzzQuestionBankMapper;
     private final UserProfileService userProfileService;
+    private final KyzzExamGradingService kyzzExamGradingService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public KyzzExamUserService(KyzzExamSessionMapper kyzzExamSessionMapper,
                                KyzzExamQuestionMapper kyzzExamQuestionMapper,
                                KyzzQuestionMapper kyzzQuestionMapper,
                                KyzzQuestionOptionMapper kyzzQuestionOptionMapper,
                                KyzzQuestionBankMapper kyzzQuestionBankMapper,
-                               UserProfileService userProfileService) {
+                               UserProfileService userProfileService,
+                               KyzzExamGradingService kyzzExamGradingService) {
         this.kyzzExamSessionMapper = kyzzExamSessionMapper;
         this.kyzzExamQuestionMapper = kyzzExamQuestionMapper;
         this.kyzzQuestionMapper = kyzzQuestionMapper;
         this.kyzzQuestionOptionMapper = kyzzQuestionOptionMapper;
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
         this.userProfileService = userProfileService;
+        this.kyzzExamGradingService = kyzzExamGradingService;
     }
 
     @Transactional
@@ -195,7 +207,7 @@ public class KyzzExamUserService {
         return toDetail(session, now);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public KyzzExamAnswerSaveResponse saveAnswer(Long userId,
                                                  Long sessionId,
                                                  Long questionId,
@@ -237,9 +249,55 @@ public class KyzzExamUserService {
                 .eq(KyzzExamSession::getId, sessionId)
                 .eq(KyzzExamSession::getStatus, STATUS_IN_PROGRESS)
                 .set(KyzzExamSession::getAnsweredCount, answeredCount)
+                .set(KyzzExamSession::getEarnedScore, BigDecimal.ZERO)
+                .set(KyzzExamSession::getObjectiveScore, BigDecimal.ZERO)
+                .set(KyzzExamSession::getSubjectiveScore, BigDecimal.ZERO)
                 .set(KyzzExamSession::getStatus, STATUS_SUBMITTED)
-                .set(KyzzExamSession::getSubmittedAt, now));
+                .set(KyzzExamSession::getGradingStatus, GRADING_STATUS_GRADING)
+                .set(KyzzExamSession::getSubmittedAt, now)
+                .set(KyzzExamSession::getGradingStartedAt, null)
+                .set(KyzzExamSession::getGradedAt, null)
+                .set(KyzzExamSession::getGradingErrorMessage, null));
+        enqueueGradingAfterCommit(sessionId);
         return toSummary(requireOwnedSession(userId, sessionId), now);
+    }
+
+    @Transactional
+    public KyzzExamSummaryResponse retryGrading(Long userId, Long sessionId) {
+        requireVip(userId);
+        KyzzExamSession session = requireOwnedSession(userId, sessionId);
+        if (STATUS_IN_PROGRESS.equals(session.getStatus())) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "考试进行中，不能重新阅卷");
+        }
+        if (!GRADING_STATUS_FAILED.equals(session.getGradingStatus())) {
+            throw new BusinessException(ApiResponseCode.CONFLICT, "当前考试不需要重新阅卷");
+        }
+
+        kyzzExamQuestionMapper.update(null, new LambdaUpdateWrapper<KyzzExamQuestion>()
+                .eq(KyzzExamQuestion::getSessionId, sessionId)
+                .set(KyzzExamQuestion::getAwardedScore, BigDecimal.ZERO)
+                .set(KyzzExamQuestion::getIsCorrect, null)
+                .set(KyzzExamQuestion::getGradingStatus, GRADING_STATUS_NOT_STARTED)
+                .set(KyzzExamQuestion::getGradingMethod, null)
+                .set(KyzzExamQuestion::getReferenceAnswer, null)
+                .set(KyzzExamQuestion::getAnalysisSnapshot, null)
+                .set(KyzzExamQuestion::getGradingComment, null)
+                .set(KyzzExamQuestion::getGradingConfidence, null)
+                .set(KyzzExamQuestion::getGradingPointsJson, null)
+                .set(KyzzExamQuestion::getLlmRecordId, null)
+                .set(KyzzExamQuestion::getGradedAt, null));
+        kyzzExamSessionMapper.update(null, new LambdaUpdateWrapper<KyzzExamSession>()
+                .eq(KyzzExamSession::getId, sessionId)
+                .eq(KyzzExamSession::getGradingStatus, GRADING_STATUS_FAILED)
+                .set(KyzzExamSession::getEarnedScore, BigDecimal.ZERO)
+                .set(KyzzExamSession::getObjectiveScore, BigDecimal.ZERO)
+                .set(KyzzExamSession::getSubjectiveScore, BigDecimal.ZERO)
+                .set(KyzzExamSession::getGradingStatus, GRADING_STATUS_GRADING)
+                .set(KyzzExamSession::getGradingStartedAt, null)
+                .set(KyzzExamSession::getGradedAt, null)
+                .set(KyzzExamSession::getGradingErrorMessage, null));
+        enqueueGradingAfterCommit(sessionId);
+        return toSummary(requireOwnedSession(userId, sessionId), LocalDateTime.now());
     }
 
     private void requireVip(Long userId) {
@@ -294,18 +352,30 @@ public class KyzzExamUserService {
     }
 
     private void expireOverdueExams(Long userId, LocalDateTime now) {
-        kyzzExamSessionMapper.update(null, new LambdaUpdateWrapper<KyzzExamSession>()
+        List<KyzzExamSession> overdueSessions = kyzzExamSessionMapper.selectList(new LambdaQueryWrapper<KyzzExamSession>()
                 .eq(KyzzExamSession::getUserId, userId)
                 .eq(KyzzExamSession::getStatus, STATUS_IN_PROGRESS)
-                .lt(KyzzExamSession::getDeadlineAt, now)
-                .set(KyzzExamSession::getStatus, STATUS_EXPIRED));
+                .lt(KyzzExamSession::getDeadlineAt, now));
+        overdueSessions.forEach(session -> markExpired(session.getId()));
     }
 
     private void markExpired(Long sessionId) {
-        kyzzExamSessionMapper.update(null, new LambdaUpdateWrapper<KyzzExamSession>()
+        int answeredCount = refreshAnsweredCount(sessionId);
+        int updated = kyzzExamSessionMapper.update(null, new LambdaUpdateWrapper<KyzzExamSession>()
                 .eq(KyzzExamSession::getId, sessionId)
                 .eq(KyzzExamSession::getStatus, STATUS_IN_PROGRESS)
-                .set(KyzzExamSession::getStatus, STATUS_EXPIRED));
+                .set(KyzzExamSession::getAnsweredCount, answeredCount)
+                .set(KyzzExamSession::getEarnedScore, BigDecimal.ZERO)
+                .set(KyzzExamSession::getObjectiveScore, BigDecimal.ZERO)
+                .set(KyzzExamSession::getSubjectiveScore, BigDecimal.ZERO)
+                .set(KyzzExamSession::getStatus, STATUS_EXPIRED)
+                .set(KyzzExamSession::getGradingStatus, GRADING_STATUS_GRADING)
+                .set(KyzzExamSession::getGradingStartedAt, null)
+                .set(KyzzExamSession::getGradedAt, null)
+                .set(KyzzExamSession::getGradingErrorMessage, null));
+        if (updated > 0) {
+            enqueueGradingAfterCommit(sessionId);
+        }
     }
 
     private boolean isDeadlinePassed(KyzzExamSession session, LocalDateTime now) {
@@ -329,11 +399,13 @@ public class KyzzExamUserService {
                 .orderByAsc(KyzzExamQuestion::getId));
         Map<Long, KyzzQuestion> questionMap = loadQuestionMap(examQuestions.stream().map(KyzzExamQuestion::getQuestionId).toList());
         Map<Long, List<KyzzQuestionOption>> optionMap = loadOptionMap(questionMap.keySet());
+        boolean includeGrading = !STATUS_IN_PROGRESS.equals(session.getStatus());
         List<KyzzExamQuestionResponse> questions = examQuestions.stream()
                 .map(examQuestion -> toQuestionResponse(
                         examQuestion,
                         questionMap.get(examQuestion.getQuestionId()),
-                        optionMap.getOrDefault(examQuestion.getQuestionId(), List.of())
+                        optionMap.getOrDefault(examQuestion.getQuestionId(), List.of()),
+                        includeGrading
                 ))
                 .toList();
         boolean canAnswer = STATUS_IN_PROGRESS.equals(session.getStatus()) && !isDeadlinePassed(session, now);
@@ -347,10 +419,17 @@ public class KyzzExamUserService {
 
     private KyzzExamQuestionResponse toQuestionResponse(KyzzExamQuestion examQuestion,
                                                        KyzzQuestion question,
-                                                       List<KyzzQuestionOption> options) {
+                                                       List<KyzzQuestionOption> options,
+                                                       boolean includeGrading) {
         if (question == null) {
             throw new BusinessException(ApiResponseCode.NOT_FOUND, "考试题目已失效");
         }
+        List<String> correctOptionKeys = includeGrading && isChoiceQuestion(examQuestion.getQuestionType())
+                ? resolveCorrectOptionKeys(options)
+                : List.of();
+        GradingPoints gradingPoints = includeGrading
+                ? parseGradingPoints(examQuestion.getGradingPointsJson())
+                : GradingPoints.empty();
         return new KyzzExamQuestionResponse(
                 examQuestion.getId(),
                 question.getId(),
@@ -360,6 +439,7 @@ public class KyzzExamUserService {
                 question.getStem(),
                 question.getDifficultyLevel(),
                 examQuestion.getScore(),
+                includeGrading ? examQuestion.getAwardedScore() : null,
                 question.getSourceName(),
                 question.getYearNo(),
                 options.stream()
@@ -368,8 +448,20 @@ public class KyzzExamUserService {
                         .map(option -> new KyzzExamQuestionOptionResponse(option.getOptionKey(), option.getOptionContent()))
                         .toList(),
                 isChoiceQuestion(examQuestion.getQuestionType()) ? parseChoiceAnswerContent(examQuestion.getAnswerContent()) : List.of(),
+                correctOptionKeys,
                 QUESTION_TYPE_SHORT.equals(examQuestion.getQuestionType()) ? examQuestion.getAnswerContent() : null,
-                examQuestion.getAnswerStatus()
+                examQuestion.getAnswerStatus(),
+                includeGrading ? examQuestion.getIsCorrect() : null,
+                includeGrading ? examQuestion.getGradingStatus() : null,
+                includeGrading ? examQuestion.getGradingMethod() : null,
+                includeGrading ? firstText(examQuestion.getReferenceAnswer(), question.getAnswerText()) : null,
+                includeGrading ? firstText(examQuestion.getAnalysisSnapshot(), question.getAnalysis()) : null,
+                includeGrading ? examQuestion.getGradingComment() : null,
+                includeGrading ? examQuestion.getGradingConfidence() : null,
+                gradingPoints.matchedPoints(),
+                gradingPoints.missingPoints(),
+                includeGrading ? examQuestion.getLlmRecordId() : null,
+                includeGrading ? formatTime(examQuestion.getGradedAt()) : null
         );
     }
 
@@ -591,6 +683,7 @@ public class KyzzExamUserService {
         if (session == null) {
             return null;
         }
+        String gradingStatus = normalizeGradingStatus(session.getGradingStatus());
         return new KyzzExamSummaryResponse(
                 session.getId(),
                 session.getExamNo(),
@@ -602,11 +695,18 @@ public class KyzzExamUserService {
                 session.getTotalQuestionCount(),
                 session.getAnsweredCount() == null ? 0 : session.getAnsweredCount(),
                 session.getTotalScore(),
+                zeroIfNull(session.getEarnedScore()),
+                zeroIfNull(session.getObjectiveScore()),
+                zeroIfNull(session.getSubjectiveScore()),
                 session.getStatus(),
                 statusLabel(session.getStatus()),
+                gradingStatus,
+                gradingStatusLabel(gradingStatus),
                 formatTime(session.getStartedAt()),
                 formatTime(session.getDeadlineAt()),
                 formatTime(session.getSubmittedAt()),
+                formatTime(session.getGradedAt()),
+                session.getGradingErrorMessage(),
                 remainingSeconds(session, now)
         );
     }
@@ -645,8 +745,38 @@ public class KyzzExamUserService {
         };
     }
 
+    private String gradingStatusLabel(String gradingStatus) {
+        return switch (gradingStatus) {
+            case GRADING_STATUS_GRADING -> "阅卷中";
+            case GRADING_STATUS_GRADED -> "已阅卷";
+            case GRADING_STATUS_FAILED -> "阅卷失败";
+            default -> "待阅卷";
+        };
+    }
+
+    private String normalizeGradingStatus(String gradingStatus) {
+        return StringUtils.hasText(gradingStatus) ? gradingStatus.trim() : GRADING_STATUS_NOT_STARTED;
+    }
+
+    private BigDecimal zeroIfNull(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
     private boolean isChoiceQuestion(String questionType) {
         return QUESTION_TYPE_SINGLE.equals(questionType) || QUESTION_TYPE_MULTIPLE.equals(questionType);
+    }
+
+    private List<String> resolveCorrectOptionKeys(List<KyzzQuestionOption> options) {
+        if (options == null || options.isEmpty()) {
+            return List.of();
+        }
+        return options.stream()
+                .filter(option -> Objects.equals(option.getIsCorrect(), 1))
+                .map(KyzzQuestionOption::getOptionKey)
+                .filter(StringUtils::hasText)
+                .map(item -> item.trim().toUpperCase(Locale.ROOT))
+                .sorted()
+                .toList();
     }
 
     private int countByType(List<KyzzQuestion> questions, String questionType) {
@@ -677,6 +807,58 @@ public class KyzzExamUserService {
                 + ThreadLocalRandom.current().nextInt(1000, 10000);
     }
 
+    private GradingPoints parseGradingPoints(String gradingPointsJson) {
+        if (!StringUtils.hasText(gradingPointsJson)) {
+            return GradingPoints.empty();
+        }
+        try {
+            JsonNode root = objectMapper.readTree(gradingPointsJson);
+            return new GradingPoints(
+                    readStringArray(root.path("matchedPoints")),
+                    readStringArray(root.path("missingPoints"))
+            );
+        } catch (Exception ex) {
+            return GradingPoints.empty();
+        }
+    }
+
+    private List<String> readStringArray(JsonNode node) {
+        if (node == null || !node.isArray()) {
+            return List.of();
+        }
+        List<String> result = new ArrayList<>();
+        for (JsonNode item : node) {
+            String value = item.asText("");
+            if (StringUtils.hasText(value)) {
+                result.add(value.trim());
+            }
+        }
+        return result;
+    }
+
+    private String firstText(String primary, String fallback) {
+        if (StringUtils.hasText(primary)) {
+            return primary;
+        }
+        return StringUtils.hasText(fallback) ? fallback : null;
+    }
+
+    private void enqueueGradingAfterCommit(Long sessionId) {
+        if (sessionId == null) {
+            return;
+        }
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    kyzzExamGradingService.gradeExamAsync(sessionId);
+                }
+            });
+            return;
+        }
+        kyzzExamGradingService.gradeExamAsync(sessionId);
+    }
+
     private LinkedHashSet<Long> normalizeIds(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return new LinkedHashSet<>();
@@ -684,6 +866,13 @@ public class KyzzExamUserService {
         return ids.stream()
                 .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private record GradingPoints(List<String> matchedPoints, List<String> missingPoints) {
+
+        private static GradingPoints empty() {
+            return new GradingPoints(List.of(), List.of());
+        }
     }
 
     private record ExamComposition(int singleCount, int multipleCount, int shortCount, int defaultDurationMinutes) {

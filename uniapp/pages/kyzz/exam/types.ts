@@ -6,6 +6,7 @@ export type KyzzExamType = 'choice' | 'short' | 'full'
 export type KyzzExamDifficultyMode = 'balanced' | 'easy' | 'normal' | 'hard'
 export type KyzzExamStatus = 'in_progress' | 'submitted' | 'expired'
 export type KyzzExamQuestionType = 'single' | 'multiple' | 'short'
+export type KyzzExamGradingStatus = 'not_started' | 'grading' | 'graded' | 'failed'
 
 export interface KyzzExamPreset {
 	examType: KyzzExamType
@@ -34,11 +35,18 @@ export interface KyzzExamSummary {
 	totalQuestionCount: number | string | null
 	answeredCount: number | string | null
 	totalScore: number | string | null
+	earnedScore: number | string | null
+	objectiveScore: number | string | null
+	subjectiveScore: number | string | null
 	status: KyzzExamStatus | string
 	statusLabel: string
+	gradingStatus: KyzzExamGradingStatus | string
+	gradingStatusLabel: string
 	startedAt: string | null
 	deadlineAt: string | null
 	submittedAt: string | null
+	gradedAt: string | null
+	gradingErrorMessage: string | null
 	remainingSeconds: number | string | null
 }
 
@@ -69,12 +77,25 @@ export interface KyzzExamQuestion {
 	stem: string
 	difficultyLevel: number | string | null
 	score: number | string | null
+	awardedScore: number | string | null
 	sourceName: string | null
 	yearNo: number | string | null
 	options: KyzzExamQuestionOption[]
 	selectedOptionKeys: string[]
+	correctOptionKeys: string[]
 	answerText: string | null
 	answerStatus: number | string | null
+	isCorrect: number | string | null
+	gradingStatus: KyzzExamGradingStatus | string | null
+	gradingMethod: string | null
+	referenceAnswer: string | null
+	analysis: string | null
+	gradingComment: string | null
+	gradingConfidence: number | string | null
+	matchedPoints: string[]
+	missingPoints: string[]
+	llmRecordId: number | string | null
+	gradedAt: string | null
 }
 
 export interface KyzzExamDetailResponse {

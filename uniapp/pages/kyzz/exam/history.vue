@@ -170,7 +170,20 @@ export default defineComponent({
 			return minutes > 0 ? `${minutes}分钟` : '不足1分钟'
 		},
 		formatScore(record: KyzzExamSummary): string {
-			return `待阅卷 / 满分 ${toNumber(record.totalScore)} 分`
+			const total = toNumber(record.totalScore)
+			if (record.status === 'in_progress') {
+				return `进行中 / 满分 ${total} 分`
+			}
+			if (record.gradingStatus === 'graded') {
+				return `${toNumber(record.earnedScore)} / ${total} 分`
+			}
+			if (record.gradingStatus === 'failed') {
+				return `阅卷失败 / 满分 ${total} 分`
+			}
+			if (record.gradingStatus === 'grading') {
+				return `阅卷中 / 满分 ${total} 分`
+			}
+			return `待阅卷 / 满分 ${total} 分`
 		},
 		formatProgress(record: KyzzExamSummary): string {
 			const total = Math.max(1, toNumber(record.totalQuestionCount))

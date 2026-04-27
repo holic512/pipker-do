@@ -66,3 +66,10 @@ export function submitExam(sessionId: number): Promise<KyzzExamSummary> {
 		method: 'POST'
 	})
 }
+
+export function retryExamGrading(sessionId: number): Promise<KyzzExamSummary> {
+	return request<KyzzExamSummary>({
+		url: `/api/kyzz/exam/sessions/${sessionId}/grading/retry`,
+		method: 'POST'
+	})
+}

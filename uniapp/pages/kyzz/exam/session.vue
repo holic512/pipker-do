@@ -442,11 +442,13 @@ export default defineComponent({
 				this.remainingSeconds = 0
 				this.clearTimer()
 				uni.showToast({
-					title: '已交卷',
+					title: '已交卷，正在阅卷',
 					icon: 'none'
 				})
 				setTimeout(() => {
-					uni.navigateBack()
+					uni.redirectTo({
+						url: `/pages/kyzz/exam/detail?sessionId=${this.sessionId}`
+					})
 				}, 700)
 			} catch (error) {
 				uni.showToast({

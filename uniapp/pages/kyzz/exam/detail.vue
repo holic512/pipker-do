@@ -7,10 +7,36 @@
 				<view class="exam-detail__header-main">
 					<text class="exam-detail__title">{{ summaryText }}</text>
 					<text class="exam-detail__subtitle">
-						{{ statusText }} · {{ formatScore(summary?.totalScore) }} 分 · {{ answeredCount }}/{{ totalQuestionCount }} 题
+						{{ statusText }} · {{ scoreSummaryText }} · {{ answeredCount }}/{{ totalQuestionCount }} 题
 					</text>
 				</view>
 				</view>
+
+			<view v-if="summary" class="exam-detail__grading-card" :class="gradingCardClass">
+				<view class="exam-detail__grading-main">
+					<text class="exam-detail__grading-label">{{ gradingStatusText }}</text>
+					<text class="exam-detail__grading-score">{{ scoreSummaryText }}</text>
+					<text v-if="summary.gradingErrorMessage" class="exam-detail__grading-error">{{ summary.gradingErrorMessage }}</text>
+				</view>
+				<view class="exam-detail__grading-metrics">
+					<view class="exam-detail__grading-metric">
+						<text>客观题</text>
+						<text>{{ formatScore(summary.objectiveScore) }}</text>
+					</view>
+					<view class="exam-detail__grading-metric">
+						<text>主观题</text>
+						<text>{{ formatScore(summary.subjectiveScore) }}</text>
+					</view>
+					<button
+						v-if="canRetryGrading"
+						class="exam-detail__retry-button"
+						:disabled="retrying"
+						@tap="handleRetryGrading"
+					>
+						{{ retrying ? '重试中...' : '重新阅卷' }}
+					</button>
+				</view>
+			</view>
 
 			<view v-if="questions.length" class="exam-detail__progress-panel">
 				<view class="exam-detail__progress-row">
@@ -36,7 +62,7 @@
 						<text class="exam-detail__question-kicker">{{ questionTypeLabel(currentQuestion.questionType) }}</text>
 						<text class="exam-detail__question-title">第 {{ currentIndex + 1 }} 题</text>
 					</view>
-					<text class="exam-detail__score">{{ formatScore(currentQuestion.score) }} 分</text>
+					<text class="exam-detail__score">{{ questionScoreDisplay(currentQuestion) }}</text>
 				</view>
 
 				<text class="exam-detail__stem">{{ currentQuestion.stem }}</text>
@@ -46,7 +72,7 @@
 						v-for="option in currentQuestion.options"
 						:key="option.optionKey"
 						class="exam-detail__option"
-						:class="{ 'is-selected': currentQuestion.selectedOptionKeys.includes(option.optionKey) }"
+						:class="optionClass(currentQuestion, option.optionKey)"
 					>
 						<view class="exam-detail__option-key">
 							<text>{{ option.optionKey }}</text>
@@ -58,6 +84,29 @@
 				<view class="exam-detail__answer">
 					<text class="exam-detail__answer-label">我的答案</text>
 					<text class="exam-detail__answer-content">{{ answerDisplay(currentQuestion) }}</text>
+				</view>
+
+				<view v-if="shouldShowQuestionResult(currentQuestion)" class="exam-detail__review">
+					<view class="exam-detail__review-row">
+						<text class="exam-detail__answer-label">参考答案</text>
+						<text class="exam-detail__answer-content">{{ referenceDisplay(currentQuestion) }}</text>
+					</view>
+					<view v-if="currentQuestion.analysis" class="exam-detail__review-row">
+						<text class="exam-detail__answer-label">解析</text>
+						<text class="exam-detail__answer-content">{{ currentQuestion.analysis }}</text>
+					</view>
+					<view v-if="currentQuestion.gradingComment" class="exam-detail__review-row">
+						<text class="exam-detail__answer-label">AI 评语</text>
+						<text class="exam-detail__answer-content">{{ currentQuestion.gradingComment }}</text>
+					</view>
+					<view v-if="currentQuestion.matchedPoints && currentQuestion.matchedPoints.length" class="exam-detail__review-row">
+						<text class="exam-detail__answer-label">命中要点</text>
+						<text class="exam-detail__answer-content">{{ currentQuestion.matchedPoints.join('；') }}</text>
+					</view>
+					<view v-if="currentQuestion.missingPoints && currentQuestion.missingPoints.length" class="exam-detail__review-row">
+						<text class="exam-detail__answer-label">缺失要点</text>
+						<text class="exam-detail__answer-content">{{ currentQuestion.missingPoints.join('；') }}</text>
+					</view>
 				</view>
 			</view>
 
@@ -122,14 +171,16 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { bootstrapAuth } from '@/shared/session/session'
-import { getExamDetail } from '@/pages/kyzz/api/exam'
+import { getExamDetail, retryExamGrading } from '@/pages/kyzz/api/exam'
 import type { KyzzExamDetailResponse, KyzzExamQuestion, KyzzExamSummary, UniPopupRef } from '@/pages/kyzz/exam/types'
 
 interface ExamDetailState {
 	sessionId: number
 	loading: boolean
+	retrying: boolean
 	detail: KyzzExamDetailResponse | null
 	currentIndex: number
+	pollingTimer: number | null
 }
 
 function toNumber(value: unknown, fallback = 0): number {
@@ -150,8 +201,10 @@ export default defineComponent({
 		return {
 			sessionId: 0,
 			loading: false,
+			retrying: false,
 			detail: null,
-			currentIndex: 0
+			currentIndex: 0,
+			pollingTimer: null
 		}
 	},
 	computed: {
@@ -169,6 +222,40 @@ export default defineComponent({
 		},
 		statusText(): string {
 			return this.summary?.statusLabel || '加载中'
+		},
+		gradingStatusText(): string {
+			return this.summary?.gradingStatusLabel || '待阅卷'
+		},
+		scoreSummaryText(): string {
+			const total = this.formatScore(this.summary?.totalScore)
+			if (!this.summary || this.summary.status === 'in_progress') {
+				return `满分 ${total} 分`
+			}
+			if (this.summary.gradingStatus === 'graded') {
+				return `${this.formatScore(this.summary.earnedScore)} / ${total} 分`
+			}
+			if (this.summary.gradingStatus === 'failed') {
+				return `阅卷失败 / 满分 ${total} 分`
+			}
+			if (this.summary.gradingStatus === 'grading') {
+				return `阅卷中 / 满分 ${total} 分`
+			}
+			return `待阅卷 / 满分 ${total} 分`
+		},
+		canRetryGrading(): boolean {
+			return !!(this.summary && this.summary.status !== 'in_progress' && this.summary.gradingStatus === 'failed')
+		},
+		gradingCardClass(): string {
+			if (!this.summary) {
+				return ''
+			}
+			if (this.summary.gradingStatus === 'graded') {
+				return 'is-graded'
+			}
+			if (this.summary.gradingStatus === 'failed') {
+				return 'is-failed'
+			}
+			return 'is-grading'
 		},
 		answeredCount(): number {
 			return toNumber(this.summary?.answeredCount)
@@ -192,25 +279,52 @@ export default defineComponent({
 		this.sessionId = toNumber(query.sessionId)
 		this.loadDetail()
 	},
+	onUnload() {
+		this.clearPolling()
+	},
 	methods: {
-		async loadDetail(): Promise<void> {
-			if (!this.sessionId || this.loading) {
+		async loadDetail(silent = false): Promise<void> {
+			if (!this.sessionId || (this.loading && !silent)) {
 				return
 			}
-			this.loading = true
+			if (!silent) {
+				this.loading = true
+			}
 			try {
 				await bootstrapAuth({ silent: true })
 				this.detail = await getExamDetail(this.sessionId)
 				if (this.currentIndex >= this.questions.length) {
 					this.currentIndex = 0
 				}
+				this.syncPolling()
 			} catch (error) {
-				uni.showToast({
-					title: resolveErrorMessage(error, '试卷详情加载失败'),
-					icon: 'none'
-				})
+				if (!silent) {
+					uni.showToast({
+						title: resolveErrorMessage(error, '试卷详情加载失败'),
+						icon: 'none'
+					})
+				}
 			} finally {
-				this.loading = false
+				if (!silent) {
+					this.loading = false
+				}
+			}
+		},
+		syncPolling(): void {
+			if (this.summary && this.summary.status !== 'in_progress' && this.summary.gradingStatus === 'grading') {
+				if (!this.pollingTimer) {
+					this.pollingTimer = setInterval(() => {
+						this.loadDetail(true)
+					}, 3000)
+				}
+				return
+			}
+			this.clearPolling()
+		},
+		clearPolling(): void {
+			if (this.pollingTimer) {
+				clearInterval(this.pollingTimer)
+				this.pollingTimer = null
 			}
 		},
 		isChoiceQuestion(question: KyzzExamQuestion): boolean {
@@ -231,8 +345,65 @@ export default defineComponent({
 			}
 			return question.answerText && question.answerText.trim() ? question.answerText : '未作答'
 		},
-		formatScore(value: unknown): number {
-			return toNumber(value)
+		referenceDisplay(question: KyzzExamQuestion): string {
+			if (this.isChoiceQuestion(question)) {
+				return question.correctOptionKeys && question.correctOptionKeys.length ? question.correctOptionKeys.join('、') : '暂无参考答案'
+			}
+			return question.referenceAnswer && question.referenceAnswer.trim() ? question.referenceAnswer : '暂无参考答案'
+		},
+		shouldShowQuestionResult(question: KyzzExamQuestion | null): boolean {
+			return !!(
+				question
+				&& this.summary
+				&& this.summary.status !== 'in_progress'
+				&& (
+					this.summary.gradingStatus === 'graded'
+					|| this.summary.gradingStatus === 'failed'
+					|| question.gradingStatus === 'graded'
+					|| question.gradingStatus === 'failed'
+				)
+			)
+		},
+		questionScoreDisplay(question: KyzzExamQuestion): string {
+			if (this.shouldShowQuestionResult(question)) {
+				return `${this.formatScore(question.awardedScore)} / ${this.formatScore(question.score)} 分`
+			}
+			return `${this.formatScore(question.score)} 分`
+		},
+		optionClass(question: KyzzExamQuestion, optionKey: string): Record<string, boolean> {
+			const selected = question.selectedOptionKeys.includes(optionKey)
+			const correctOptionKeys = Array.isArray(question.correctOptionKeys) ? question.correctOptionKeys : []
+			const correct = this.shouldShowQuestionResult(question) && correctOptionKeys.includes(optionKey)
+			return {
+				'is-selected': selected,
+				'is-correct': correct,
+				'is-wrong': selected && !correct && this.shouldShowQuestionResult(question)
+			}
+		},
+		formatScore(value: unknown): string {
+			const score = toNumber(value)
+			return Number.isInteger(score) ? String(score) : score.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+		},
+		async handleRetryGrading(): Promise<void> {
+			if (!this.canRetryGrading || this.retrying) {
+				return
+			}
+			this.retrying = true
+			try {
+				await retryExamGrading(this.sessionId)
+				uni.showToast({
+					title: '已重新提交阅卷',
+					icon: 'none'
+				})
+				await this.loadDetail(true)
+			} catch (error) {
+				uni.showToast({
+					title: resolveErrorMessage(error, '重新阅卷失败'),
+					icon: 'none'
+				})
+			} finally {
+				this.retrying = false
+			}
 		},
 		openQuestionPicker(): void {
 			;(this.$refs.questionPickerPopup as UniPopupRef | undefined)?.open()
@@ -283,6 +454,7 @@ export default defineComponent({
 }
 
 .exam-detail__header,
+.exam-detail__grading-card,
 .exam-detail__question-card,
 .exam-detail__empty {
 	border: 1rpx solid rgba(177, 187, 202, 0.45);
@@ -321,9 +493,99 @@ export default defineComponent({
 	color: #728096;
 }
 
+.exam-detail__grading-card {
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
+	padding: 24rpx;
+}
+
+.exam-detail__grading-card.is-graded {
+	border-color: rgba(75, 160, 105, 0.35);
+	background: #f7fbf8;
+}
+
+.exam-detail__grading-card.is-failed {
+	border-color: rgba(180, 106, 103, 0.35);
+	background: #fff8f7;
+}
+
+.exam-detail__grading-main {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+}
+
+.exam-detail__grading-label {
+	font-size: 23rpx;
+	line-height: 1.35;
+	font-weight: 800;
+	color: #64748b;
+}
+
+.exam-detail__grading-score {
+	font-size: 34rpx;
+	line-height: 1.2;
+	font-weight: 900;
+	color: #2f3747;
+}
+
+.exam-detail__grading-error {
+	font-size: 24rpx;
+	line-height: 1.55;
+	color: #b46a67;
+}
+
+.exam-detail__grading-metrics {
+	display: flex;
+	align-items: stretch;
+	gap: 14rpx;
+}
+
+.exam-detail__grading-metric {
+	flex: 1;
+	min-width: 0;
+	padding: 16rpx;
+	border-radius: 16rpx;
+	background: rgba(255, 255, 255, 0.82);
+	box-sizing: border-box;
+}
+
+.exam-detail__grading-metric text {
+	display: block;
+	font-size: 22rpx;
+	line-height: 1.35;
+	color: #728096;
+}
+
+.exam-detail__grading-metric text + text {
+	margin-top: 6rpx;
+	font-size: 28rpx;
+	font-weight: 900;
+	color: #344052;
+}
+
+.exam-detail__retry-button {
+	flex: 0 0 168rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
+	padding: 0 16rpx;
+	border: 0;
+	border-radius: 16rpx;
+	background: #344052;
+	color: #ffffff;
+	font-size: 24rpx;
+	font-weight: 800;
+	line-height: 1.2;
+	box-sizing: border-box;
+}
+
 .exam-detail__switch-button,
 .exam-detail__picker-close,
-.exam-detail__footer-button {
+.exam-detail__footer-button,
+.exam-detail__retry-button {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -353,7 +615,8 @@ export default defineComponent({
 
 .exam-detail__switch-button::after,
 .exam-detail__picker-close::after,
-.exam-detail__footer-button::after {
+.exam-detail__footer-button::after,
+.exam-detail__retry-button::after {
 	border: 0;
 }
 
@@ -470,6 +733,16 @@ export default defineComponent({
 	background: #eef3f8;
 }
 
+.exam-detail__option.is-correct {
+	border-color: #48a06b;
+	background: #f0f8f3;
+}
+
+.exam-detail__option.is-wrong {
+	border-color: #d88a86;
+	background: #fff5f4;
+}
+
 .exam-detail__option-key {
 	display: flex;
 	align-items: center;
@@ -486,6 +759,16 @@ export default defineComponent({
 
 .exam-detail__option.is-selected .exam-detail__option-key {
 	background: #344052;
+	color: #ffffff;
+}
+
+.exam-detail__option.is-correct .exam-detail__option-key {
+	background: #3f9a61;
+	color: #ffffff;
+}
+
+.exam-detail__option.is-wrong .exam-detail__option-key {
+	background: #c56d68;
 	color: #ffffff;
 }
 
@@ -518,6 +801,21 @@ export default defineComponent({
 	line-height: 1.65;
 	color: #303849;
 	white-space: pre-wrap;
+}
+
+.exam-detail__review {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+	margin-top: 18rpx;
+}
+
+.exam-detail__review-row {
+	padding: 22rpx;
+	border-radius: 18rpx;
+	background: #fbfcfe;
+	border: 1rpx solid #e5ebf3;
+	box-sizing: border-box;
 }
 
 .exam-detail__footer {

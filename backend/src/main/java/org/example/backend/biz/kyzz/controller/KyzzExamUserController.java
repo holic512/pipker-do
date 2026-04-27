@@ -73,4 +73,9 @@ public class KyzzExamUserController {
     public ApiResponse<KyzzExamSummaryResponse> submitExam(@PathVariable Long sessionId) {
         return responseFactory.success(kyzzExamUserService.submitExam(LoginUserContext.requireUserId(), sessionId));
     }
+
+    @PostMapping("/sessions/{sessionId}/grading/retry")
+    public ApiResponse<KyzzExamSummaryResponse> retryGrading(@PathVariable Long sessionId) {
+        return responseFactory.success(kyzzExamUserService.retryGrading(LoginUserContext.requireUserId(), sessionId));
+    }
 }

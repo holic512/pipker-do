@@ -41,13 +41,27 @@ public class KyzzExamSession implements Serializable {
 
     private BigDecimal totalScore;
 
+    private BigDecimal earnedScore;
+
+    private BigDecimal objectiveScore;
+
+    private BigDecimal subjectiveScore;
+
     private String status;
+
+    private String gradingStatus;
 
     private LocalDateTime startedAt;
 
     private LocalDateTime deadlineAt;
 
     private LocalDateTime submittedAt;
+
+    private LocalDateTime gradingStartedAt;
+
+    private LocalDateTime gradedAt;
+
+    private String gradingErrorMessage;
 
     private LocalDateTime createdAt;
 

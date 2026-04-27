@@ -30,6 +30,8 @@ public class KyzzExamQuestionResponse implements Serializable {
 
     private BigDecimal score;
 
+    private BigDecimal awardedScore;
+
     private String sourceName;
 
     private Integer yearNo;
@@ -38,7 +40,31 @@ public class KyzzExamQuestionResponse implements Serializable {
 
     private List<String> selectedOptionKeys;
 
+    private List<String> correctOptionKeys;
+
     private String answerText;
 
     private Integer answerStatus;
+
+    private Integer isCorrect;
+
+    private String gradingStatus;
+
+    private String gradingMethod;
+
+    private String referenceAnswer;
+
+    private String analysis;
+
+    private String gradingComment;
+
+    private BigDecimal gradingConfidence;
+
+    private List<String> matchedPoints;
+
+    private List<String> missingPoints;
+
+    private Long llmRecordId;
+
+    private String gradedAt;
 }
