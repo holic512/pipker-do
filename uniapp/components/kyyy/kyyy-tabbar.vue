@@ -42,7 +42,7 @@ export default defineComponent({
 			if (item.navigationType === 'switchTab') {
 				uni.switchTab({
 					url: item.pagePath,
-					fail: (error) => {
+					fail: (error: unknown) => {
 						console.warn('[kyyy-tabbar] switchTab failed.', error)
 					}
 				})
@@ -52,7 +52,7 @@ export default defineComponent({
 			if (item.navigationType === 'navigateTo') {
 				uni.navigateTo({
 					url: item.pagePath,
-					fail: (error) => {
+					fail: (error: unknown) => {
 						console.warn('[kyyy-tabbar] navigateTo failed.', error)
 					}
 				})
@@ -61,7 +61,7 @@ export default defineComponent({
 
 			uni.reLaunch({
 				url: item.pagePath,
-				fail: (error) => {
+				fail: (error: unknown) => {
 					console.warn('[kyyy-tabbar] reLaunch failed.', error)
 				}
 			})
