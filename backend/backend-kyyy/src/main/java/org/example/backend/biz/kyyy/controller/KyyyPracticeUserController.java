@@ -1,5 +1,6 @@
 package org.example.backend.biz.kyyy.controller;
 
+import org.example.backend.biz.kyyy.dto.KyyyPracticeNextWordResponse;
 import org.example.backend.biz.kyyy.dto.KyyyPracticeSettingRequest;
 import org.example.backend.biz.kyyy.dto.KyyyPracticeSettingResponse;
 import org.example.backend.biz.kyyy.service.KyyyPracticeUserService;
@@ -31,6 +32,11 @@ public class KyyyPracticeUserController {
     @GetMapping("/settings")
     public ApiResponse<KyyyPracticeSettingResponse> getSettings() {
         return responseFactory.success(kyyyPracticeUserService.getSettings(LoginUserContext.requireUserId()));
+    }
+
+    @GetMapping("/next-word")
+    public ApiResponse<KyyyPracticeNextWordResponse> getNextWord() {
+        return responseFactory.success(kyyyPracticeUserService.getNextWord(LoginUserContext.requireUserId()));
     }
 
     @PutMapping("/settings")
