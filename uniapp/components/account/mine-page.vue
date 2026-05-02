@@ -220,7 +220,8 @@ export default defineComponent({
 			vipFeatures: [
 				{ key: 'unlimited', text: '无限提问', icon: 'loop' },
 				{ key: 'priority', text: '优先处理', icon: 'headphones' },
-				{ key: 'report', text: '深度报告', icon: 'paperclip' }
+				{ key: 'report', text: '深度报告', icon: 'paperclip' },
+				{ key: 'platform', text: '全平台通用', icon: 'map' }
 			] as VipFeatureItem[],
 			commonMenuItems: [
 				{ key: 'redeem', text: '激活兑换码', icon: 'scan' },
@@ -592,14 +593,17 @@ export default defineComponent({
 .mine-page__vip-features {
 	display: flex;
 	align-items: flex-start;
+	justify-content: space-between;
+	gap: 14rpx;
 	margin-top: 38rpx;
 }
 
 .mine-page__vip-feature {
-	width: 132rpx;
 	display: flex;
+	flex: 1;
 	flex-direction: column;
-	align-items: flex-start;
+	align-items: center;
+	min-width: 0;
 }
 
 .mine-page__vip-feature-icon {
@@ -617,6 +621,7 @@ export default defineComponent({
 	margin-top: 14rpx;
 	font-size: 20rpx;
 	line-height: 1.2;
+	text-align: center;
 	color: rgba(245, 247, 255, 0.92);
 }
 
