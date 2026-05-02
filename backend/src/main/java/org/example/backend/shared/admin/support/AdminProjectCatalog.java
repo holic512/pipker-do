@@ -13,6 +13,7 @@ public final class AdminProjectCatalog {
     static {
         PROJECT_NAMES.put("kyzz", "考研政治");
         PROJECT_NAMES.put("kysx", "考研数学");
+        PROJECT_NAMES.put("kyyy", "考研英语");
     }
 
     private AdminProjectCatalog() {
