@@ -71,7 +71,6 @@
 										</view>
 									</view>
 									<view class="project-drawer__card-body">
-										<text class="project-drawer__card-overline">项目</text>
 										<text class="project-drawer__card-title">{{ item.title }}</text>
 										<text class="project-drawer__card-desc">{{ item.description }}</text>
 										<text class="project-drawer__card-tag">{{ item.badgeText }}</text>
@@ -546,14 +545,6 @@ export default {
 	flex-direction: column;
 	gap: 6rpx;
 	min-width: 0;
-}
-
-.project-drawer__card-overline {
-	font-size: 18rpx;
-	line-height: 1.4;
-	font-weight: 700;
-	letter-spacing: 0.12em;
-	color: #9aa3b2;
 }
 
 .project-drawer__card-title {
