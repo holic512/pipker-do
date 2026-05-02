@@ -54,16 +54,25 @@
 
 		<view class="mine-page__menu">
 			<view
-				v-for="item in menuItems"
-				:key="item.key"
-				class="mine-page__menu-item"
-				@tap="handleAction(item.key)"
+				v-for="section in menuSections"
+				:key="section.key"
+				class="mine-page__menu-section"
 			>
-				<view class="mine-page__menu-icon">
-					<uni-icons :type="item.icon" size="18" color="#64748b" />
+				<text class="mine-page__menu-section-title">{{ section.title }}</text>
+				<view class="mine-page__menu-section-list">
+					<view
+						v-for="item in section.items"
+						:key="item.key"
+						class="mine-page__menu-item"
+						@tap="handleAction(item.key)"
+					>
+						<view class="mine-page__menu-icon">
+							<uni-icons :type="item.icon" size="18" color="#64748b" />
+						</view>
+						<text class="mine-page__menu-text">{{ item.text }}</text>
+						<uni-icons type="right" size="16" color="#c3cad7" />
+					</view>
 				</view>
-				<text class="mine-page__menu-text">{{ item.text }}</text>
-				<uni-icons type="right" size="16" color="#c3cad7" />
 			</view>
 		</view>
 
@@ -91,6 +100,27 @@
 				<button class="mine-page__redeem-submit" :disabled="redeeming" @tap="submitRedeem">
 					{{ redeeming ? '兑换中...' : '立即兑换' }}
 				</button>
+			</view>
+		</view>
+
+		<view v-if="serviceVisible" class="mine-page__service-mask" @tap="closeServicePopup">
+			<view class="mine-page__service-dialog" @tap.stop>
+				<view class="mine-page__service-header">
+					<view>
+						<text class="mine-page__service-title">联系客服</text>
+						<text class="mine-page__service-subtitle">加入 QQ 交流群，反馈问题或获取更新通知</text>
+					</view>
+					<view class="mine-page__service-close" @tap="closeServicePopup">
+						<uni-icons type="closeempty" size="24" color="#7b8494" />
+					</view>
+				</view>
+				<view class="mine-page__service-card">
+					<view>
+						<text class="mine-page__service-label">QQ 交流群一群</text>
+						<text class="mine-page__service-number">{{ serviceGroupNumber }}</text>
+					</view>
+					<button class="mine-page__service-copy" @tap="copyServiceGroupNumber">复制</button>
+				</view>
 			</view>
 		</view>
 
@@ -160,11 +190,13 @@ export default {
 				vipDescription: '未开通，兑换后可解锁完整会员权益'
 			},
 			redeemVisible: false,
+			serviceVisible: false,
 			redeeming: false,
 			resettingProgress: false,
 			redeemForm: {
 				key: ''
 			},
+			serviceGroupNumber: '1098353564',
 			practiceSettings: readCachedPracticeSettings(),
 			practiceSettingsPopupVisible: false,
 			unsubscribeSession: null,
@@ -174,14 +206,26 @@ export default {
 				{ key: 'priority', text: '优先处理', icon: 'headphones' },
 				{ key: 'report', text: '深度报告', icon: 'paperclip' }
 			],
-			menuItems: [
-				{ key: 'redeem', text: '激活兑换码', icon: 'scan' },
-				{ key: 'setting', text: '刷题设置', icon: 'gear' },
-				{ key: 'resetProgress', text: '重置刷题进度', icon: 'refreshempty' },
-				{ key: 'agreement', text: '用户协议', icon: 'paperclip' },
-				{ key: 'service', text: '联系客服', icon: 'headphones' },
-				{ key: 'feedback', text: '意见反馈', icon: 'chatboxes' },
-				{ key: 'about', text: '关于我们', icon: 'info' }
+			menuSections: [
+				{
+					key: 'common',
+					title: '通用',
+					items: [
+						{ key: 'redeem', text: '激活兑换码', icon: 'scan' },
+						{ key: 'service', text: '联系客服', icon: 'headphones' },
+						{ key: 'agreement', text: '用户协议', icon: 'paperclip' },
+						{ key: 'about', text: '关于我们', icon: 'info' }
+					]
+				},
+				{
+					key: 'kyzz',
+					title: '专项',
+					items: [
+						{ key: 'setting', text: '刷题设置', icon: 'gear' },
+						{ key: 'resetProgress', text: '重置刷题进度', icon: 'refreshempty' },
+						{ key: 'feedback', text: '意见反馈', icon: 'chatboxes' }
+					]
+				}
 			]
 		};
 	},
@@ -273,6 +317,16 @@ export default {
 			if (key === 'agreement') {
 				uni.navigateTo({
 					url: '/pages/common/agreement/index'
+				})
+				return
+			}
+			if (key === 'service') {
+				this.openServicePopup()
+				return
+			}
+			if (key === 'about') {
+				uni.navigateTo({
+					url: '/pages/common/about/index'
 				})
 				return
 			}
@@ -423,6 +477,23 @@ export default {
 		closeRedeemPopup() {
 			if (this.redeeming) return
 			this.redeemVisible = false
+		},
+		openServicePopup() {
+			this.serviceVisible = true
+		},
+		closeServicePopup() {
+			this.serviceVisible = false
+		},
+		copyServiceGroupNumber() {
+			uni.setClipboardData({
+				data: this.serviceGroupNumber,
+				success: () => {
+					uni.showToast({
+						title: '群号已复制',
+						icon: 'none'
+					})
+				}
+			})
 		},
 		handleRedeemInput(event) {
 			const value = event && event.detail ? event.detail.value : this.redeemForm.key
@@ -668,6 +739,25 @@ export default {
 	margin-top: 30rpx;
 	display: flex;
 	flex-direction: column;
+	gap: 26rpx;
+}
+
+.mine-page__menu-section {
+	display: flex;
+	flex-direction: column;
+}
+
+.mine-page__menu-section-title {
+	margin: 0 0 12rpx 6rpx;
+	font-size: 21rpx;
+	line-height: 1.2;
+	font-weight: 600;
+	color: #98a1af;
+}
+
+.mine-page__menu-section-list {
+	display: flex;
+	flex-direction: column;
 	gap: 18rpx;
 }
 
@@ -792,5 +882,104 @@ export default {
 
 .mine-page__redeem-submit[disabled] {
 	opacity: 0.72;
+}
+
+.mine-page__service-mask {
+	position: fixed;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 10000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 32rpx 24rpx;
+	background: rgba(15, 23, 42, 0.42);
+}
+
+.mine-page__service-dialog {
+	width: 100%;
+	padding: 34rpx 30rpx 30rpx;
+	border-radius: 28rpx;
+	background: #ffffff;
+	box-shadow: 0 24rpx 70rpx rgba(15, 23, 42, 0.2);
+}
+
+.mine-page__service-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 24rpx;
+}
+
+.mine-page__service-title {
+	display: block;
+	font-size: 32rpx;
+	font-weight: 800;
+	color: #1f2937;
+}
+
+.mine-page__service-subtitle {
+	display: block;
+	margin-top: 10rpx;
+	font-size: 23rpx;
+	line-height: 1.5;
+	color: #7b8494;
+}
+
+.mine-page__service-close {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 54rpx;
+	height: 54rpx;
+	border-radius: 50%;
+	background: #f4f6f9;
+	flex-shrink: 0;
+}
+
+.mine-page__service-card {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 22rpx;
+	margin-top: 30rpx;
+	padding: 24rpx;
+	border-radius: 18rpx;
+	background: #f6f8fb;
+}
+
+.mine-page__service-label {
+	display: block;
+	font-size: 23rpx;
+	line-height: 1.4;
+	color: #7b8494;
+}
+
+.mine-page__service-number {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 34rpx;
+	line-height: 1.2;
+	font-weight: 800;
+	color: #1f2937;
+}
+
+.mine-page__service-copy {
+	margin: 0;
+	width: 116rpx;
+	height: 64rpx;
+	border-radius: 999rpx;
+	background: #20272e;
+	color: #ffffff;
+	font-size: 25rpx;
+	font-weight: 700;
+	line-height: 64rpx;
+	flex-shrink: 0;
+}
+
+.mine-page__service-copy::after {
+	border: 0;
 }
 </style>

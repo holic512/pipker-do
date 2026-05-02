@@ -117,6 +117,13 @@
 				"navigationBarTitleText": "用户协议",
 				"navigationStyle": "default"
 			}
+		},
+		{
+			"path": "pages/common/about/index",
+			"style": {
+				"navigationBarTitleText": "关于我们",
+				"navigationStyle": "default"
+			}
 		}
 	],
 	"globalStyle": {
