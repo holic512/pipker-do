@@ -82,7 +82,25 @@
 		{
 			"path": "pages/kyyy/index",
 			"style": {
-				"navigationBarTitleText": "考研英语"
+				"navigationBarTitleText": "首页"
+			}
+		},
+		{
+			"path": "pages/kyyy/composition/index",
+			"style": {
+				"navigationBarTitleText": "作文"
+			}
+		},
+		{
+			"path": "pages/kyyy/practice/index",
+			"style": {
+				"navigationBarTitleText": "练习"
+			}
+		},
+		{
+			"path": "pages/kyyy/translation/index",
+			"style": {
+				"navigationBarTitleText": "翻译"
 			}
 		},
 		{

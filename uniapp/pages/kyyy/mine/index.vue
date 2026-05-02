@@ -66,6 +66,10 @@
 				英语项目的我的页已经独立建好。后续词汇成长、阅读记录、真题订阅、兑换与客服入口可以继续在这里按英语业务扩展。
 			</text>
 		</view>
+
+		<template #tabbar>
+			<kyyy-tabbar current="mine" />
+		</template>
 	</page-shell>
 </template>
 
@@ -73,9 +77,13 @@
 import { bootstrapAuth, getSessionSnapshot, setCurrentUser, subscribeSession } from '@/shared/session/session'
 import { getVipStatus } from '@/shared/api/vip'
 import { resolveUserDisplayAvatarUrl } from '@/shared/media/avatar-cache'
+import KyyyTabbar from '@/components/kyyy/kyyy-tabbar.vue'
 
 export default {
 	name: 'KyyyMinePage',
+	components: {
+		KyyyTabbar
+	},
 	data() {
 		return {
 			user: {
