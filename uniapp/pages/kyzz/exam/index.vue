@@ -1,7 +1,6 @@
 <template>
 	<!-- AI 索引: KYZZ VIP 考试入口页 -->
 	<page-shell
-		current="exam"
 		root-class="exam-page"
 		content-class="exam-page__content"
 	>
@@ -137,12 +136,16 @@
 				</view>
 			</view>
 		</view>
+		<template #tabbar>
+			<kyzz-tabbar current="exam" />
+		</template>
 	</page-shell>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
 import PageShell from '@/components/page-shell/page-shell.vue'
+import KyzzTabbar from '@/components/kyzz/kyzz-tabbar.vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getExamEntry, startExam } from '@/pages/kyzz/api/exam'
 import type {
@@ -184,7 +187,8 @@ function resolveErrorMessage(error: unknown, fallback: string): string {
 export default defineComponent({
 	name: 'ExamPage',
 	components: {
-		PageShell
+		PageShell,
+		KyzzTabbar
 	},
 	data(): ExamIndexState {
 		return {
@@ -308,11 +312,11 @@ export default defineComponent({
 				url: '/pages/kyzz/exam/history'
 			})
 		},
-		goMine(): void {
-			uni.switchTab({
-				url: '/pages/common/mine/index'
-			})
-		},
+			goMine(): void {
+				uni.switchTab({
+					url: '/pages/kyzz/mine/index'
+				})
+			},
 		formatCount(value: unknown): number {
 			return toNumber(value)
 		},

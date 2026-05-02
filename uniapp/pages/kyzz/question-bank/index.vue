@@ -1,7 +1,6 @@
 <template>
 	<!-- AI 索引: 我的题库页 -->
 	<page-shell
-		current="question-bank"
 		root-class="question-bank-page"
 		content-class="question-bank-page__content"
 	>
@@ -120,11 +119,15 @@
 			</view>
 			<uni-icons type="right" size="18" color="#7e8798" />
 		</view>
+		<template #tabbar>
+			<kyzz-tabbar current="question-bank" />
+		</template>
 	</page-shell>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
+import KyzzTabbar from '@/components/kyzz/kyzz-tabbar.vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import {
 	getCachedMineQuestionBanks,
@@ -188,6 +191,9 @@ function resolveErrorMessage(error: unknown, fallback: string): string {
 
 export default defineComponent({
 	name: 'QuestionBankPage',
+	components: {
+		KyzzTabbar
+	},
 	data(): MinePageState {
 		return {
 			loading: false,

@@ -1,9 +1,7 @@
 <template>
 	<page-shell
-		current="mine"
 		root-class="mine-page"
 		content-class="mine-page__content"
-		:show-tabbar="!practiceSettingsPopupVisible"
 	>
 		<view class="mine-page__profile">
 			<view class="mine-page__avatar" @tap="goProfile">
@@ -113,6 +111,9 @@
 				@change-bank-practice-choice-only="handlePracticeBankChoiceOnlyChange"
 			/>
 		</uni-popup>
+		<template #tabbar>
+			<kyzz-tabbar v-if="!practiceSettingsPopupVisible" current="mine" />
+		</template>
 	</page-shell>
 </template>
 
@@ -120,6 +121,7 @@
 import { bootstrapAuth, getSessionSnapshot, setCurrentUser, subscribeSession } from '@/shared/session/session'
 import { getVipStatus, redeemVipKey } from '@/shared/api/vip'
 import { invalidateKyzzPreload } from '@/shared/preload/kyzz'
+import KyzzTabbar from '@/components/kyzz/kyzz-tabbar.vue'
 import {
 	resolveAvatarRemoteUrl,
 	resolveAvatarUserKey,
@@ -142,9 +144,10 @@ const VIP_TYPE_TEXT = {
 }
 
 export default {
-	name: 'MinePage',
+	name: 'KyzzMinePage',
 	components: {
-		PracticeSettingsPopup
+		PracticeSettingsPopup,
+		KyzzTabbar
 	},
 	data() {
 		return {
@@ -251,7 +254,7 @@ export default {
 		},
 		goProfile() {
 			uni.navigateTo({
-				url: '/pages/common/profile/edit'
+				url: '/pages/kyzz/profile/edit'
 			})
 		},
 		handleAction(key) {

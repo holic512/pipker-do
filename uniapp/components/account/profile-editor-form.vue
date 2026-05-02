@@ -106,7 +106,7 @@ import {
 import { resolveWechatAvatarPath, resolveWechatNickname, supportsWechatNativeProfile } from '@/shared/platform/wechat-profile'
 
 export default {
-	name: 'ProfileEditPage',
+	name: 'ProfileEditorForm',
 	data() {
 		return {
 			submitting: false,
@@ -139,17 +139,18 @@ export default {
 				: '点击更换头像，支持 jpg/png，最大 2MB'
 		}
 	},
-	onLoad() {
-		this.initForm()
-	},
-	onShow() {
-		bootstrapAuth({ silent: true }).then(() => {
-			this.initForm()
-		}).catch((error) => {
-			console.warn('[profile] bootstrap failed', error)
-		})
+	mounted() {
+		this.refreshProfileForm()
 	},
 	methods: {
+		async refreshProfileForm() {
+			try {
+				await bootstrapAuth({ silent: true })
+			} catch (error) {
+				console.warn('[profile] bootstrap failed', error)
+			}
+			this.initForm()
+		},
 		initForm() {
 			const currentUser = getSessionSnapshot().currentUser
 			const avatarRemoteUrl = resolveAvatarRemoteUrl(currentUser)

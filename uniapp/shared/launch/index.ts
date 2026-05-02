@@ -2,12 +2,23 @@
 
 import { getToken } from '@/shared/auth/storage'
 import env from '@/shared/config/env'
-import { createDefaultTabbarItems, type TabbarItem } from '@/shared/navigation/tabbar'
+import { createKyzzTabbarItems } from '@/pages/kyzz/navigation/tabbar'
 import { getOrCreateDeviceProfile } from '@/shared/platform/device'
 import { warmKyzzCorePreload } from '@/shared/preload/kyzz'
 import { bootstrapAuth } from '@/shared/session/session'
 
 export type LaunchStatus = 'idle' | 'loading' | 'ready' | 'error'
+
+export interface LaunchMenuItem {
+	key: string
+	text: string
+	pagePath: string
+	icon: string
+	activeIcon?: string
+	size?: number
+	activeColor?: string
+	color?: string
+}
 
 export interface LaunchSnapshot {
 	status: LaunchStatus
@@ -15,7 +26,7 @@ export interface LaunchSnapshot {
 	stepText: string
 	visible: boolean
 	errorMessage: string
-	menuItems: TabbarItem[]
+	menuItems: LaunchMenuItem[]
 }
 
 type LaunchListener = (snapshot: LaunchSnapshot) => void
@@ -32,14 +43,14 @@ const state: LaunchSnapshot = {
 	stepText: '',
 	visible: false,
 	errorMessage: '',
-	menuItems: createDefaultTabbarItems()
+	menuItems: createKyzzTabbarItems()
 }
 
 let launchPromise: Promise<LaunchSnapshot> | null = null
 let coldStartCompleted = false
 let launchStartedAt = 0
 
-function cloneMenuItems(items: TabbarItem[]): TabbarItem[] {
+function cloneMenuItems(items: LaunchMenuItem[]): LaunchMenuItem[] {
 	return items.map((item) => ({ ...item }))
 }
 
@@ -93,7 +104,7 @@ async function runLaunchBootstrap(): Promise<LaunchSnapshot> {
 		stepText: '读取登录态',
 		visible: true,
 		errorMessage: '',
-		menuItems: createDefaultTabbarItems()
+		menuItems: createKyzzTabbarItems()
 	})
 
 	await syncStep('token', '读取登录态', () => {
@@ -106,7 +117,7 @@ async function runLaunchBootstrap(): Promise<LaunchSnapshot> {
 		getOrCreateDeviceProfile()
 	})
 
-	const menuItems = createDefaultTabbarItems()
+	const menuItems = createKyzzTabbarItems()
 	await syncStep('menu', '整理导航入口', () => {
 		updateLaunchState({
 			menuItems

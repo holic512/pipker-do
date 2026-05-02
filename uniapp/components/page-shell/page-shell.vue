@@ -5,11 +5,7 @@
 		<view class="page-shell__content" :class="contentClass" :style="contentStyle">
 			<slot />
 		</view>
-		<custom-tabbar
-			v-if="showTabbar"
-			:current="current"
-			:items="items"
-		/>
+		<slot name="tabbar" />
 		<launch-overlay />
 	</view>
 </template>
@@ -19,18 +15,6 @@ export default {
 	name: 'PageShell',
 	emits: ['menu-click'],
 	props: {
-		current: {
-			type: String,
-			default: ''
-		},
-		items: {
-			type: Array,
-			default: null
-		},
-		showTabbar: {
-			type: Boolean,
-			default: true
-		},
 		rootClass: {
 			type: String,
 			default: ''
@@ -47,6 +31,9 @@ export default {
 			type: [String, Object],
 			default: ''
 		}
+	},
+	mounted() {
+		uni.hideTabBar({ animation: false }).catch(() => {})
 	}
 }
 </script>

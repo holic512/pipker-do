@@ -1,10 +1,8 @@
 <template>
 	<!-- AI 索引: KYZZ 练习页 -->
 	<page-shell
-		current="practice"
 		root-class="practice-page"
 		content-class="practice-page__content"
-		:show-tabbar="!switchPopupVisible && !settingsPopupVisible"
 	>
 		<view class="practice-page__inner">
 			<view class="practice-page__halo practice-page__halo--top"></view>
@@ -159,12 +157,16 @@
 				</view>
 			</view>
 		</view>
+		<template #tabbar>
+			<kyzz-tabbar v-if="!switchPopupVisible && !settingsPopupVisible" current="practice" />
+		</template>
 	</page-shell>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
 import PageShell from '@/components/page-shell/page-shell.vue'
+import KyzzTabbar from '@/components/kyzz/kyzz-tabbar.vue'
 import PracticeStateNotice from '@/components/kyzz/practice/PracticeStateNotice.vue'
 import PracticeQuestionPanel from '@/components/kyzz/practice/PracticeQuestionPanel.vue'
 import PracticeReviewPanel from '@/components/kyzz/practice/PracticeReviewPanel.vue'
@@ -409,6 +411,7 @@ export default defineComponent({
 	name: 'PracticePage',
 	components: {
 		PageShell,
+		KyzzTabbar,
 		PracticeStateNotice,
 		PracticeQuestionPanel,
 		PracticeReviewPanel,

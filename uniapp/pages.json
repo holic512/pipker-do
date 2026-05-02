@@ -80,13 +80,32 @@
 			}
 		},
 		{
-			"path": "pages/common/mine/index",
+			"path": "pages/kyyy/index",
+			"style": {
+				"navigationBarTitleText": "考研英语"
+			}
+		},
+		{
+			"path": "pages/kyzz/mine/index",
 			"style": {
 				"navigationBarTitleText": "我的"
 			}
 		},
 		{
-			"path": "pages/common/profile/edit",
+			"path": "pages/kyzz/profile/edit",
+			"style": {
+				"navigationBarTitleText": "编辑资料",
+				"navigationStyle": "default"
+			}
+		},
+		{
+			"path": "pages/kyyy/mine/index",
+			"style": {
+				"navigationBarTitleText": "我的"
+			}
+		},
+		{
+			"path": "pages/kyyy/profile/edit",
 			"style": {
 				"navigationBarTitleText": "编辑资料",
 				"navigationStyle": "default"
@@ -143,7 +162,7 @@
 				"selectedIconPath": "static/tabbar-placeholder.png"
 			},
 			{
-				"pagePath": "pages/common/mine/index",
+				"pagePath": "pages/kyzz/mine/index",
 				"text": "我的",
 				"iconPath": "static/tabbar-placeholder.png",
 				"selectedIconPath": "static/tabbar-placeholder.png"

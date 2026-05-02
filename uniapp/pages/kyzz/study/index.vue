@@ -1,7 +1,6 @@
 <template>
   <!-- AI 索引: KYZZ 学习页 -->
   <page-shell
-      current="study"
       root-class="study-page theme-page"
       content-style="padding: 0 24rpx 32rpx;"
   >
@@ -118,11 +117,15 @@
       </view>
 
     </view>
+    <template #tabbar>
+      <kyzz-tabbar current="study" />
+    </template>
   </page-shell>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
+import KyzzTabbar from '@/components/kyzz/kyzz-tabbar.vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getCachedPracticeDashboard, preloadPracticeDashboard, warmKyzzCorePreload } from '@/shared/preload/kyzz'
 import { openBankPracticeTab, openPracticeTab } from '@/pages/kyzz/practice/navigation'
@@ -158,6 +161,9 @@ function resolveErrorMessage(error: unknown, fallback: string): string {
 
 export default defineComponent({
   name: 'StudyPage',
+  components: {
+    KyzzTabbar
+  },
   data(): StudyPageState {
     return {
       loading: false,

@@ -1,6 +1,6 @@
-// AI 索引: 小程序底部导航共享配置。
+// AI 索引: KYZZ 小程序底部导航配置。
 
-export interface TabbarItem {
+export interface KyzzTabbarItem {
 	key: string
 	text: string
 	pagePath: string
@@ -11,7 +11,7 @@ export interface TabbarItem {
 	color?: string
 }
 
-export const DEFAULT_TABBAR_ITEMS: TabbarItem[] = [
+export const KYZZ_TABBAR_ITEMS: KyzzTabbarItem[] = [
 	{
 		key: 'study',
 		text: '学习',
@@ -43,12 +43,12 @@ export const DEFAULT_TABBAR_ITEMS: TabbarItem[] = [
 	{
 		key: 'mine',
 		text: '我的',
-		pagePath: '/pages/common/mine/index',
+		pagePath: '/pages/kyzz/mine/index',
 		icon: 'person',
 		activeIcon: 'person-filled'
 	}
 ]
 
-export function createDefaultTabbarItems(): TabbarItem[] {
-	return DEFAULT_TABBAR_ITEMS.map((item) => ({ ...item }))
+export function createKyzzTabbarItems(): KyzzTabbarItem[] {
+	return KYZZ_TABBAR_ITEMS.map((item) => ({ ...item }))
 }
