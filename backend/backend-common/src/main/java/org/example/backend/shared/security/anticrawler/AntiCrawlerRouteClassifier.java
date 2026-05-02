@@ -25,8 +25,14 @@ public class AntiCrawlerRouteClassifier {
         if ("GET".equalsIgnoreCase(method) && "/api/user/me".equals(path)) {
             return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PROFILE_READWRITE, "/api/user/me", true);
         }
+        if ("GET".equalsIgnoreCase(method) && "/api/user/default-project".equals(path)) {
+            return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PROFILE_READWRITE, "/api/user/default-project", true);
+        }
         if ("PUT".equalsIgnoreCase(method) && "/api/user/profile".equals(path)) {
             return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PROFILE_READWRITE, "/api/user/profile", false);
+        }
+        if ("PUT".equalsIgnoreCase(method) && "/api/user/default-project".equals(path)) {
+            return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PROFILE_READWRITE, "/api/user/default-project", false);
         }
         if ("GET".equalsIgnoreCase(method) && "/api/kyzz/question-banks/mine".equals(path)) {
             return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.QUESTION_BANK_READ, "/api/kyzz/question-banks/mine", true);

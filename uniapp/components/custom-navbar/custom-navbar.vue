@@ -101,42 +101,12 @@
 </template>
 
 <script>
-const PROJECT_SECTIONS = [
-	{
-		key: 'graduate',
-		title: '考研',
-		items: [
-			{
-				code: 'kyzz',
-				title: '考研政治',
-				description: '题库、刷题、模考入口',
-				badgeText: '主项目',
-				pagePath: '/pages/kyzz/study/index',
-				routePrefix: 'pages/kyzz/',
-				navigationType: 'switchTab',
-				coverCode: 'POL',
-				coverBackground: 'linear-gradient(135deg, #56627b 0%, #7b90ab 100%)',
-				coverSheetBackground: 'rgba(255, 255, 255, 0.9)',
-				coverBadgeBackground: 'rgba(255, 247, 214, 0.24)',
-				coverLines: ['96rpx', '74rpx', '84rpx', '62rpx']
-			},
-			{
-				code: 'kyyy',
-				title: '考研英语',
-				description: '阅读、词汇、真题入口',
-				badgeText: '新入口',
-				pagePath: '/pages/kyyy/index',
-				routePrefix: 'pages/kyyy/',
-				navigationType: 'reLaunch',
-				coverCode: 'ENG',
-				coverBackground: 'linear-gradient(135deg, #4f6a86 0%, #88a0bc 100%)',
-				coverSheetBackground: 'rgba(255, 255, 255, 0.9)',
-				coverBadgeBackground: 'rgba(235, 243, 255, 0.24)',
-				coverLines: ['82rpx', '58rpx', '68rpx', '48rpx']
-			}
-		]
-	}
-];
+import {
+	createProjectSections,
+	isCurrentMiniappProjectRoute,
+	openMiniappProject,
+	syncUserDefaultProjectCode
+} from '@/shared/project';
 
 export default {
 	name: 'CustomNavbar',
@@ -156,7 +126,7 @@ export default {
 			drawerRendered: false,
 			drawerTimer: null,
 			currentRoute: '',
-			projectSections: PROJECT_SECTIONS
+			projectSections: createProjectSections()
 		};
 	},
 	computed: {
@@ -266,7 +236,7 @@ export default {
 			}, 280);
 		},
 		isCurrentProject(project) {
-			return !!project && this.currentRoute.startsWith(project.routePrefix);
+			return isCurrentMiniappProjectRoute(project, this.currentRoute);
 		},
 		selectProject(project) {
 			if (!project) {
@@ -292,23 +262,13 @@ export default {
 					icon: 'none'
 				});
 			};
-			if (project.navigationType === 'switchTab') {
-				uni.switchTab({
-					url: project.pagePath,
-					fail: (error) => {
-						console.warn(`[custom-navbar] switchTab ${project.code} failed.`, error);
-						uni.reLaunch({
-							url: project.pagePath,
-							fail: showNavigateError
-						});
-					}
-				});
-				return;
-			}
-			uni.reLaunch({
-				url: project.pagePath,
-				fail: showNavigateError
-			});
+			openMiniappProject(project)
+				.then(() => {
+					syncUserDefaultProjectCode(project.code).catch((error) => {
+						console.warn(`[custom-navbar] sync default project ${project.code} failed.`, error);
+					});
+				})
+				.catch(showNavigateError);
 		}
 	}
 };

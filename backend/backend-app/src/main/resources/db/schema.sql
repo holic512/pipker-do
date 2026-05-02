@@ -29,6 +29,19 @@ CREATE TABLE IF NOT EXISTS app_user (
     KEY idx_app_user_status_created_at (status, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
+CREATE TABLE IF NOT EXISTS app_user_project_preference (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户项目偏好ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    default_project_code VARCHAR(50) NOT NULL COMMENT '默认项目编码',
+    last_visit_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近项目访问时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_app_user_project_preference_user_id (user_id),
+    KEY idx_app_user_project_preference_project_visit (default_project_code, last_visit_at),
+    CONSTRAINT fk_app_user_project_preference_user_id FOREIGN KEY (user_id) REFERENCES app_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户默认项目偏好表';
+
 CREATE TABLE IF NOT EXISTS app_user_vip (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'VIP记录ID',
     user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',

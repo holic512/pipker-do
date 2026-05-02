@@ -25,6 +25,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import {
+	getLaunchSnapshot,
 	hasCompletedLaunchBootstrap,
 	startLaunchBootstrap,
 	subscribeLaunchState,
@@ -32,6 +33,7 @@ import {
 } from '@/shared/launch'
 import { acceptUserAgreement } from '@/shared/api/user'
 import { CURRENT_AGREEMENT_VERSION, cacheAgreementAcceptance, hasCachedAgreementAcceptance } from '@/shared/auth/agreement'
+import { openMiniappProject } from '@/shared/project'
 import { getSessionSnapshot, setCurrentUser } from '@/shared/session/session'
 
 type LaunchUnsubscribe = (() => boolean) | null
@@ -43,7 +45,6 @@ type AgreementUser = {
 	agreementAcceptedAt?: string
 }
 
-const HOME_TAB_PATH = '/pages/kyzz/study/index'
 const AGREEMENT_PAGE_PATH = '/pages/common/agreement/index'
 
 function getCurrentAgreementUser(): AgreementUser | null {
@@ -101,21 +102,24 @@ export default defineComponent({
 				this.agreementDialogVisible = true
 				return
 			}
-			this.enterHomeTab()
+			this.enterDefaultProject()
 		},
-		enterHomeTab(): void {
+		enterDefaultProject(): void {
 			if (this.navigated) {
 				return
 			}
 			this.navigated = true
 			this.disposeLaunchSubscription()
-			uni.switchTab({
-				url: HOME_TAB_PATH,
-				fail: (error: unknown) => {
+			const target = getLaunchSnapshot().defaultProjectTarget
+			openMiniappProject(target)
+				.catch((error: unknown) => {
 					this.navigated = false
-					console.warn('[launch-page] switch home tab failed', error)
-				}
-			})
+					console.warn('[launch-page] open default project failed', error)
+					uni.showToast({
+						title: '打开默认项目失败',
+						icon: 'none'
+					})
+				})
 		},
 		openAgreementPage(): void {
 			uni.navigateTo({
@@ -140,7 +144,7 @@ export default defineComponent({
 				cacheAgreementAcceptance(currentUser, currentUser.agreementAcceptedAt)
 				this.agreementDialogVisible = false
 				uni.hideLoading()
-				this.enterHomeTab()
+				this.enterDefaultProject()
 			} catch (error) {
 				uni.hideLoading()
 				const message = error instanceof Error && error.message ? error.message : '提交失败，请稍后重试'

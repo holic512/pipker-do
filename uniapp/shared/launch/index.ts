@@ -5,6 +5,12 @@ import env from '@/shared/config/env'
 import { createKyzzTabbarItems } from '@/pages/kyzz/navigation/tabbar'
 import { getOrCreateDeviceProfile } from '@/shared/platform/device'
 import { warmKyzzCorePreload } from '@/shared/preload/kyzz'
+import {
+	fetchUserDefaultProjectCode,
+	getCachedProjectNavigationTarget,
+	toProjectNavigationTarget,
+	type MiniappProjectNavigationTarget
+} from '@/shared/project'
 import { bootstrapAuth } from '@/shared/session/session'
 
 export type LaunchStatus = 'idle' | 'loading' | 'ready' | 'error'
@@ -27,6 +33,7 @@ export interface LaunchSnapshot {
 	visible: boolean
 	errorMessage: string
 	menuItems: LaunchMenuItem[]
+	defaultProjectTarget: MiniappProjectNavigationTarget
 }
 
 type LaunchListener = (snapshot: LaunchSnapshot) => void
@@ -43,7 +50,8 @@ const state: LaunchSnapshot = {
 	stepText: '',
 	visible: false,
 	errorMessage: '',
-	menuItems: createKyzzTabbarItems()
+	menuItems: createKyzzTabbarItems(),
+	defaultProjectTarget: getCachedProjectNavigationTarget()
 }
 
 let launchPromise: Promise<LaunchSnapshot> | null = null
@@ -98,13 +106,15 @@ async function syncStep(stepKey: string, stepText: string, executor?: () => void
 
 async function runLaunchBootstrap(): Promise<LaunchSnapshot> {
 	launchStartedAt = Date.now()
+	let defaultProjectTarget = getCachedProjectNavigationTarget()
 	updateLaunchState({
 		status: 'loading',
 		stepKey: 'token',
 		stepText: '读取登录态',
 		visible: true,
 		errorMessage: '',
-		menuItems: createKyzzTabbarItems()
+		menuItems: createKyzzTabbarItems(),
+		defaultProjectTarget
 	})
 
 	await syncStep('token', '读取登录态', () => {
@@ -127,11 +137,27 @@ async function runLaunchBootstrap(): Promise<LaunchSnapshot> {
 	await syncStep('auth', '同步用户信息', async () => {
 		try {
 			await bootstrapAuth({ silent: true })
-			warmKyzzCorePreload()
 		} catch (error) {
 			console.warn('[launch] auth bootstrap skipped', error)
 		}
 	})
+
+	await syncStep('project', '确认默认项目', async () => {
+		try {
+			const projectCode = await fetchUserDefaultProjectCode()
+			defaultProjectTarget = toProjectNavigationTarget(projectCode)
+		} catch (error) {
+			console.warn('[launch] default project skipped', error)
+			defaultProjectTarget = getCachedProjectNavigationTarget()
+		}
+		updateLaunchState({
+			defaultProjectTarget
+		})
+	})
+
+	if (defaultProjectTarget.code === 'kyzz') {
+		warmKyzzCorePreload()
+	}
 
 	const elapsed = Date.now() - launchStartedAt
 	if (elapsed < MIN_VISIBLE_MS) {
@@ -188,7 +214,8 @@ export function getLaunchSnapshot(): LaunchSnapshot {
 		stepText: state.stepText,
 		visible: state.visible,
 		errorMessage: state.errorMessage,
-		menuItems: cloneMenuItems(state.menuItems)
+		menuItems: cloneMenuItems(state.menuItems),
+		defaultProjectTarget: { ...state.defaultProjectTarget }
 	}
 }
 

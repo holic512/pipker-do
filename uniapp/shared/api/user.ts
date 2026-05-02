@@ -9,6 +9,12 @@ export interface UploadAvatarResponse {
 	storageKey: string
 }
 
+export interface UserDefaultProjectResponse {
+	projectCode: string
+	projectName: string
+	lastVisitAt: string | null
+}
+
 export function getCurrentUser<TUser = unknown>(): Promise<TUser> {
 	return request({
 		url: '/api/user/me',
@@ -31,6 +37,26 @@ export function acceptUserAgreement<TUser = unknown>(): Promise<TUser> {
 	return request({
 		url: '/api/user/agreement/accept',
 		method: 'PUT'
+	})
+}
+
+export function getUserDefaultProject(): Promise<UserDefaultProjectResponse> {
+	return request<UserDefaultProjectResponse>({
+		url: '/api/user/default-project',
+		method: 'GET'
+	})
+}
+
+export function updateUserDefaultProject(projectCode: string): Promise<UserDefaultProjectResponse> {
+	return request<UserDefaultProjectResponse>({
+		url: '/api/user/default-project',
+		method: 'PUT',
+		header: {
+			'Content-Type': 'application/json'
+		},
+		data: {
+			projectCode
+		}
 	})
 }
 
