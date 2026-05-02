@@ -833,12 +833,9 @@ export default defineComponent({
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32rpx;
-  height: 32rpx;
-  border-radius: 999rpx;
-  background: #f7f9fc;
+  width: 24rpx;
+  height: 24rpx;
   transform: translateY(-50%);
-  box-shadow: inset 0 0 0 1rpx #cbd5e4;
 }
 
 .study-page__shortcut-title-skeleton {

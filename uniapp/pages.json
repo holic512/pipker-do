@@ -104,6 +104,34 @@
 			}
 		},
 		{
+			"path": "pages/kyyy/wrong-word/index",
+			"style": {
+				"navigationBarTitleText": "错词本",
+				"navigationStyle": "default"
+			}
+		},
+		{
+			"path": "pages/kyyy/wrong-question/index",
+			"style": {
+				"navigationBarTitleText": "错题本",
+				"navigationStyle": "default"
+			}
+		},
+		{
+			"path": "pages/kyyy/leaderboard/index",
+			"style": {
+				"navigationBarTitleText": "排行榜",
+				"navigationStyle": "default"
+			}
+		},
+		{
+			"path": "pages/kyyy/ai-practice/index",
+			"style": {
+				"navigationBarTitleText": "AI练习",
+				"navigationStyle": "default"
+			}
+		},
+		{
 			"path": "pages/kyzz/mine/index",
 			"style": {
 				"navigationBarTitleText": "我的"

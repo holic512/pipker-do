@@ -1,6 +1,7 @@
 package org.example.backend.biz.kyyy.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import org.example.backend.biz.kyyy.dto.KyyyHomeDashboardResponse;
 import org.example.backend.biz.kyyy.dto.KyyyPracticeNextWordResponse;
 import org.example.backend.biz.kyyy.dto.KyyyRelatedWordResponse;
 import org.example.backend.biz.kyyy.dto.KyyyPracticeSettingRequest;
@@ -69,6 +70,72 @@ public class KyyyPracticeUserService {
 
     public KyyyPracticeSettingResponse getSettings(Long userId) {
         return toPracticeSettingResponse(loadPracticeSetting(userId));
+    }
+
+    public KyyyHomeDashboardResponse getHomeDashboard(Long userId) {
+        List<KyyyUserWordBank> selectedRelations = kyyyUserWordBankMapper.selectList(new LambdaQueryWrapper<KyyyUserWordBank>()
+                .eq(KyyyUserWordBank::getUserId, userId)
+                .orderByDesc(KyyyUserWordBank::getCreatedAt)
+                .orderByDesc(KyyyUserWordBank::getId));
+        if (selectedRelations.isEmpty()) {
+            return new KyyyHomeDashboardResponse(0, 0);
+        }
+
+        Map<Long, KyyyUserWordBank> relationMap = new LinkedHashMap<>();
+        selectedRelations.forEach(item -> relationMap.putIfAbsent(item.getWordBankId(), item));
+        List<KyyyWordBank> activeBanks = kyyyWordBankMapper.selectList(new LambdaQueryWrapper<KyyyWordBank>()
+                .in(KyyyWordBank::getId, relationMap.keySet())
+                .eq(KyyyWordBank::getStatus, 1)
+                .orderByAsc(KyyyWordBank::getSortNo)
+                .orderByDesc(KyyyWordBank::getId));
+        if (activeBanks.isEmpty()) {
+            return new KyyyHomeDashboardResponse(0, 0);
+        }
+
+        List<KyyyWordBankWordRel> bankWordRelations = kyyyWordBankWordRelMapper.selectList(new LambdaQueryWrapper<KyyyWordBankWordRel>()
+                .in(KyyyWordBankWordRel::getWordBankId, activeBanks.stream().map(KyyyWordBank::getId).toList())
+                .orderByAsc(KyyyWordBankWordRel::getWordBankId)
+                .orderByAsc(KyyyWordBankWordRel::getSortNo)
+                .orderByAsc(KyyyWordBankWordRel::getId));
+        if (bankWordRelations.isEmpty()) {
+            return new KyyyHomeDashboardResponse(0, 0);
+        }
+
+        LinkedHashSet<Long> orderedWordIds = new LinkedHashSet<>();
+        bankWordRelations.forEach(item -> orderedWordIds.add(item.getWordId()));
+        if (orderedWordIds.isEmpty()) {
+            return new KyyyHomeDashboardResponse(0, 0);
+        }
+
+        List<KyyyWord> activeWords = kyyyWordMapper.selectList(new LambdaQueryWrapper<KyyyWord>()
+                .in(KyyyWord::getId, orderedWordIds)
+                .eq(KyyyWord::getStatus, 1));
+        Map<Long, KyyyWord> wordMap = new LinkedHashMap<>();
+        activeWords.forEach(item -> wordMap.putIfAbsent(item.getId(), item));
+
+        List<Long> candidateWordIds = orderedWordIds.stream()
+                .filter(wordMap::containsKey)
+                .toList();
+        if (candidateWordIds.isEmpty()) {
+            return new KyyyHomeDashboardResponse(0, 0);
+        }
+
+        Map<Long, KyyyUserWordProgress> progressMap = buildUserWordProgressMap(userId, candidateWordIds);
+        LocalDateTime now = LocalDateTime.now();
+        int studyCount = 0;
+        int reviewCount = 0;
+        for (Long wordId : candidateWordIds) {
+            KyyyUserWordProgress progress = progressMap.get(wordId);
+            if (!isStudied(progress)) {
+                studyCount++;
+                continue;
+            }
+            if (progress != null && progress.getNextReviewAt() != null && !progress.getNextReviewAt().isAfter(now)) {
+                reviewCount++;
+            }
+        }
+
+        return new KyyyHomeDashboardResponse(studyCount, reviewCount);
     }
 
     public KyyyPracticeNextWordResponse getNextWord(Long userId) {
