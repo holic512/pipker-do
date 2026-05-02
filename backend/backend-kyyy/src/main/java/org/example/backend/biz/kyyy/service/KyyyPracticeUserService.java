@@ -139,6 +139,47 @@ public class KyyyPracticeUserService {
     }
 
     public KyyyPracticeNextWordResponse getNextWord(Long userId) {
+        CandidateWordBundle bundle = buildCandidateWordBundle(userId);
+        Long targetWordId = resolveNextWordId(bundle.candidateWordIds(), bundle.progressMap());
+        return buildNextWordResponse(targetWordId, bundle);
+    }
+
+    public List<KyyyPracticeNextWordResponse> getHomeDailyWords(Long userId, int limit) {
+        CandidateWordBundle bundle = buildCandidateWordBundle(userId);
+        int safeLimit = Math.max(limit, 1);
+        return bundle.candidateWordIds().stream()
+                .sorted(Comparator
+                        .comparing((Long wordId) -> isStudied(bundle.progressMap().get(wordId)))
+                        .thenComparing(wordId -> bundle.progressMap().get(wordId) == null ? null : bundle.progressMap().get(wordId).getNextReviewAt(),
+                                Comparator.nullsLast(LocalDateTime::compareTo))
+                        .thenComparing(wordId -> bundle.progressMap().get(wordId) == null ? null : bundle.progressMap().get(wordId).getLastStudiedAt(),
+                                Comparator.nullsFirst(LocalDateTime::compareTo)))
+                .limit(safeLimit)
+                .map(wordId -> buildNextWordResponse(wordId, bundle))
+                .toList();
+    }
+
+    @Transactional
+    public KyyyPracticeSettingResponse updateSettings(Long userId, KyyyPracticeSettingRequest request) {
+        KyyyUserPracticeSetting existing = loadPracticeSetting(userId);
+        if (existing == null) {
+            KyyyUserPracticeSetting setting = new KyyyUserPracticeSetting();
+            setting.setUserId(userId);
+            setting.setExamDirection(KyyyExamDirectionSupport.normalizeOrDefault(
+                    request == null ? null : request.getExamDirection()
+            ));
+            kyyyUserPracticeSettingMapper.insert(setting);
+            return toPracticeSettingResponse(setting);
+        }
+
+        if (request != null && request.getExamDirection() != null) {
+            existing.setExamDirection(KyyyExamDirectionSupport.normalize(request.getExamDirection()));
+            kyyyUserPracticeSettingMapper.updateById(existing);
+        }
+        return toPracticeSettingResponse(existing);
+    }
+
+    private CandidateWordBundle buildCandidateWordBundle(Long userId) {
         List<KyyyUserWordBank> selectedRelations = kyyyUserWordBankMapper.selectList(new LambdaQueryWrapper<KyyyUserWordBank>()
                 .eq(KyyyUserWordBank::getUserId, userId)
                 .orderByDesc(KyyyUserWordBank::getCreatedAt)
@@ -196,11 +237,13 @@ public class KyyyPracticeUserService {
         }
 
         Map<Long, KyyyUserWordProgress> progressMap = buildUserWordProgressMap(userId, candidateWordIds);
-        Long targetWordId = resolveNextWordId(candidateWordIds, progressMap);
-        KyyyWord targetWord = wordMap.get(targetWordId);
-        KyyyUserWordProgress progress = progressMap.get(targetWordId);
-        List<KyyyRelatedWordResponse> relatedWords = buildRelatedWordResponses(targetWordId);
+        return new CandidateWordBundle(candidateWordIds, wordMap, sourceBanksByWordId, progressMap);
+    }
 
+    private KyyyPracticeNextWordResponse buildNextWordResponse(Long targetWordId, CandidateWordBundle bundle) {
+        KyyyWord targetWord = bundle.wordMap().get(targetWordId);
+        KyyyUserWordProgress progress = bundle.progressMap().get(targetWordId);
+        List<KyyyRelatedWordResponse> relatedWords = buildRelatedWordResponses(targetWordId);
         return new KyyyPracticeNextWordResponse(
                 targetWord.getId(),
                 targetWord.getWordText(),
@@ -219,31 +262,11 @@ public class KyyyPracticeUserService {
                 progress == null ? null : progress.getLastResult(),
                 progress == null ? null : progress.getLastStudiedAt(),
                 progress == null ? null : progress.getNextReviewAt(),
-                sourceBanksByWordId.getOrDefault(targetWordId, List.of()).stream()
+                bundle.sourceBanksByWordId().getOrDefault(targetWordId, List.of()).stream()
                         .map(bank -> new KyyyWordSourceBankResponse(bank.getId(), bank.getBankCode(), bank.getBankName()))
                         .toList(),
                 relatedWords
         );
-    }
-
-    @Transactional
-    public KyyyPracticeSettingResponse updateSettings(Long userId, KyyyPracticeSettingRequest request) {
-        KyyyUserPracticeSetting existing = loadPracticeSetting(userId);
-        if (existing == null) {
-            KyyyUserPracticeSetting setting = new KyyyUserPracticeSetting();
-            setting.setUserId(userId);
-            setting.setExamDirection(KyyyExamDirectionSupport.normalizeOrDefault(
-                    request == null ? null : request.getExamDirection()
-            ));
-            kyyyUserPracticeSettingMapper.insert(setting);
-            return toPracticeSettingResponse(setting);
-        }
-
-        if (request != null && request.getExamDirection() != null) {
-            existing.setExamDirection(KyyyExamDirectionSupport.normalize(request.getExamDirection()));
-            kyyyUserPracticeSettingMapper.updateById(existing);
-        }
-        return toPracticeSettingResponse(existing);
     }
 
     private Map<Long, KyyyUserWordProgress> buildUserWordProgressMap(Long userId, List<Long> wordIds) {
@@ -325,5 +348,11 @@ public class KyyyPracticeUserService {
                 KyyyExamDirectionSupport.labelOf(examDirection),
                 KyyyExamDirectionSupport.options()
         );
+    }
+
+    private record CandidateWordBundle(List<Long> candidateWordIds,
+                                       Map<Long, KyyyWord> wordMap,
+                                       Map<Long, List<KyyyWordBank>> sourceBanksByWordId,
+                                       Map<Long, KyyyUserWordProgress> progressMap) {
     }
 }

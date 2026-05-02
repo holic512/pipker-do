@@ -46,7 +46,8 @@ export interface KyyyHomeDailyWordState {
 export interface KyyyHomeDailyWordCache {
 	userKey: string
 	dateKey: string
-	word: KyyyHomeDailyWordState
+	words?: KyyyHomeDailyWordState[] | null
+	word?: KyyyHomeDailyWordState | null
 }
 
 export type KyyyPracticeEntryMode = 'default' | 'study' | 'review'

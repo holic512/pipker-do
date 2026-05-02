@@ -16,6 +16,10 @@ function normalizeText(value: unknown): string {
 	return typeof value === 'string' ? value.trim() : ''
 }
 
+function isFallbackHelloWord(wordText: string): boolean {
+	return wordText.trim().toLowerCase() === createHelloDailyWord().wordText
+}
+
 export function createEmptyHomeDashboard(): KyyyHomeDashboardState {
 	return {
 		studyCount: 0,
@@ -59,14 +63,19 @@ export function normalizeDailyWord(result: KyyyHomeDailyWordResponse | null | un
 	if (!wordText) {
 		return createHelloDailyWord()
 	}
+	const fallbackHelloWord = createHelloDailyWord()
 	const sourceBanks = Array.isArray(result?.sourceBanks) ? result?.sourceBanks : []
+	const phoneticUs = normalizeText(result?.phoneticUs)
+	const phoneticUk = normalizeText(result?.phoneticUk)
+	const partOfSpeech = normalizeText(result?.partOfSpeech)
+	const meaningCn = normalizeText(result?.meaningCn)
 	return {
 		wordId: result?.wordId === null || result?.wordId === undefined ? null : toNumber(result?.wordId, 0),
 		wordText,
-		phoneticUs: normalizeText(result?.phoneticUs),
-		phoneticUk: normalizeText(result?.phoneticUk),
-		partOfSpeech: normalizeText(result?.partOfSpeech),
-		meaningCn: normalizeText(result?.meaningCn),
+		phoneticUs: phoneticUs || (isFallbackHelloWord(wordText) ? fallbackHelloWord.phoneticUs : ''),
+		phoneticUk: phoneticUk || (isFallbackHelloWord(wordText) ? fallbackHelloWord.phoneticUk : ''),
+		partOfSpeech: partOfSpeech || (isFallbackHelloWord(wordText) ? fallbackHelloWord.partOfSpeech : ''),
+		meaningCn: meaningCn || (isFallbackHelloWord(wordText) ? fallbackHelloWord.meaningCn : ''),
 		exampleSentence: normalizeText(result?.exampleSentence),
 		exampleTranslation: normalizeText(result?.exampleTranslation),
 		sourceBankName: normalizeText(sourceBanks[0]?.bankName || result?.sourceBankName),

@@ -16,3 +16,10 @@ export function getHomeDailyWord(): Promise<KyyyHomeDailyWordResponse> {
 		method: 'GET'
 	})
 }
+
+export function getHomeDailyWords(): Promise<KyyyHomeDailyWordResponse[]> {
+	return request({
+		url: '/api/kyyy/home/daily-words',
+		method: 'GET'
+	})
+}

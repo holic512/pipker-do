@@ -36,14 +36,20 @@ function normalizeCache(value: unknown): KyyyHomeDailyWordCache | null {
 	if (typeof cache.userKey !== 'string' || typeof cache.dateKey !== 'string') {
 		return null
 	}
+	const words = Array.isArray(cache.words)
+		? cache.words.map((item) => normalizeDailyWord(item)).filter(Boolean)
+		: cache.word
+			? [normalizeDailyWord(cache.word)]
+			: []
 	return {
 		userKey: cache.userKey,
 		dateKey: cache.dateKey,
-		word: normalizeDailyWord(cache.word)
+		words,
+		word: words[0] || null
 	}
 }
 
-export function readTodayCachedDailyWord(): KyyyHomeDailyWordState | null {
+export function readTodayCachedDailyWords(): KyyyHomeDailyWordState[] | null {
 	try {
 		const cache = normalizeCache(uni.getStorageSync(CACHE_KEY))
 		if (!cache) {
@@ -52,20 +58,38 @@ export function readTodayCachedDailyWord(): KyyyHomeDailyWordState | null {
 		if (cache.userKey !== resolveCurrentUserKey() || cache.dateKey !== resolveLocalDateKey()) {
 			return null
 		}
-		return normalizeDailyWord(cache.word)
+		if (Array.isArray(cache.words) && cache.words.length > 0) {
+			return cache.words.map((item) => normalizeDailyWord(item))
+		}
+		if (cache.word) {
+			return [normalizeDailyWord(cache.word)]
+		}
+		return null
 	} catch (error) {
 		return null
 	}
 }
 
-export function cacheTodayDailyWord(word: KyyyHomeDailyWordState): void {
+export function readTodayCachedDailyWord(): KyyyHomeDailyWordState | null {
+	return readTodayCachedDailyWords()?.[0] || null
+}
+
+export function cacheTodayDailyWords(words: KyyyHomeDailyWordState[]): void {
 	try {
+		const normalizedWords = (Array.isArray(words) ? words : [])
+			.map((item) => normalizeDailyWord(item))
+			.filter(Boolean)
 		uni.setStorageSync(CACHE_KEY, {
 			userKey: resolveCurrentUserKey(),
 			dateKey: resolveLocalDateKey(),
-			word: normalizeDailyWord(word)
+			words: normalizedWords,
+			word: normalizedWords[0] || null
 		} as KyyyHomeDailyWordCache)
 	} catch (error) {
 		console.warn('[kyyy-home] cache daily word failed', error)
 	}
+}
+
+export function cacheTodayDailyWord(word: KyyyHomeDailyWordState): void {
+	cacheTodayDailyWords([word])
 }
