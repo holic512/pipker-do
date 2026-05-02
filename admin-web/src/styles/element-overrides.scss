@@ -90,18 +90,23 @@
 
 .admin-layout__menu {
   border-right: none;
+  --el-menu-base-level-padding: 18px;
+  --el-menu-level-padding: 18px;
+  --el-menu-item-height: 48px;
+  --el-menu-sub-item-height: 42px;
+  --el-menu-item-font-size: 13px;
 }
 
 .admin-layout__menu-icon {
-  width: 26px;
-  height: 26px;
-  margin-right: 8px;
-  border-radius: 5px;
+  width: 24px;
+  height: 24px;
+  margin-right: 7px;
+  border-radius: 6px;
   display: inline-grid;
   place-items: center;
   color: var(--menu-icon-tone, var(--admin-text-soft, #909399));
   background: color-mix(in srgb, var(--menu-icon-tone, #909399) 12%, transparent);
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .admin-layout__menu .el-sub-menu.is-active > .el-sub-menu__title .admin-layout__menu-icon,
@@ -117,6 +122,69 @@
 
 .admin-layout__menu-empty {
   padding-top: 40px;
+}
+
+/* 统一收紧下拉菜单与选择器弹层，保持现有品牌色和层级感 */
+.el-dropdown__popper.el-popper,
+.el-select__popper.el-popper {
+  border-color: var(--admin-border, var(--el-border-color-light));
+  border-radius: 10px;
+  box-shadow: 0 12px 28px -18px rgba(43, 52, 55, 0.28);
+}
+
+.el-dropdown-menu {
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.el-dropdown-menu__item {
+  min-height: 30px;
+  padding: 4px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.el-dropdown-menu__item--divided {
+  margin: 4px 0 0;
+  padding-top: 5px;
+}
+
+.el-select-dropdown__list {
+  padding: 4px;
+}
+
+.el-select-dropdown__wrap {
+  max-height: 236px;
+}
+
+.el-select-dropdown__item {
+  height: 30px;
+  margin: 1px 0;
+  padding: 0 28px 0 14px;
+  border-radius: 7px;
+  font-size: 13px;
+  line-height: 30px;
+}
+
+.el-select-dropdown__item.is-hovering {
+  background-color: color-mix(in srgb, var(--el-color-primary) 8%, transparent);
+}
+
+.el-select-dropdown.is-multiple .el-select-dropdown__item.is-selected::after {
+  right: 14px;
+}
+
+.el-select-group__title {
+  padding: 0 14px;
+  font-size: 12px;
+  line-height: 30px;
+}
+
+.el-select-dropdown__loading,
+.el-select-dropdown__empty {
+  padding: 8px 0;
+  font-size: 13px;
 }
 
 /* --- 右侧布局 --- */
