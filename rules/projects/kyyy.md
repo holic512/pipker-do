@@ -27,4 +27,4 @@
 - 后台新增英语业务代码，统一放到 `admin-web/src/modules/kyyy`。
 - 涉及后台可达入口时，同步检查是否需要补 `router`、`menu.ts`、项目切换落地页。
 - 涉及小程序可达入口时，同步检查是否需要补 `pages.json`、`shared/navigation`、`shared/launch`。
-- 英语小程序“我的页”复用 `components/account/mine-page.vue`；当前专项插槽留空，不渲染空专项分区，后续有英语专属入口时再通过 `#special` 补入。
+- 英语小程序“我的页”复用 `components/account/mine-page.vue`；当前专项插槽已接入刷题设置入口，用于维护考试方向（英一/英二）。
