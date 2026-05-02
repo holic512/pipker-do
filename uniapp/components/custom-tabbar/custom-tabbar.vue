@@ -1,3 +1,4 @@
+<!--底部导航-->
 <template>
 	<view class="custom-tabbar">
 		<!-- 占位，防止页面内容被底部 tabbar 遮挡 -->

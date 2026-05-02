@@ -1,3 +1,4 @@
+<!--通用上菜单-->
 <template>
 	<view class="custom-navbar" :style="placeholderStyle">
 		<view class="custom-navbar__inner" :style="navbarStyle">
