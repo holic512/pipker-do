@@ -14,11 +14,13 @@
 - `uniapp/shared/api`：跨业务复用的账号、登录、用户、VIP 接口。
 - `uniapp/shared/auth`：协议确认、本地认证存储等轻量辅助。
 - `uniapp/shared/platform`：微信头像昵称、设备等平台适配。
+- `uniapp/shared/project`：默认项目缓存、项目目录、跨项目跳转。
 - `uniapp/shared/launch`、`shared/preload`、`shared/media`、`shared/navigation`：启动与通用辅助能力。
 - `uniapp/pages/common`：跨业务共用页面。
 - `uniapp/pages/<domain>`：业务页面。
 - `uniapp/pages/<domain>/api`：业务接口。
-- `uniapp/components/page-shell`、`custom-navbar`、`custom-tabbar`：通用页面壳和导航组件。
+- `uniapp/components/account`：跨业务账号、资料、“我的页”等用户中心组件。
+- `uniapp/components/page-shell`、`custom-navbar`、`custom-tabbar`、`project-tabbar`：通用页面壳和导航组件。
 - `uniapp/components/<domain>`：业务组件。
 - `uniapp/static`：静态资源。
 
@@ -30,9 +32,11 @@
 - 新增或重构业务代码默认使用 TypeScript；业务接口、业务类型、页面脚本优先使用 `.ts` 与 `<script lang="ts">`。
 - 接口返回、筛选条件、页面状态、组件入参必须补充明确类型，不让隐式 `any` 长期扩散。
 - “我的”、VIP、资料页默认视为跨业务共用能力，除非用户明确要求某业务专属版本。
+- 小程序各业务“我的页”必须复用 `components/account/mine-page.vue`；业务专属入口统一通过 `#special` 专项插槽注入，不在业务页复制通用会员、兑换、客服、协议或头像同步逻辑。
 
 ## 3. 配套同步
 
 - 新页面若参与导航，检查是否需要同步 `pages.json`。
 - 新 tab 或启动入口，检查 `shared/navigation`、`shared/launch`、相邻页面跳转逻辑。
+- 新增项目入口或默认项目逻辑时，同步检查 `shared/project`、`components/project-tabbar` 和对应业务 `navigation` 配置。
 - 业务预加载、业务缓存、业务协议状态，优先沿用现有 shared 机制。

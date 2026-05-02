@@ -14,16 +14,16 @@
 
 ## 2. 根目录索引
 
-- `backend`：Spring Boot 后端接口与数据库结构基准。
+- `backend`：Spring Boot Maven 多模块后端，含启动模块、共享模块和业务模块。
 - `uniapp`：uni-app 小程序端。
 - `admin-web`：Vue 3 PC 后台。
+- `rules`：项目规则目录，按任务范围按需读取。
 - `有关文档`：产品、上线、管理端设计等说明文档。
-- `.github`：仓库 CI 配置。
 - `file`：本地上传和运行文件，默认不纳入代码变更。
 
 ## 3. 默认不编辑
 
-- `backend/target`
+- `backend/**/target`
 - `backend/.m2repo`
 - `admin-web/node_modules`
 - `admin-web/dist`
