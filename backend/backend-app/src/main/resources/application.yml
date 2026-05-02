@@ -14,7 +14,7 @@ spring:
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
-  type-aliases-package: org.example.backend.shared.account.entity,org.example.backend.shared.admin.entity,org.example.backend.shared.config.entity,org.example.backend.shared.llm.entity,org.example.backend.biz.kyzz.entity
+  type-aliases-package: org.example.backend
   configuration:
     map-underscore-to-camel-case: true
   global-config:

@@ -8,17 +8,18 @@ admin-web/node_modules/
 
 # Java / Maven build outputs
 backend/target/
+backend/*/target/
 backend/.m2repo/
 *.class
-backend/src/main/resources/application-dev.yml
-backend/src/main/resources/application-prod.yml
-backend/src/main/resources/application-local.yml
+backend/backend-app/src/main/resources/application-dev.yml
+backend/backend-app/src/main/resources/application-prod.yml
+backend/backend-app/src/main/resources/application-local.yml
 
 # ai-index: ignore backend runtime config and keep example yml templates in git
 
 # ai-index: ignore backend db sql files except schema definition
-backend/src/main/resources/db/*
-!backend/src/main/resources/db/schema.sql
+backend/backend-app/src/main/resources/db/*
+!backend/backend-app/src/main/resources/db/schema.sql
 
 # Admin web build outputs
 admin-web/dist/
@@ -36,4 +37,4 @@ uniapp/.hbuilderx/
 Thumbs.db
 
 # file
-file
+/file/
