@@ -7,16 +7,9 @@ export type MiniappProjectNavigationType = 'switchTab' | 'reLaunch'
 export interface MiniappProject {
 	code: string
 	title: string
-	description: string
-	badgeText: string
 	pagePath: string
 	routePrefix: string
 	navigationType: MiniappProjectNavigationType
-	coverCode: string
-	coverBackground: string
-	coverSheetBackground: string
-	coverBadgeBackground: string
-	coverLines: string[]
 }
 
 export interface MiniappProjectSection {
@@ -43,30 +36,16 @@ const PROJECT_SECTIONS: MiniappProjectSection[] = [
 			{
 				code: 'kyzz',
 				title: '考研政治',
-				description: '题库、刷题、模考入口',
-				badgeText: '主项目',
 				pagePath: '/pages/kyzz/study/index',
 				routePrefix: 'pages/kyzz/',
-				navigationType: 'switchTab',
-				coverCode: 'POL',
-				coverBackground: 'linear-gradient(135deg, #56627b 0%, #7b90ab 100%)',
-				coverSheetBackground: 'rgba(255, 255, 255, 0.9)',
-				coverBadgeBackground: 'rgba(255, 247, 214, 0.24)',
-				coverLines: ['96rpx', '74rpx', '84rpx', '62rpx']
+				navigationType: 'switchTab'
 			},
 			{
 				code: 'kyyy',
 				title: '考研英语',
-				description: '首页、作文、练习、翻译入口',
-				badgeText: '已接入',
 				pagePath: '/pages/kyyy/index',
 				routePrefix: 'pages/kyyy/',
-				navigationType: 'reLaunch',
-				coverCode: 'ENG',
-				coverBackground: 'linear-gradient(135deg, #4f6a86 0%, #88a0bc 100%)',
-				coverSheetBackground: 'rgba(255, 255, 255, 0.9)',
-				coverBadgeBackground: 'rgba(235, 243, 255, 0.24)',
-				coverLines: ['82rpx', '58rpx', '68rpx', '48rpx']
+				navigationType: 'reLaunch'
 			}
 		]
 	}
@@ -82,10 +61,7 @@ export function getDefaultMiniappProject(): MiniappProject {
 export function createProjectSections(): MiniappProjectSection[] {
 	return PROJECT_SECTIONS.map((section) => ({
 		...section,
-		items: section.items.map((item) => ({
-			...item,
-			coverLines: [...item.coverLines]
-		}))
+		items: section.items.map((item) => ({ ...item }))
 	}))
 }
 

@@ -56,39 +56,7 @@
 									:class="{ 'is-active': isCurrentProject(item) }"
 									@tap="selectProject(item)"
 								>
-									<view class="project-drawer__cover" :style="{ background: item.coverBackground }">
-										<view class="project-drawer__cover-orb"></view>
-										<view class="project-drawer__cover-sheet" :style="{ background: item.coverSheetBackground }">
-											<view
-												v-for="(lineWidth, lineIndex) in item.coverLines"
-												:key="`${item.code}-line-${lineIndex}`"
-												class="project-drawer__cover-line"
-												:style="{ width: lineWidth }"
-											></view>
-										</view>
-										<view class="project-drawer__cover-badge" :style="{ background: item.coverBadgeBackground }">
-											<text class="project-drawer__cover-badge-text">{{ item.coverCode }}</text>
-										</view>
-									</view>
-									<view class="project-drawer__card-body">
-										<text class="project-drawer__card-title">{{ item.title }}</text>
-										<text class="project-drawer__card-desc">{{ item.description }}</text>
-										<text class="project-drawer__card-tag">{{ item.badgeText }}</text>
-									</view>
-									<view class="project-drawer__card-trailing">
-										<text
-											v-if="isCurrentProject(item)"
-											class="project-drawer__card-status"
-										>
-											当前
-										</text>
-										<uni-icons
-											v-else
-											type="right"
-											size="14"
-											color="#8e98aa"
-										/>
-									</view>
+									<text class="project-drawer__card-title">{{ item.title }}</text>
 								</view>
 							</view>
 						</view>
@@ -457,136 +425,39 @@ export default {
 
 .project-drawer__cards {
 	display: flex;
-	flex-direction: column;
-	gap: 18rpx;
+	flex-wrap: wrap;
+	gap: 14rpx;
 }
 
 .project-drawer__card {
 	display: flex;
 	align-items: center;
-	gap: 18rpx;
-	padding: 20rpx;
-	border-radius: 28rpx;
+	justify-content: center;
+	width: calc(33.333333% - 10rpx);
+	min-height: 76rpx;
+	padding: 0 10rpx;
+	box-sizing: border-box;
+	border-radius: 18rpx;
 	background: rgba(255, 255, 255, 0.94);
 	border: 1rpx solid rgba(215, 226, 255, 0.9);
-	box-shadow: 0 16rpx 34rpx rgba(43, 52, 55, 0.07);
+	box-shadow: 0 10rpx 22rpx rgba(43, 52, 55, 0.06);
 }
 
 .project-drawer__card.is-active {
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 251, 0.98));
-	border-color: rgba(84, 94, 118, 0.26);
-	box-shadow: 0 20rpx 42rpx rgba(43, 52, 55, 0.1);
-}
-
-.project-drawer__cover {
-	position: relative;
-	width: 168rpx;
-	height: 120rpx;
-	border-radius: 22rpx;
-	overflow: hidden;
-	flex-shrink: 0;
-	padding: 14rpx;
-}
-
-.project-drawer__cover-orb {
-	position: absolute;
-	top: -28rpx;
-	right: -18rpx;
-	width: 84rpx;
-	height: 84rpx;
-	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.18);
-}
-
-.project-drawer__cover-sheet {
-	position: relative;
-	z-index: 1;
-	display: flex;
-	flex-direction: column;
-	gap: 10rpx;
-	width: 84rpx;
-	height: 92rpx;
-	padding: 16rpx 14rpx;
-	border-radius: 18rpx;
-	box-shadow: 0 8rpx 20rpx rgba(43, 52, 55, 0.08);
-}
-
-.project-drawer__cover-line {
-	height: 10rpx;
-	border-radius: 999rpx;
-	background: #dfe7f4;
-}
-
-.project-drawer__cover-badge {
-	position: absolute;
-	right: 14rpx;
-	bottom: 14rpx;
-	z-index: 1;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 72rpx;
-	padding: 10rpx 14rpx;
-	border-radius: 999rpx;
-	backdrop-filter: blur(10rpx);
-}
-
-.project-drawer__cover-badge-text {
-	font-size: 20rpx;
-	line-height: 1;
-	font-weight: 700;
-	letter-spacing: 0.14em;
-	color: #ffffff;
-}
-
-.project-drawer__card-body {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	gap: 6rpx;
-	min-width: 0;
+	background: #f3f7ff;
+	border-color: rgba(84, 94, 118, 0.28);
+	box-shadow: 0 12rpx 26rpx rgba(43, 52, 55, 0.08);
 }
 
 .project-drawer__card-title {
-	font-size: 32rpx;
-	line-height: 1.25;
+	max-width: 100%;
+	overflow: hidden;
+	text-align: center;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 26rpx;
+	line-height: 1.35;
 	font-weight: 700;
 	color: #2f3940;
-}
-
-.project-drawer__card-desc {
-	font-size: 22rpx;
-	line-height: 1.55;
-	color: #6e7882;
-}
-
-.project-drawer__card-tag {
-	align-self: flex-start;
-	margin-top: 4rpx;
-	padding: 8rpx 16rpx;
-	border-radius: 999rpx;
-	background: #edf2f7;
-	font-size: 20rpx;
-	line-height: 1.2;
-	font-weight: 600;
-	color: #5e697a;
-}
-
-.project-drawer__card-trailing {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 52rpx;
-	flex-shrink: 0;
-}
-
-.project-drawer__card-status {
-	padding: 10rpx 16rpx;
-	border-radius: 999rpx;
-	background: #dde7f8;
-	font-size: 20rpx;
-	line-height: 1.2;
-	font-weight: 700;
-	color: #4b5a72;
 }
 </style>
