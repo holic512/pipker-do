@@ -55,28 +55,10 @@
 									<uni-icons type="star-filled" size="12" color="#ffffff" />
 									<text>每日一词</text>
 								</view>
-								<text class="kyyy-home-page__daily-word">{{ item.wordText }}</text>
-								<view v-if="resolveDailyWordPhonetic(item)" class="kyyy-home-page__daily-pronounce">
-									<uni-icons type="sound" size="18" color="#3f69bf" />
-									<text class="kyyy-home-page__daily-phonetic">{{ resolveDailyWordPhonetic(item) }}</text>
-								</view>
+								<text class="kyyy-home-page__daily-word" :style="resolveDailyWordWordStyle(item)">{{ item.wordText }}</text>
 								<view class="kyyy-home-page__daily-primary">
-									<text v-if="resolveDailyWordPrimaryMeaning(item).partLabel" class="kyyy-home-page__daily-pos">
-										{{ resolveDailyWordPrimaryMeaning(item).partLabel }}
-									</text>
-									<text class="kyyy-home-page__daily-primary-text">
-										{{ resolveDailyWordPrimaryMeaning(item).meaningText }}
-									</text>
-								</view>
-								<view class="kyyy-home-page__daily-divider"></view>
-								<view class="kyyy-home-page__daily-example">
-									<view class="kyyy-home-page__daily-example-icon">
-										<uni-icons type="chatboxes-filled" size="15" color="#5e84dc" />
-									</view>
-									<text class="kyyy-home-page__daily-example-text">
-										<text class="kyyy-home-page__daily-example-lead">{{ resolveDailyWordExample(item).lead }}</text>
-										{{ resolveDailyWordExample(item).text }}
-									</text>
+									<text v-if="item.partOfSpeech" class="kyyy-home-page__daily-pos">{{ item.partOfSpeech }}</text>
+									<text class="kyyy-home-page__daily-primary-text">{{ resolveDailyWordMeaning(item) }}</text>
 								</view>
 							</view>
 							<view class="kyyy-home-page__daily-dots">
@@ -145,7 +127,7 @@ import PageShell from '@/components/page-shell/page-shell.vue'
 import KyyyTabbar from '@/components/kyyy/kyyy-tabbar.vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getHomeDailyWords, getHomeDashboard } from '@/pages/kyyy/api/home'
-import { cacheTodayDailyWords, readTodayCachedDailyWords } from '@/pages/kyyy/home/daily-word'
+import { cacheDailyWords, readCachedDailyWords } from '@/pages/kyyy/home/daily-word'
 import type {
 	KyyyHomeDashboardState,
 	KyyyHomeDailyWordState,
@@ -160,115 +142,60 @@ import {
 	normalizeHomeDashboard
 } from '@/pages/kyyy/home/view'
 
-const MAX_DAILY_WORD_MEANING_LINES = 3
 const DAILY_WORD_SLIDE_COUNT = 3
+const MAX_DAILY_WORD_LENGTH_FOR_LARGE = 7
+const MAX_DAILY_WORD_LENGTH_FOR_MEDIUM = 9
+const MAX_DAILY_WORD_LENGTH_FOR_SMALL = 11
+const MAX_DAILY_WORD_MEANING_LENGTH = 18
 const FALLBACK_DAILY_WORD = createHelloDailyWord()
 
-function trimDailyWordLines(lines: string[]): string[] {
-	return lines
-		.map((line) => line.trim())
-		.filter(Boolean)
-		.slice(0, MAX_DAILY_WORD_MEANING_LINES)
-}
-
-function stripMeaningOrderPrefix(line: string): string {
-	return line.replace(/^\d+\.\s*/, '').trim()
-}
-
-function formatDailyWordPhonetic(word: KyyyHomeDailyWordState): string {
-	const phonetic = (word.phoneticUk || word.phoneticUs || '').trim()
-	if (!phonetic) {
+function trimDisplayText(value: string, maxLength: number): string {
+	const normalized = (value || '').trim().replace(/\s+/g, ' ')
+	if (!normalized) {
 		return ''
 	}
-	return phonetic.startsWith('[') ? phonetic : `[${phonetic}]`
+	if (normalized.length <= maxLength) {
+		return normalized
+	}
+	const preferredCut = normalized.lastIndexOf(' ', Math.max(maxLength - 1, 0))
+	if (preferredCut >= Math.max(Math.floor(maxLength / 2), 4)) {
+		return `${normalized.slice(0, preferredCut).trim()}…`
+	}
+	return `${normalized.slice(0, Math.max(maxLength - 1, 0)).trim()}…`
 }
 
-function buildDailyWordMeaningLines(word: KyyyHomeDailyWordState): string[] {
-	const meaningText = (word.meaningCn || '').trim()
-	if (!meaningText) {
-		if (word.wordText === FALLBACK_DAILY_WORD.wordText) {
-			return trimDailyWordLines(FALLBACK_DAILY_WORD.meaningCn.split(/\n+/))
+function resolveDailyWordWordStyle(word: KyyyHomeDailyWordState): Record<string, string> {
+	const length = (word.wordText || '').trim().length
+	if (length > MAX_DAILY_WORD_LENGTH_FOR_SMALL) {
+		return {
+			fontSize: '64rpx',
+			lineHeight: '1.02',
+			letterSpacing: '-0.02em'
 		}
-		return [word.partOfSpeech ? `${word.partOfSpeech} 释义暂缺` : '释义暂缺']
 	}
-
-	const newlineLines = trimDailyWordLines(meaningText.split(/\n+/))
-	if (newlineLines.length > 1) {
-		return newlineLines
+	if (length > MAX_DAILY_WORD_LENGTH_FOR_MEDIUM) {
+		return {
+			fontSize: '74rpx',
+			lineHeight: '0.98',
+			letterSpacing: '-0.03em'
+		}
 	}
-
-	const numberedLines = trimDailyWordLines(meaningText.match(/\d+\.\s*.*?(?=(?:\d+\.\s*)|$)/g) || [])
-	if (numberedLines.length > 1) {
-		return numberedLines
+	if (length > MAX_DAILY_WORD_LENGTH_FOR_LARGE) {
+		return {
+			fontSize: '86rpx',
+			lineHeight: '0.96',
+			letterSpacing: '-0.04em'
+		}
 	}
-
-	const segmentedLines = trimDailyWordLines(meaningText.split(/[；;]\s*/))
-	if (segmentedLines.length > 1) {
-		return segmentedLines.map((line, index) => {
-			const prefix = word.partOfSpeech ? `${word.partOfSpeech} ` : ''
-			return `${index + 1}. ${prefix}${line}`.trim()
-		})
-	}
-
-	const singleLine = `${word.partOfSpeech ? `${word.partOfSpeech} ` : ''}${meaningText}`.trim()
-	return [singleLine || '释义暂缺']
+	return {}
 }
 
-function buildDailyWordPrimaryMeaning(word: KyyyHomeDailyWordState): { partLabel: string; meaningText: string } {
-	const firstLine = stripMeaningOrderPrefix(buildDailyWordMeaningLines(word)[0] || '')
-	if (!firstLine) {
-		return {
-			partLabel: '',
-			meaningText: '释义暂缺'
-		}
+function resolveDailyWordMeaning(word: KyyyHomeDailyWordState): string {
+	const meaning = trimDisplayText((word.meaningCn || '').trim(), MAX_DAILY_WORD_MEANING_LENGTH)
+	if (meaning) {
+		return meaning
 	}
-	const explicitPart = (word.partOfSpeech || '').trim()
-	if (explicitPart) {
-		const stripped = firstLine.startsWith(explicitPart) ? firstLine.slice(explicitPart.length).trim() : firstLine
-		return {
-			partLabel: explicitPart,
-			meaningText: stripped || firstLine
-		}
-	}
-	const matchedPart = firstLine.match(/^([A-Za-z]+\.)\s*(.+)$/)
-	if (matchedPart) {
-		return {
-			partLabel: matchedPart[1],
-			meaningText: matchedPart[2]
-		}
-	}
-	return {
-		partLabel: '',
-		meaningText: firstLine
-	}
-}
-
-function buildDailyWordExample(word: KyyyHomeDailyWordState): { lead: string; text: string } {
-	const exampleSentence = (word.exampleSentence || '').trim()
-	const exampleTranslation = (word.exampleTranslation || '').trim()
-	if (exampleSentence || exampleTranslation) {
-		return {
-			lead: exampleSentence || `${word.wordText}.`,
-			text: exampleTranslation || '继续巩固这个单词的真实用法。'
-		}
-	}
-	if (word.wordText.trim().toLowerCase() === FALLBACK_DAILY_WORD.wordText) {
-		return {
-			lead: 'Hello!',
-			text: '很高兴见到你。'
-		}
-	}
-	const secondaryLine = stripMeaningOrderPrefix(buildDailyWordMeaningLines(word)[1] || '')
-	if (secondaryLine) {
-		return {
-			lead: `${word.wordText}.`,
-			text: secondaryLine
-		}
-	}
-	return {
-		lead: `${word.wordText}.`,
-		text: '继续学习这个单词，巩固它的常见用法。'
-	}
+	return word.wordText === FALLBACK_DAILY_WORD.wordText ? FALLBACK_DAILY_WORD.meaningCn : '释义暂缺'
 }
 
 function ensureDailyWordSlides(words: KyyyHomeDailyWordState[]): KyyyHomeDailyWordState[] {
@@ -283,6 +210,14 @@ function ensureDailyWordSlides(words: KyyyHomeDailyWordState[]): KyyyHomeDailyWo
 		slides.push(normalizeDailyWord(slides[slides.length % normalizedWords.length] || FALLBACK_DAILY_WORD))
 	}
 	return slides.slice(0, DAILY_WORD_SLIDE_COUNT)
+}
+
+function hasValidDailyWordText(item: unknown): item is { wordText: string } {
+	return !!item
+		&& typeof item === 'object'
+		&& !Array.isArray(item)
+		&& typeof (item as { wordText?: unknown }).wordText === 'string'
+		&& (item as { wordText?: string }).wordText.trim().length > 0
 }
 
 interface HomePageState {
@@ -367,14 +302,11 @@ export default defineComponent({
 			const nextIndex = Number(event?.detail?.current ?? 0)
 			this.dailyWordCurrentIndex = Number.isFinite(nextIndex) ? Math.max(nextIndex, 0) : 0
 		},
-		resolveDailyWordPhonetic(word: KyyyHomeDailyWordState): string {
-			return formatDailyWordPhonetic(word)
+		resolveDailyWordWordStyle(word: KyyyHomeDailyWordState): Record<string, string> {
+			return resolveDailyWordWordStyle(word)
 		},
-		resolveDailyWordPrimaryMeaning(word: KyyyHomeDailyWordState): { partLabel: string; meaningText: string } {
-			return buildDailyWordPrimaryMeaning(word)
-		},
-		resolveDailyWordExample(word: KyyyHomeDailyWordState): { lead: string; text: string } {
-			return buildDailyWordExample(word)
+		resolveDailyWordMeaning(word: KyyyHomeDailyWordState): string {
+			return resolveDailyWordMeaning(word)
 		},
 		handleSearchClear(): void {
 			this.keyword = ''
@@ -392,7 +324,7 @@ export default defineComponent({
 			])
 		},
 		applyCachedDailyWord(): void {
-			const cachedDailyWords = readTodayCachedDailyWords()
+			const cachedDailyWords = readCachedDailyWords()
 			if (cachedDailyWords && cachedDailyWords.length > 0) {
 				this.dailyWords = ensureDailyWordSlides(cachedDailyWords)
 				this.dailyWordCurrentIndex = 0
@@ -416,23 +348,32 @@ export default defineComponent({
 			}
 		},
 		async loadDailyWord(): Promise<void> {
-			if (readTodayCachedDailyWords()?.length || this.loadingDailyWord) {
+			if (this.loadingDailyWord) {
 				return
 			}
 			this.loadingDailyWord = true
+			const cachedDailyWords = readCachedDailyWords()
 			try {
-				const words = ensureDailyWordSlides(
-					(await getHomeDailyWords()).map((item) => normalizeDailyWord(item))
-				)
-				this.dailyWords = words
-				this.dailyWordCurrentIndex = 0
-				cacheTodayDailyWords(words)
+				const responseWords = (await getHomeDailyWords())
+					.filter(hasValidDailyWordText)
+					.map((item) => normalizeDailyWord(item))
+				if (responseWords.length > 0) {
+					const words = ensureDailyWordSlides(responseWords)
+					this.dailyWords = words
+					this.dailyWordCurrentIndex = 0
+					cacheDailyWords(words)
+					return
+				}
+				if (!cachedDailyWords?.length) {
+					this.dailyWords = ensureDailyWordSlides([createHelloDailyWord()])
+					this.dailyWordCurrentIndex = 0
+				}
 			} catch (error) {
 				console.warn('[kyyy-home] load daily word failed', error)
-				const fallbackWords = ensureDailyWordSlides([createHelloDailyWord()])
-				this.dailyWords = fallbackWords
-				this.dailyWordCurrentIndex = 0
-				cacheTodayDailyWords(fallbackWords)
+				if (!cachedDailyWords?.length) {
+					this.dailyWords = ensureDailyWordSlides([createHelloDailyWord()])
+					this.dailyWordCurrentIndex = 0
+				}
 			} finally {
 				this.loadingDailyWord = false
 			}
@@ -617,7 +558,7 @@ export default defineComponent({
 
 .kyyy-home-page__daily-swiper {
 	width: 100%;
-	height: 520rpx;
+	height: 448rpx;
 }
 
 .kyyy-home-page__daily-card {
@@ -625,7 +566,7 @@ export default defineComponent({
 	display: flex;
 	width: 100%;
 	height: 100%;
-	padding: 30rpx 32rpx 84rpx;
+	padding: 30rpx 32rpx 78rpx;
 	border-radius: 36rpx;
 	overflow: hidden;
 	box-sizing: border-box;
@@ -659,9 +600,13 @@ export default defineComponent({
 	z-index: 2;
 	display: flex;
 	flex-direction: column;
-	width: calc(100% - 220rpx);
+	width: 100%;
+	height: 100%;
 	min-width: 0;
-	max-width: 420rpx;
+	min-height: 0;
+	justify-content: center;
+	padding-right: 194rpx;
+	box-sizing: border-box;
 }
 
 .kyyy-home-page__daily-badge {
@@ -680,28 +625,15 @@ export default defineComponent({
 }
 
 .kyyy-home-page__daily-word {
-	margin-top: 38rpx;
+	margin-top: 34rpx;
 	font-family: 'Baskerville', 'Times New Roman', serif;
 	font-size: 98rpx;
 	line-height: 0.95;
 	font-weight: 700;
 	letter-spacing: -0.05em;
 	color: #17315d;
-	word-break: break-word;
-}
-
-.kyyy-home-page__daily-pronounce {
-	display: inline-flex;
-	align-items: center;
-	gap: 12rpx;
-	margin-top: 18rpx;
-}
-
-.kyyy-home-page__daily-phonetic {
-	font-size: 38rpx;
-	line-height: 1.2;
-	font-weight: 500;
-	color: #7481a4;
+	word-break: normal;
+	overflow-wrap: anywhere;
 }
 
 .kyyy-home-page__daily-primary {
@@ -713,54 +645,17 @@ export default defineComponent({
 }
 
 .kyyy-home-page__daily-pos {
-	font-size: 28rpx;
+	font-size: 30rpx;
 	line-height: 1.35;
 	font-weight: 700;
 	color: #386af2;
 }
 
 .kyyy-home-page__daily-primary-text {
-	font-size: 28rpx;
-	line-height: 1.5;
-	font-weight: 600;
+	font-size: 30rpx;
+	line-height: 1.52;
+	font-weight: 650;
 	color: #273247;
-}
-
-.kyyy-home-page__daily-divider {
-	width: min(100%, 360rpx);
-	height: 2rpx;
-	margin-top: 28rpx;
-	background: linear-gradient(90deg, rgba(201, 210, 227, 0.8) 0%, rgba(201, 210, 227, 0.18) 100%);
-}
-
-.kyyy-home-page__daily-example {
-	display: flex;
-	align-items: flex-start;
-	gap: 14rpx;
-	margin-top: 28rpx;
-	max-width: 380rpx;
-}
-
-.kyyy-home-page__daily-example-icon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 34rpx;
-	height: 34rpx;
-	flex: 0 0 34rpx;
-	margin-top: 2rpx;
-}
-
-.kyyy-home-page__daily-example-text {
-	font-size: 28rpx;
-	line-height: 1.55;
-	color: #4f5d72;
-}
-
-.kyyy-home-page__daily-example-lead {
-	margin-right: 8rpx;
-	font-weight: 700;
-	color: #416fe0;
 }
 
 .kyyy-home-page__daily-dots {
@@ -1038,11 +933,11 @@ export default defineComponent({
 	}
 
 	.kyyy-home-page__daily-card {
-		padding: 26rpx 24rpx 72rpx;
+		padding: 24rpx 24rpx 68rpx;
 	}
 
 	.kyyy-home-page__daily-swiper {
-		height: 472rpx;
+		height: 416rpx;
 	}
 
 	.kyyy-home-page__daily-word {
@@ -1051,16 +946,11 @@ export default defineComponent({
 	}
 
 	.kyyy-home-page__daily-copy {
-		width: calc(100% - 170rpx);
-		max-width: none;
-	}
-
-	.kyyy-home-page__daily-phonetic {
-		font-size: 30rpx;
+		padding-right: 142rpx;
 	}
 
 	.kyyy-home-page__daily-primary-text,
-	.kyyy-home-page__daily-example-text {
+	.kyyy-home-page__daily-pos {
 		font-size: 24rpx;
 	}
 

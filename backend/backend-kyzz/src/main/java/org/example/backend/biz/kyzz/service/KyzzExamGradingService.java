@@ -83,20 +83,22 @@ public class KyzzExamGradingService {
     private final KyzzQuestionOptionMapper kyzzQuestionOptionMapper;
     private final KyzzQuestionTagRelMapper kyzzQuestionTagRelMapper;
     private final LlmService llmService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     public KyzzExamGradingService(KyzzExamSessionMapper kyzzExamSessionMapper,
                                   KyzzExamQuestionMapper kyzzExamQuestionMapper,
                                   KyzzQuestionMapper kyzzQuestionMapper,
                                   KyzzQuestionOptionMapper kyzzQuestionOptionMapper,
                                   KyzzQuestionTagRelMapper kyzzQuestionTagRelMapper,
-                                  LlmService llmService) {
+                                  LlmService llmService,
+                                  ObjectMapper objectMapper) {
         this.kyzzExamSessionMapper = kyzzExamSessionMapper;
         this.kyzzExamQuestionMapper = kyzzExamQuestionMapper;
         this.kyzzQuestionMapper = kyzzQuestionMapper;
         this.kyzzQuestionOptionMapper = kyzzQuestionOptionMapper;
         this.kyzzQuestionTagRelMapper = kyzzQuestionTagRelMapper;
         this.llmService = llmService;
+        this.objectMapper = objectMapper;
     }
 
     @Async("kyzzExamGradingTaskExecutor")

@@ -94,7 +94,7 @@ public class KyzzExamUserService {
     private final KyzzQuestionBankMapper kyzzQuestionBankMapper;
     private final UserProfileService userProfileService;
     private final KyzzExamGradingService kyzzExamGradingService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     public KyzzExamUserService(KyzzExamSessionMapper kyzzExamSessionMapper,
                                KyzzExamQuestionMapper kyzzExamQuestionMapper,
@@ -102,7 +102,8 @@ public class KyzzExamUserService {
                                KyzzQuestionOptionMapper kyzzQuestionOptionMapper,
                                KyzzQuestionBankMapper kyzzQuestionBankMapper,
                                UserProfileService userProfileService,
-                               KyzzExamGradingService kyzzExamGradingService) {
+                               KyzzExamGradingService kyzzExamGradingService,
+                               ObjectMapper objectMapper) {
         this.kyzzExamSessionMapper = kyzzExamSessionMapper;
         this.kyzzExamQuestionMapper = kyzzExamQuestionMapper;
         this.kyzzQuestionMapper = kyzzQuestionMapper;
@@ -110,6 +111,7 @@ public class KyzzExamUserService {
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
         this.userProfileService = userProfileService;
         this.kyzzExamGradingService = kyzzExamGradingService;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional

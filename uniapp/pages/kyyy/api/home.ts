@@ -10,13 +10,6 @@ export function getHomeDashboard(): Promise<KyyyHomeDashboardResponse> {
 	})
 }
 
-export function getHomeDailyWord(): Promise<KyyyHomeDailyWordResponse> {
-	return request({
-		url: '/api/kyyy/practice/next-word',
-		method: 'GET'
-	})
-}
-
 export function getHomeDailyWords(): Promise<KyyyHomeDailyWordResponse[]> {
 	return request({
 		url: '/api/kyyy/home/daily-words',

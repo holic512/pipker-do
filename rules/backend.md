@@ -39,6 +39,8 @@
 - 涉及当前用户的业务逻辑，统一从登录态取用户 ID，不信任前端传入的 `userId`。
 - 接口出参、异常出参和鉴权处理延续现有 `backend-common/common`、`backend-common/shared/security` 方式。
 - 公共资源、环境模板和数据库基准文件统一维护在 `backend/backend-app/src/main/resources`。
+- 后端若使用 Jackson 2 的 `com.fasterxml.jackson.databind.ObjectMapper`，统一复用 `backend/backend-common/src/main/java/org/example/backend/common/config/JacksonObjectMapperConfig.java` 提供的共享 Bean，并通过构造器注入；不要在 Service、Controller、Support 中直接 `new ObjectMapper()`。
+- 业务内的 JSON 序列化/反序列化保持局部收口：使用共享 `ObjectMapper` + 明确的 `readValue/readTree/writeValueAsString` 调用，异常按当前业务语义处理；需要统一调整 JSON 行为时，优先改共享配置，不在各处散落定制。
 
 ## 3. 数据库变更
 

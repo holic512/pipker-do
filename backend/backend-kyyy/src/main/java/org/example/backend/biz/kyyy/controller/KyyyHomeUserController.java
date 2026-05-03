@@ -1,7 +1,8 @@
 package org.example.backend.biz.kyyy.controller;
 
 import org.example.backend.biz.kyyy.dto.KyyyHomeDashboardResponse;
-import org.example.backend.biz.kyyy.dto.KyyyPracticeNextWordResponse;
+import org.example.backend.biz.kyyy.dto.KyyyHomeDailyWordResponse;
+import org.example.backend.biz.kyyy.service.KyyyHomeDailyWordService;
 import org.example.backend.biz.kyyy.service.KyyyPracticeUserService;
 import org.example.backend.common.api.ApiResponse;
 import org.example.backend.common.api.ApiResponseFactory;
@@ -20,11 +21,14 @@ import java.util.List;
 public class KyyyHomeUserController {
 
     private final KyyyPracticeUserService kyyyPracticeUserService;
+    private final KyyyHomeDailyWordService kyyyHomeDailyWordService;
     private final ApiResponseFactory responseFactory;
 
     public KyyyHomeUserController(KyyyPracticeUserService kyyyPracticeUserService,
+                                  KyyyHomeDailyWordService kyyyHomeDailyWordService,
                                   ApiResponseFactory responseFactory) {
         this.kyyyPracticeUserService = kyyyPracticeUserService;
+        this.kyyyHomeDailyWordService = kyyyHomeDailyWordService;
         this.responseFactory = responseFactory;
     }
 
@@ -34,10 +38,8 @@ public class KyyyHomeUserController {
     }
 
     @GetMapping("/daily-words")
-    public ApiResponse<List<KyyyPracticeNextWordResponse>> getDailyWords() {
-        return responseFactory.success(kyyyPracticeUserService.getHomeDailyWords(
-                LoginUserContext.requireUserId(),
-                3
-        ));
+    public ApiResponse<List<KyyyHomeDailyWordResponse>> getDailyWords() {
+        LoginUserContext.requireUserId();
+        return responseFactory.success(kyyyHomeDailyWordService.getDailyWords());
     }
 }

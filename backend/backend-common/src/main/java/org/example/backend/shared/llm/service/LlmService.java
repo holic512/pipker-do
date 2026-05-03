@@ -49,14 +49,16 @@ public class LlmService {
     private final SystemConfigService systemConfigService;
     private final LlmCallRecordMapper llmCallRecordMapper;
     private final LlmPromptHashService promptHashService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     public LlmService(SystemConfigService systemConfigService,
                       LlmCallRecordMapper llmCallRecordMapper,
-                      LlmPromptHashService promptHashService) {
+                      LlmPromptHashService promptHashService,
+                      ObjectMapper objectMapper) {
         this.systemConfigService = systemConfigService;
         this.llmCallRecordMapper = llmCallRecordMapper;
         this.promptHashService = promptHashService;
+        this.objectMapper = objectMapper;
     }
 
     public LlmGenerateResult generateText(String scene, String systemPrompt, String userPrompt) {

@@ -144,21 +144,6 @@ public class KyyyPracticeUserService {
         return buildNextWordResponse(targetWordId, bundle);
     }
 
-    public List<KyyyPracticeNextWordResponse> getHomeDailyWords(Long userId, int limit) {
-        CandidateWordBundle bundle = buildCandidateWordBundle(userId);
-        int safeLimit = Math.max(limit, 1);
-        return bundle.candidateWordIds().stream()
-                .sorted(Comparator
-                        .comparing((Long wordId) -> isStudied(bundle.progressMap().get(wordId)))
-                        .thenComparing(wordId -> bundle.progressMap().get(wordId) == null ? null : bundle.progressMap().get(wordId).getNextReviewAt(),
-                                Comparator.nullsLast(LocalDateTime::compareTo))
-                        .thenComparing(wordId -> bundle.progressMap().get(wordId) == null ? null : bundle.progressMap().get(wordId).getLastStudiedAt(),
-                                Comparator.nullsFirst(LocalDateTime::compareTo)))
-                .limit(safeLimit)
-                .map(wordId -> buildNextWordResponse(wordId, bundle))
-                .toList();
-    }
-
     @Transactional
     public KyyyPracticeSettingResponse updateSettings(Long userId, KyyyPracticeSettingRequest request) {
         KyyyUserPracticeSetting existing = loadPracticeSetting(userId);
