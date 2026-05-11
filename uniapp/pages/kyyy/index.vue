@@ -1,5 +1,14 @@
+<!--
+@file KyyyHomePage
+@project pipker-do
+@module 考研英语 / 小程序首页
+@description 展示考研英语首页搜索、每日一词、学习入口与专项入口。
+@logic 1. 加载首页仪表盘与每日一词；2. 维护每日一词轮播展示；3. 处理学习入口和专项入口跳转。
+@dependencies API: @/pages/kyyy/api/home, Component: PageShell, Component: KyyyTabbar
+@index_tags 考研英语, 每日一词, 首页, 词库, 小程序
+@author holic512
+-->
 <template>
-	<!-- AI 索引: KYYY 英语首页。 -->
 	<page-shell
 		root-class="kyyy-home-page theme-page"
 		content-style="padding: 0 24rpx 24rpx;"
@@ -567,6 +576,7 @@ export default defineComponent({
 	width: 100%;
 	height: 100%;
 	padding: 30rpx 32rpx 78rpx;
+	border: 1rpx solid rgba(202, 216, 236, 0.7);
 	border-radius: 36rpx;
 	overflow: hidden;
 	box-sizing: border-box;
@@ -574,6 +584,18 @@ export default defineComponent({
 	box-shadow:
 		0 22rpx 48rpx rgba(62, 79, 104, 0.07),
 		inset 0 0 0 1rpx rgba(208, 220, 239, 0.82);
+}
+
+.kyyy-home-page__daily-card::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	border-radius: inherit;
+	box-shadow:
+		inset 0 1rpx 0 rgba(255, 255, 255, 0.82),
+		inset 0 -1rpx 0 rgba(176, 194, 220, 0.24);
+	pointer-events: none;
 }
 
 .kyyy-home-page__daily-bg-image {
