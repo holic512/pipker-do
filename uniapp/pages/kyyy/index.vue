@@ -2,10 +2,10 @@
 @file KyyyHomePage
 @project pipker-do
 @module 考研英语 / 小程序首页
-@description 展示考研英语首页搜索、每日一词、学习入口与专项入口。
-@logic 1. 加载首页仪表盘与每日一词；2. 维护每日一词轮播展示；3. 处理学习入口和专项入口跳转。
+@description 展示考研英语首页搜索、沉浸式查词、每日一词、学习入口与专项入口。
+@logic 1. 加载首页仪表盘与每日一词；2. 维护每日一词轮播展示；3. 处理聚焦查词动画与结果查询；4. 处理学习入口和专项入口跳转。
 @dependencies API: @/pages/kyyy/api/home, Component: PageShell, Component: KyyyTabbar
-@index_tags 考研英语, 每日一词, 首页, 词库, 小程序
+@index_tags 考研英语, 每日一词, 首页, 查词, 词库, 小程序
 @author holic512
 -->
 <template>
@@ -16,8 +16,11 @@
 		<view class="kyyy-home-page__ambient kyyy-home-page__ambient--left"></view>
 		<view class="kyyy-home-page__ambient kyyy-home-page__ambient--right"></view>
 
-		<view class="kyyy-home-page__inner">
-			<view class="kyyy-home-page__search-box">
+		<view
+			class="kyyy-home-page__inner"
+			:class="{ 'kyyy-home-page__inner--search-active': searchSceneVisible }"
+		>
+			<view class="kyyy-home-page__search-box" @tap="openSearchScene">
 				<view class="kyyy-home-page__search-leading">
 					<uni-icons type="search" size="21" color="#7d889c" />
 				</view>
@@ -27,12 +30,14 @@
 					placeholder="搜索单词 / 查词"
 					placeholder-class="kyyy-home-page__search-placeholder"
 					confirm-type="search"
+					@focus="handleSearchFocus"
+					@input="handleSearchInput"
 					@confirm="handleSearchConfirm"
 				/>
-				<view v-if="keyword" class="kyyy-home-page__search-clear" @tap="handleSearchClear">
+				<view v-if="keyword" class="kyyy-home-page__search-clear" @tap.stop="handleSearchClear">
 					<text class="kyyy-home-page__search-clear-text">×</text>
 				</view>
-				<view v-else class="kyyy-home-page__search-scan" @tap="handleSearchConfirm">
+				<view v-else class="kyyy-home-page__search-scan" @tap.stop="openSearchScene">
 					<view class="kyyy-home-page__search-scan-corner kyyy-home-page__search-scan-corner--lt"></view>
 					<view class="kyyy-home-page__search-scan-corner kyyy-home-page__search-scan-corner--rt"></view>
 					<view class="kyyy-home-page__search-scan-corner kyyy-home-page__search-scan-corner--lb"></view>
@@ -124,8 +129,95 @@
 			</view>
 		</view>
 
+		<view
+			v-if="searchSceneRendered"
+			class="kyyy-home-page__search-stage"
+			:class="{ 'is-visible': searchSceneVisible }"
+			@tap="handleSearchBlankTap"
+		>
+			<view class="kyyy-home-page__search-dock" :style="searchDockStyle" @tap.stop>
+				<view class="kyyy-home-page__search-box kyyy-home-page__search-box--floating">
+					<view class="kyyy-home-page__search-leading">
+						<uni-icons type="search" size="20" color="#60708a" />
+					</view>
+					<input
+						v-model="keyword"
+						:focus="searchInputFocused"
+						class="kyyy-home-page__search-input"
+						placeholder="搜索单词 / 查词"
+						placeholder-class="kyyy-home-page__search-placeholder"
+						confirm-type="search"
+						@focus="handleSearchFocus"
+						@input="handleSearchInput"
+						@confirm="handleSearchConfirm"
+					/>
+					<view v-if="keyword" class="kyyy-home-page__search-clear" @tap.stop="handleSearchClear">
+						<text class="kyyy-home-page__search-clear-text">×</text>
+					</view>
+					<view v-else class="kyyy-home-page__search-scan">
+						<view class="kyyy-home-page__search-scan-corner kyyy-home-page__search-scan-corner--lt"></view>
+						<view class="kyyy-home-page__search-scan-corner kyyy-home-page__search-scan-corner--rt"></view>
+						<view class="kyyy-home-page__search-scan-corner kyyy-home-page__search-scan-corner--lb"></view>
+						<view class="kyyy-home-page__search-scan-corner kyyy-home-page__search-scan-corner--rb"></view>
+					</view>
+				</view>
+			</view>
+
+			<scroll-view
+				scroll-y
+				class="kyyy-home-page__search-results"
+				:style="searchResultPanelStyle"
+				@tap="handleSearchBlankTap"
+			>
+				<view class="kyyy-home-page__search-results-inner">
+					<view v-if="!normalizedSearchKeyword" class="kyyy-home-page__search-state">
+						<text class="kyyy-home-page__search-state-title">输入单词</text>
+						<text class="kyyy-home-page__search-state-desc">结果会在下方即时出现</text>
+					</view>
+					<view v-else-if="searchLoading" class="kyyy-home-page__search-state">
+						<view class="kyyy-home-page__search-loader"></view>
+						<text class="kyyy-home-page__search-state-title">正在查词</text>
+						<text class="kyyy-home-page__search-state-desc">匹配词库里的单词释义</text>
+					</view>
+					<view v-else-if="searchFailed" class="kyyy-home-page__search-state">
+						<text class="kyyy-home-page__search-state-title">查询失败</text>
+						<text class="kyyy-home-page__search-state-desc">稍后重新输入试试</text>
+					</view>
+					<view v-else-if="searchResults.length" class="kyyy-home-page__search-list" @tap.stop>
+						<view
+							v-for="(item, index) in searchResults"
+							:key="resolveSearchResultKey(item, index)"
+							class="kyyy-home-page__search-item"
+							:style="{ animationDelay: `${index * 38}ms` }"
+							@tap.stop
+						>
+							<view class="kyyy-home-page__search-item-main">
+								<view class="kyyy-home-page__search-item-head">
+									<text class="kyyy-home-page__search-item-word">{{ item.wordText }}</text>
+									<text v-if="resolveSearchPhonetic(item)" class="kyyy-home-page__search-item-phonetic">{{ resolveSearchPhonetic(item) }}</text>
+								</view>
+								<view class="kyyy-home-page__search-item-meaning">
+									<text v-if="item.partOfSpeech" class="kyyy-home-page__search-item-pos">{{ item.partOfSpeech }}</text>
+									<text class="kyyy-home-page__search-item-cn">{{ resolveSearchMeaning(item) }}</text>
+								</view>
+							</view>
+						</view>
+					</view>
+					<view v-else-if="searchLoaded" class="kyyy-home-page__search-state kyyy-home-page__search-state--empty">
+						<text class="kyyy-home-page__search-state-title">没有找到结果</text>
+						<text class="kyyy-home-page__search-state-desc">点击空白处返回首页</text>
+					</view>
+				</view>
+			</scroll-view>
+		</view>
+
 		<template #tabbar>
-			<kyyy-tabbar current="home" />
+			<view
+				class="kyyy-home-page__tabbar-wrap"
+				:class="{ 'kyyy-home-page__tabbar-wrap--hidden': searchSceneVisible }"
+			>
+				<kyyy-tabbar current="home" />
+			</view>
 		</template>
 	</page-shell>
 </template>
@@ -135,7 +227,8 @@ import { defineComponent } from 'vue'
 import PageShell from '@/components/page-shell/page-shell.vue'
 import KyyyTabbar from '@/components/kyyy/kyyy-tabbar.vue'
 import { bootstrapAuth } from '@/shared/session/session'
-import { getHomeDailyWords, getHomeDashboard } from '@/pages/kyyy/api/home'
+import { getHomeDailyWords, getHomeDashboard, searchHomeWords } from '@/pages/kyyy/api/home'
+import type { KyyyHomeWordSearchResponse } from '@/pages/kyyy/api/home'
 import { cacheDailyWords, readCachedDailyWords } from '@/pages/kyyy/home/daily-word'
 import type {
 	KyyyHomeDashboardState,
@@ -156,6 +249,9 @@ const MAX_DAILY_WORD_LENGTH_FOR_LARGE = 7
 const MAX_DAILY_WORD_LENGTH_FOR_MEDIUM = 9
 const MAX_DAILY_WORD_LENGTH_FOR_SMALL = 11
 const MAX_DAILY_WORD_MEANING_LENGTH = 18
+const MAX_SEARCH_MEANING_LENGTH = 42
+const SEARCH_DEBOUNCE_DELAY = 260
+const SEARCH_SCENE_ANIMATION_DURATION = 320
 const FALLBACK_DAILY_WORD = createHelloDailyWord()
 
 function trimDisplayText(value: string, maxLength: number): string {
@@ -229,6 +325,42 @@ function hasValidDailyWordText(item: unknown): item is { wordText: string } {
 		&& (item as { wordText?: string }).wordText.trim().length > 0
 }
 
+function normalizeSearchKeyword(value: string): string {
+	return (value || '').trim().replace(/\s+/g, ' ')
+}
+
+function toNullableNumber(value: unknown): number | null {
+	if (value === null || value === undefined || value === '') {
+		return null
+	}
+	const numberValue = Number(value)
+	return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null
+}
+
+function normalizeSearchText(value: unknown): string {
+	return typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : ''
+}
+
+interface KyyyHomeWordSearchState {
+	wordId: number | null
+	wordText: string
+	phoneticUs: string
+	phoneticUk: string
+	partOfSpeech: string
+	meaningCn: string
+}
+
+function normalizeWordSearchResult(item: KyyyHomeWordSearchResponse): KyyyHomeWordSearchState {
+	return {
+		wordId: toNullableNumber(item.wordId),
+		wordText: normalizeSearchText(item.wordText),
+		phoneticUs: normalizeSearchText(item.phoneticUs),
+		phoneticUk: normalizeSearchText(item.phoneticUk),
+		partOfSpeech: normalizeSearchText(item.partOfSpeech),
+		meaningCn: normalizeSearchText(item.meaningCn)
+	}
+}
+
 interface HomePageState {
 	keyword: string
 	dashboard: KyyyHomeDashboardState
@@ -236,6 +368,20 @@ interface HomePageState {
 	dailyWordCurrentIndex: number
 	loadingDashboard: boolean
 	loadingDailyWord: boolean
+	searchSceneRendered: boolean
+	searchSceneVisible: boolean
+	searchInputFocused: boolean
+	searchResults: KyyyHomeWordSearchState[]
+	searchLoading: boolean
+	searchLoaded: boolean
+	searchFailed: boolean
+	searchRequestSeq: number
+	searchDebounceTimer: ReturnType<typeof setTimeout> | null
+	searchCloseTimer: ReturnType<typeof setTimeout> | null
+	searchDockTop: number
+	searchDockHeight: number
+	searchDockLeft: number
+	searchDockRight: number
 	shortcutItems: KyyyHomeShortcutItem[]
 }
 
@@ -253,6 +399,20 @@ export default defineComponent({
 			dailyWordCurrentIndex: 0,
 			loadingDashboard: false,
 			loadingDailyWord: false,
+			searchSceneRendered: false,
+			searchSceneVisible: false,
+			searchInputFocused: false,
+			searchResults: [],
+			searchLoading: false,
+			searchLoaded: false,
+			searchFailed: false,
+			searchRequestSeq: 0,
+			searchDebounceTimer: null,
+			searchCloseTimer: null,
+			searchDockTop: 28,
+			searchDockHeight: 40,
+			searchDockLeft: 12,
+			searchDockRight: 104,
 			shortcutItems: [
 				{
 					key: 'wrong-word',
@@ -297,15 +457,185 @@ export default defineComponent({
 			]
 		}
 	},
+	computed: {
+		normalizedSearchKeyword(): string {
+			return normalizeSearchKeyword(this.keyword)
+		},
+		searchDockStyle(): Record<string, string> {
+			return {
+				top: `${this.searchDockTop}px`,
+				left: `${this.searchDockLeft}px`,
+				right: `${this.searchDockRight}px`,
+				height: `${this.searchDockHeight}px`
+			}
+		},
+		searchResultPanelStyle(): Record<string, string> {
+			return {
+				paddingTop: `${this.searchDockTop + this.searchDockHeight + 18}px`
+			}
+		}
+	},
+	created() {
+		this.syncSearchLayoutMetrics()
+	},
 	onShow() {
 		this.bootstrapAndLoad()
 	},
+	beforeUnmount() {
+		this.clearSearchTimers()
+	},
 	methods: {
 		handleSearchConfirm(): void {
-			uni.showToast({
-				title: '查词功能开发中',
-				icon: 'none'
+			this.openSearchScene()
+			this.loadSearchResults(this.normalizedSearchKeyword)
+		},
+		handleSearchFocus(): void {
+			this.openSearchScene()
+		},
+		handleSearchInput(event?: { detail?: { value?: string } }): void {
+			if (typeof event?.detail?.value === 'string') {
+				this.keyword = event.detail.value
+			}
+			if (!this.searchSceneRendered) {
+				this.openSearchScene()
+			}
+			this.scheduleSearchResults()
+		},
+		openSearchScene(): void {
+			this.clearSearchCloseTimer()
+			if (!this.searchSceneRendered) {
+				this.searchSceneRendered = true
+				this.searchSceneVisible = false
+			}
+			this.$nextTick(() => {
+				setTimeout(() => {
+					if (!this.searchSceneRendered) {
+						return
+					}
+					this.searchSceneVisible = true
+					this.searchInputFocused = true
+					if (this.normalizedSearchKeyword && !this.searchLoading && !this.searchLoaded) {
+						this.scheduleSearchResults()
+					}
+				}, 16)
 			})
+		},
+		closeSearchScene(): void {
+			this.clearSearchTimers()
+			this.searchRequestSeq += 1
+			this.searchInputFocused = false
+			this.searchSceneVisible = false
+			this.searchLoading = false
+			this.searchCloseTimer = setTimeout(() => {
+				this.searchSceneRendered = false
+				this.searchResults = []
+				this.searchLoaded = false
+				this.searchFailed = false
+				this.keyword = ''
+				this.searchCloseTimer = null
+			}, SEARCH_SCENE_ANIMATION_DURATION)
+		},
+		handleSearchBlankTap(): void {
+			if (this.searchLoading || this.searchResults.length > 0) {
+				return
+			}
+			if (!this.normalizedSearchKeyword || this.searchLoaded || this.searchFailed) {
+				this.closeSearchScene()
+			}
+		},
+		handleSearchClear(): void {
+			this.keyword = ''
+			this.searchResults = []
+			this.searchLoaded = false
+			this.searchFailed = false
+			this.searchLoading = false
+			this.searchRequestSeq += 1
+			this.clearSearchDebounceTimer()
+			if (this.searchSceneRendered) {
+				this.searchInputFocused = true
+			}
+		},
+		scheduleSearchResults(): void {
+			this.clearSearchDebounceTimer()
+			const keyword = this.normalizedSearchKeyword
+			this.searchFailed = false
+			if (!keyword) {
+				this.searchResults = []
+				this.searchLoading = false
+				this.searchLoaded = false
+				this.searchRequestSeq += 1
+				return
+			}
+			this.searchLoading = true
+			this.searchDebounceTimer = setTimeout(() => {
+				this.loadSearchResults(keyword)
+			}, SEARCH_DEBOUNCE_DELAY)
+		},
+		async loadSearchResults(keyword: string = this.normalizedSearchKeyword): Promise<void> {
+			const normalizedKeyword = normalizeSearchKeyword(keyword)
+			this.clearSearchDebounceTimer()
+			if (!normalizedKeyword) {
+				this.searchResults = []
+				this.searchLoading = false
+				this.searchLoaded = false
+				this.searchFailed = false
+				return
+			}
+			const requestSeq = this.searchRequestSeq + 1
+			this.searchRequestSeq = requestSeq
+			this.searchLoading = true
+			this.searchFailed = false
+			try {
+				const response = await searchHomeWords(normalizedKeyword)
+				if (requestSeq !== this.searchRequestSeq) {
+					return
+				}
+				this.searchResults = (Array.isArray(response) ? response : [])
+					.map((item) => normalizeWordSearchResult(item))
+					.filter((item) => !!item.wordText)
+				this.searchLoaded = true
+			} catch (error) {
+				if (requestSeq !== this.searchRequestSeq) {
+					return
+				}
+				console.warn('[kyyy-home] search words failed', error)
+				this.searchResults = []
+				this.searchLoaded = true
+				this.searchFailed = true
+			} finally {
+				if (requestSeq === this.searchRequestSeq) {
+					this.searchLoading = false
+				}
+			}
+		},
+		syncSearchLayoutMetrics(): void {
+			const systemInfo = uni.getSystemInfoSync()
+			const statusBarHeight = Number(systemInfo.statusBarHeight || 20)
+			const windowWidth = Number(systemInfo.windowWidth || 375)
+			this.searchDockTop = statusBarHeight + 6
+			this.searchDockHeight = 40
+			this.searchDockLeft = 12
+			this.searchDockRight = 104
+			if (typeof uni.getMenuButtonBoundingClientRect !== 'function') {
+				return
+			}
+			try {
+				const menuButtonInfo = uni.getMenuButtonBoundingClientRect()
+				if (!menuButtonInfo || !menuButtonInfo.height) {
+					return
+				}
+				const dockHeight = Math.max(Number(menuButtonInfo.height), 32)
+				const menuTop = Number(menuButtonInfo.top || statusBarHeight + 6)
+				const menuLeft = Number(menuButtonInfo.left || 0)
+				const menuRight = Number(menuButtonInfo.right || windowWidth - 10)
+				const menuRightGap = Math.max(windowWidth - menuRight, 8)
+				this.searchDockTop = menuTop
+				this.searchDockHeight = dockHeight
+				this.searchDockLeft = menuRightGap
+				this.searchDockRight = menuLeft > 0 ? Math.max(windowWidth - menuLeft + menuRightGap, 96) : 104
+			} catch (error) {
+				console.warn('[kyyy-home] resolve search layout failed', error)
+			}
 		},
 		handleDailyWordChange(event: { detail?: { current?: number } } | undefined): void {
 			const nextIndex = Number(event?.detail?.current ?? 0)
@@ -317,8 +647,31 @@ export default defineComponent({
 		resolveDailyWordMeaning(word: KyyyHomeDailyWordState): string {
 			return resolveDailyWordMeaning(word)
 		},
-		handleSearchClear(): void {
-			this.keyword = ''
+		resolveSearchResultKey(item: KyyyHomeWordSearchState, index: number): string {
+			return item.wordId ? `word-${item.wordId}` : `${item.wordText}-${index}`
+		},
+		resolveSearchPhonetic(item: KyyyHomeWordSearchState): string {
+			return item.phoneticUs || item.phoneticUk || ''
+		},
+		resolveSearchMeaning(item: KyyyHomeWordSearchState): string {
+			const meaning = trimDisplayText(item.meaningCn, MAX_SEARCH_MEANING_LENGTH)
+			return meaning || '释义暂缺'
+		},
+		clearSearchDebounceTimer(): void {
+			if (this.searchDebounceTimer) {
+				clearTimeout(this.searchDebounceTimer)
+				this.searchDebounceTimer = null
+			}
+		},
+		clearSearchCloseTimer(): void {
+			if (this.searchCloseTimer) {
+				clearTimeout(this.searchCloseTimer)
+				this.searchCloseTimer = null
+			}
+		},
+		clearSearchTimers(): void {
+			this.clearSearchDebounceTimer()
+			this.clearSearchCloseTimer()
 		},
 		async bootstrapAndLoad(): Promise<void> {
 			this.applyCachedDailyWord()
@@ -463,6 +816,29 @@ export default defineComponent({
 	padding-top: 16rpx;
 }
 
+.kyyy-home-page__inner > .kyyy-home-page__search-box,
+.kyyy-home-page__daily-section,
+.kyyy-home-page__entry-grid,
+.kyyy-home-page__shortcut-section {
+	transition:
+		opacity 0.28s ease,
+		transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.kyyy-home-page__inner--search-active > .kyyy-home-page__search-box {
+	opacity: 0;
+	transform: translateY(-28rpx) scale(0.965);
+	pointer-events: none;
+}
+
+.kyyy-home-page__inner--search-active .kyyy-home-page__daily-section,
+.kyyy-home-page__inner--search-active .kyyy-home-page__entry-grid,
+.kyyy-home-page__inner--search-active .kyyy-home-page__shortcut-section {
+	opacity: 0;
+	transform: translateY(30rpx) scale(0.985);
+	pointer-events: none;
+}
+
 .kyyy-home-page__search-box {
 	display: flex;
 	align-items: center;
@@ -558,6 +934,272 @@ export default defineComponent({
 	bottom: 4rpx;
 	border-width: 0 4rpx 4rpx 0;
 	border-bottom-right-radius: 6rpx;
+}
+
+.kyyy-home-page__search-stage {
+	position: fixed;
+	inset: 0;
+	z-index: 3200;
+	opacity: 0;
+	background: rgba(248, 250, 253, 0);
+	pointer-events: none;
+	transition:
+		opacity 0.28s ease,
+		background 0.34s ease;
+}
+
+.kyyy-home-page__search-stage.is-visible {
+	opacity: 1;
+	background: #f8fafc;
+	pointer-events: auto;
+}
+
+.kyyy-home-page__search-stage::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 188rpx;
+	background:
+		linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 253, 0.96) 74%, rgba(248, 250, 253, 0) 100%);
+	pointer-events: none;
+}
+
+.kyyy-home-page__search-dock {
+	position: fixed;
+	z-index: 3;
+	opacity: 0;
+	transform: translate3d(0, 114rpx, 0) scale(0.965);
+	transform-origin: left center;
+	transition:
+		opacity 0.22s ease,
+		transform 0.42s cubic-bezier(0.18, 0.82, 0.24, 1);
+}
+
+.kyyy-home-page__search-stage.is-visible .kyyy-home-page__search-dock {
+	opacity: 1;
+	transform: translate3d(0, 0, 0) scale(1);
+}
+
+.kyyy-home-page__search-box--floating {
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+	gap: 14rpx;
+	padding: 0 20rpx;
+	border-radius: 999rpx;
+	background: rgba(255, 255, 255, 0.99);
+	box-shadow:
+		0 2rpx 8rpx rgba(31, 43, 64, 0.04),
+		inset 0 0 0 1rpx rgba(190, 202, 222, 0.9);
+}
+
+.kyyy-home-page__search-box--floating .kyyy-home-page__search-leading {
+	width: 34rpx;
+	height: 34rpx;
+	flex-basis: 34rpx;
+}
+
+.kyyy-home-page__search-box--floating .kyyy-home-page__search-input {
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.kyyy-home-page__search-box--floating .kyyy-home-page__search-clear {
+	width: 34rpx;
+	height: 34rpx;
+}
+
+.kyyy-home-page__search-results {
+	position: fixed;
+	inset: 0;
+	z-index: 2;
+	height: 100vh;
+	box-sizing: border-box;
+	opacity: 0;
+	transform: translateY(24rpx);
+	transition:
+		opacity 0.28s ease 0.08s,
+		transform 0.36s cubic-bezier(0.22, 1, 0.36, 1) 0.08s;
+}
+
+.kyyy-home-page__search-stage.is-visible .kyyy-home-page__search-results {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+.kyyy-home-page__search-results-inner {
+	min-height: 100%;
+	padding: 24rpx 24rpx calc(env(safe-area-inset-bottom) + 48rpx);
+	box-sizing: border-box;
+}
+
+.kyyy-home-page__search-list {
+	display: flex;
+	flex-direction: column;
+	gap: 18rpx;
+}
+
+.kyyy-home-page__search-item {
+	display: flex;
+	align-items: center;
+	min-height: 118rpx;
+	padding: 22rpx 24rpx;
+	border-radius: 26rpx;
+	background: rgba(255, 255, 255, 0.98);
+	box-shadow:
+		0 18rpx 38rpx rgba(44, 58, 82, 0.06),
+		inset 0 0 0 1rpx rgba(215, 224, 237, 0.86);
+	box-sizing: border-box;
+	animation: kyyy-search-item-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.kyyy-home-page__search-item-main {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.kyyy-home-page__search-item-head {
+	display: flex;
+	align-items: baseline;
+	gap: 14rpx;
+	min-width: 0;
+}
+
+.kyyy-home-page__search-item-word {
+	max-width: 420rpx;
+	font-size: 38rpx;
+	line-height: 1.16;
+	font-weight: 760;
+	color: #1d2f54;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.kyyy-home-page__search-item-phonetic {
+	font-size: 23rpx;
+	line-height: 1.3;
+	font-weight: 600;
+	color: #77849a;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.kyyy-home-page__search-item-meaning {
+	display: flex;
+	align-items: baseline;
+	gap: 10rpx;
+	margin-top: 14rpx;
+	min-width: 0;
+}
+
+.kyyy-home-page__search-item-pos {
+	font-size: 24rpx;
+	line-height: 1.34;
+	font-weight: 700;
+	color: #3c72e7;
+	white-space: nowrap;
+}
+
+.kyyy-home-page__search-item-cn {
+	flex: 1;
+	min-width: 0;
+	font-size: 26rpx;
+	line-height: 1.42;
+	font-weight: 560;
+	color: #3b4657;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.kyyy-home-page__search-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 430rpx;
+	padding: 44rpx 36rpx;
+	text-align: center;
+	box-sizing: border-box;
+	animation: kyyy-search-state-enter 0.32s ease both;
+}
+
+.kyyy-home-page__search-state--empty {
+	min-height: 520rpx;
+}
+
+.kyyy-home-page__search-state-title {
+	font-size: 34rpx;
+	line-height: 1.25;
+	font-weight: 760;
+	color: #22314a;
+}
+
+.kyyy-home-page__search-state-desc {
+	margin-top: 14rpx;
+	font-size: 25rpx;
+	line-height: 1.5;
+	font-weight: 560;
+	color: #718096;
+}
+
+.kyyy-home-page__search-loader {
+	width: 40rpx;
+	height: 40rpx;
+	margin-bottom: 24rpx;
+	border-radius: 50%;
+	border: 4rpx solid rgba(70, 99, 153, 0.16);
+	border-top-color: #527ee8;
+	animation: kyyy-search-loader-spin 0.8s linear infinite;
+}
+
+.kyyy-home-page__tabbar-wrap {
+	transition: opacity 0.24s ease;
+}
+
+.kyyy-home-page__tabbar-wrap--hidden {
+	opacity: 0;
+	pointer-events: none;
+}
+
+@keyframes kyyy-search-item-enter {
+	from {
+		opacity: 0;
+		transform: translateY(22rpx) scale(0.98);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes kyyy-search-state-enter {
+	from {
+		opacity: 0;
+		transform: translateY(16rpx);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes kyyy-search-loader-spin {
+	from {
+		transform: rotate(0deg);
+	}
+
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .kyyy-home-page__daily-section {
@@ -952,6 +1594,26 @@ export default defineComponent({
 
 	.kyyy-home-page__search-input {
 		font-size: 28rpx;
+	}
+
+	.kyyy-home-page__search-box--floating {
+		gap: 12rpx;
+		min-height: 0;
+		padding: 0 18rpx;
+	}
+
+	.kyyy-home-page__search-box--floating .kyyy-home-page__search-input {
+		font-size: 26rpx;
+	}
+
+	.kyyy-home-page__search-item {
+		min-height: 110rpx;
+		padding: 20rpx 22rpx;
+	}
+
+	.kyyy-home-page__search-item-word {
+		max-width: 340rpx;
+		font-size: 34rpx;
 	}
 
 	.kyyy-home-page__daily-card {
