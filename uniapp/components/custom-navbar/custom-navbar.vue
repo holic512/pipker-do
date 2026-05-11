@@ -1,4 +1,13 @@
-<!-- AI 索引: 小程序通用顶部导航与项目切换抽屉。 -->
+<!--
+@file CustomNavbar
+@project pipker-do
+@module 小程序 / 通用导航
+@description 提供顶部导航栏、左侧项目切换抽屉与项目跳转入口。
+@logic 1. 读取系统胶囊与状态栏尺寸；2. 控制项目抽屉显示隐藏；3. 根据当前路由标记并切换项目。
+@dependencies Shared: @/shared/project, Component: uni-icons
+@index_tags 小程序导航, 项目切换, 左侧抽屉, 遮罩层
+@author holic512
+-->
 <template>
 	<view class="custom-navbar" :style="placeholderStyle">
 		<view class="custom-navbar__inner" :style="navbarStyle">
@@ -25,7 +34,6 @@
 				<view class="project-drawer" :style="drawerPanelStyle">
 					<view class="project-drawer__header">
 						<view class="project-drawer__header-copy">
-							<text class="project-drawer__eyebrow">PROJECT SWITCHER</text>
 							<text class="project-drawer__title">切换项目</text>
 							<text class="project-drawer__desc">通过左侧抽屉在不同学科项目间快速切换。</text>
 						</view>
@@ -293,7 +301,7 @@ export default {
 .project-drawer-layer__mask {
 	position: absolute;
 	inset: 0;
-	background: rgba(31, 41, 55, 0.22);
+	background: rgba(15, 23, 42, 0.46);
 	opacity: 0;
 	transition: opacity 0.28s ease;
 }
@@ -309,7 +317,7 @@ export default {
 	left: 0;
 	transform: translateX(-100%);
 	transition: transform 0.28s ease;
-	box-shadow: 24rpx 0 56rpx rgba(43, 52, 55, 0.12);
+	box-shadow: 30rpx 0 80rpx rgba(15, 23, 42, 0.26);
 }
 
 .project-drawer-layer.is-visible .project-drawer-layer__panel {
@@ -324,9 +332,7 @@ export default {
 	padding-right: 24rpx;
 	padding-left: 24rpx;
 	padding-bottom: calc(env(safe-area-inset-bottom) + 36rpx);
-	background:
-		radial-gradient(circle at top right, rgba(215, 226, 255, 0.82), rgba(215, 226, 255, 0) 34%),
-		linear-gradient(180deg, #f9fbfc 0%, #f2f5f7 100%);
+	background: #ffffff;
 }
 
 .project-drawer__header {
@@ -341,16 +347,8 @@ export default {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
-	gap: 8rpx;
+	gap: 10rpx;
 	min-width: 0;
-}
-
-.project-drawer__eyebrow {
-	font-size: 18rpx;
-	line-height: 1.4;
-	font-weight: 700;
-	letter-spacing: 0.2em;
-	color: #8d97a7;
 }
 
 .project-drawer__title {
@@ -444,9 +442,13 @@ export default {
 }
 
 .project-drawer__card.is-active {
-	background: #f3f7ff;
-	border-color: rgba(84, 94, 118, 0.28);
-	box-shadow: 0 12rpx 26rpx rgba(43, 52, 55, 0.08);
+	background: #eefaf2;
+	border-color: rgba(74, 151, 96, 0.42);
+	box-shadow: 0 12rpx 26rpx rgba(47, 125, 70, 0.12);
+}
+
+.project-drawer__card.is-active .project-drawer__card-title {
+	color: #2f7d46;
 }
 
 .project-drawer__card-title {
