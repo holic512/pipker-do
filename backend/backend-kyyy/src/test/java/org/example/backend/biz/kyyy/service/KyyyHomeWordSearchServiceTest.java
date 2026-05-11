@@ -1,5 +1,6 @@
 package org.example.backend.biz.kyyy.service;
 
+import org.example.backend.biz.kyyy.dto.KyyyHomeWordDetailResponse;
 import org.example.backend.biz.kyyy.dto.KyyyHomeWordSearchResponse;
 import org.example.backend.biz.kyyy.entity.KyyyWord;
 import org.example.backend.biz.kyyy.mapper.KyyyWordMapper;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -23,8 +25,8 @@ import static org.mockito.Mockito.when;
  * @file KyyyHomeWordSearchServiceTest
  * @project pipker-do
  * @module 考研英语 / 首页查词测试
- * @description 验证首页查词服务的关键词处理、排序优先级与数量裁剪。
- * @logic 1. 模拟 Mapper 查询结果；2. 覆盖空关键词、精确优先、去重与结果上限；3. 校验响应字段。
+ * @description 验证首页查词服务的关键词处理、排序优先级、数量裁剪与详情查询。
+ * @logic 1. 模拟 Mapper 查询结果；2. 覆盖空关键词、精确优先、去重与结果上限；3. 校验详情例句字段。
  * @dependencies Service: KyyyHomeWordSearchService, Mapper: KyyyWordMapper
  * @index_tags 考研英语, 首页查词, 单元测试, Mockito
  * @author holic512
@@ -81,6 +83,28 @@ class KyyyHomeWordSearchServiceTest {
         assertEquals(12, result.size());
         assertEquals("word1", result.get(0).getWordText());
         assertEquals("word12", result.get(11).getWordText());
+    }
+
+    @Test
+    void returnsNullAndSkipsMapperWhenDetailWordIdIsInvalid() {
+        assertNull(kyyyHomeWordSearchService.getWordDetail(0L));
+
+        verify(kyyyWordMapper, never()).selectOne(any());
+    }
+
+    @Test
+    void returnsActiveWordDetailWithExample() {
+        KyyyWord word = createWord(12L, "abandon");
+        word.setExampleSentence("Never abandon your plan.");
+        word.setExampleTranslation("永远不要放弃你的计划。");
+        when(kyyyWordMapper.selectOne(any())).thenReturn(word);
+
+        KyyyHomeWordDetailResponse result = kyyyHomeWordSearchService.getWordDetail(12L);
+
+        assertEquals(12L, result.getWordId());
+        assertEquals("abandon", result.getWordText());
+        assertEquals("Never abandon your plan.", result.getExampleSentence());
+        assertEquals("永远不要放弃你的计划。", result.getExampleTranslation());
     }
 
     private KyyyWord createWord(Long id, String wordText) {

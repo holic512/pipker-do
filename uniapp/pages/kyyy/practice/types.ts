@@ -10,16 +10,21 @@ export interface KyyyPracticeSettingOption {
 export interface KyyyPracticeSettingResponse {
 	examDirection?: KyyyExamDirection | string | null
 	examDirectionLabel?: string | null
+	defaultWordBankId?: number | string | null
+	defaultWordBankName?: string | null
 	examDirectionOptions?: KyyyPracticeSettingOption[] | null
 }
 
 export interface KyyyPracticeSettingRequest {
 	examDirection?: KyyyExamDirection
+	defaultWordBankId?: number | null
 }
 
 export interface KyyyPracticeSettingState {
 	examDirection: KyyyExamDirection
 	examDirectionLabel: string
+	defaultWordBankId: number | null
+	defaultWordBankName: string
 	examDirectionOptions: KyyyPracticeSettingOption[]
 	loaded: boolean
 	syncing: boolean

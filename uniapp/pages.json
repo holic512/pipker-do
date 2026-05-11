@@ -98,6 +98,12 @@
 			}
 		},
 		{
+			"path": "pages/kyyy/word-bank/index",
+			"style": {
+				"navigationBarTitleText": "词库"
+			}
+		},
+		{
 			"path": "pages/kyyy/translation/index",
 			"style": {
 				"navigationBarTitleText": "翻译"

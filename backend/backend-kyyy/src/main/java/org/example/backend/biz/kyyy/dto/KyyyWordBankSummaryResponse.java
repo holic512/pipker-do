@@ -15,4 +15,6 @@ public class KyyyWordBankSummaryResponse implements Serializable {
     private Integer totalCount;
 
     private Integer selectedCount;
+
+    private Long defaultWordBankId;
 }

@@ -36,4 +36,6 @@ public class KyyyWordBankRecordResponse implements Serializable {
     private LocalDateTime lastPracticeAt;
 
     private Boolean selected;
+
+    private Boolean isDefault;
 }

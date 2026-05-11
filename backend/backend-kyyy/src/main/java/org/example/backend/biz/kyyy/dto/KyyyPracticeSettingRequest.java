@@ -9,4 +9,6 @@ import lombok.Data;
 public class KyyyPracticeSettingRequest {
 
     private String examDirection;
+
+    private Long defaultWordBankId;
 }

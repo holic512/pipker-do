@@ -24,14 +24,21 @@ export function createEmptyHomeDashboard(): KyyyHomeDashboardState {
 	return {
 		studyCount: 0,
 		reviewCount: 0,
+		defaultWordBankId: null,
+		defaultWordBankName: '',
 		loaded: false
 	}
 }
 
 export function normalizeHomeDashboard(result: KyyyHomeDashboardResponse | null | undefined): KyyyHomeDashboardState {
+	const defaultWordBankId = result?.defaultWordBankId === null || result?.defaultWordBankId === undefined
+		? null
+		: toNumber(result?.defaultWordBankId, 0)
 	return {
 		studyCount: Math.max(toNumber(result?.studyCount), 0),
 		reviewCount: Math.max(toNumber(result?.reviewCount), 0),
+		defaultWordBankId: defaultWordBankId && defaultWordBankId > 0 ? defaultWordBankId : null,
+		defaultWordBankName: normalizeText(result?.defaultWordBankName),
 		loaded: true
 	}
 }

@@ -15,4 +15,8 @@ public class KyyyHomeDashboardResponse implements Serializable {
     private Integer studyCount;
 
     private Integer reviewCount;
+
+    private Long defaultWordBankId;
+
+    private String defaultWordBankName;
 }

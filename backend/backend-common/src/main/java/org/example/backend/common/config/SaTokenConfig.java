@@ -16,6 +16,16 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * @file SaTokenConfig
+ * @project pipker-do
+ * @module 共享安全 / 登录鉴权
+ * @description 配置 Sa-Token API 登录过滤器、匿名接口白名单与后台角色读取。
+ * @logic 1. 对 /api/** 统一执行用户或管理员登录校验；2. 放行登录、健康检查、静态文件与匿名查词接口；3. 统一输出 401 JSON。
+ * @dependencies Sa-Token: SaServletFilter, Security: StpKit, Mapper: AdminRoleMapper
+ * @index_tags Sa-Token, 登录鉴权, 401, 匿名接口, 角色
+ * @author holic512
+ */
 @Configuration
 public class SaTokenConfig {
 
@@ -27,6 +37,8 @@ public class SaTokenConfig {
                         "/api/auth/wechat/login",
                         "/api/auth/logout",
                         "/api/admin/auth/login",
+                        "/api/kyyy/home/word-search",
+                        "/api/kyyy/home/word-detail/**",
                         "/api/health",
                         "/static/files/**"
                 )

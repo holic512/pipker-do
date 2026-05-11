@@ -3,11 +3,15 @@
 export interface KyyyHomeDashboardResponse {
 	studyCount?: number | string | null
 	reviewCount?: number | string | null
+	defaultWordBankId?: number | string | null
+	defaultWordBankName?: string | null
 }
 
 export interface KyyyHomeDashboardState {
 	studyCount: number
 	reviewCount: number
+	defaultWordBankId: number | null
+	defaultWordBankName: string
 	loaded: boolean
 }
 

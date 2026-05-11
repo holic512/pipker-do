@@ -5,6 +5,7 @@ import org.example.backend.biz.kyyy.dto.KyyyWordBankListResponse;
 import org.example.backend.biz.kyyy.dto.KyyyWordBankRecordResponse;
 import org.example.backend.biz.kyyy.dto.KyyyWordBankSelectionRequest;
 import org.example.backend.biz.kyyy.dto.KyyyWordBankSummaryResponse;
+import org.example.backend.biz.kyyy.entity.KyyyUserPracticeSetting;
 import org.example.backend.biz.kyyy.entity.KyyyUserWordBank;
 import org.example.backend.biz.kyyy.entity.KyyyWordBank;
 import org.example.backend.biz.kyyy.mapper.KyyyUserWordBankMapper;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * AI 索引: KYYY 用户侧词库服务。
@@ -44,18 +46,28 @@ public class KyyyWordBankUserService {
                 .orderByDesc(KyyyWordBank::getStudyUserCount)
                 .orderByDesc(KyyyWordBank::getId));
         if (activeBanks.isEmpty()) {
-            return new KyyyWordBankListResponse(new KyyyWordBankSummaryResponse(0, 0), List.of());
+            return new KyyyWordBankListResponse(new KyyyWordBankSummaryResponse(0, 0, null), List.of());
         }
 
+        KyyyUserPracticeSetting practiceSetting = kyyyWordPracticeSupport.loadPracticeSetting(userId);
+        Long defaultWordBankId = kyyyWordPracticeSupport.resolveAvailableDefaultWordBankId(
+                userId,
+                practiceSetting == null ? null : practiceSetting.getDefaultWordBankId()
+        );
         Map<Long, KyyyUserWordBank> relationMap = buildSelectedRelationMap(
                 userId,
                 activeBanks.stream().map(KyyyWordBank::getId).toList()
         );
         List<KyyyWordBankRecordResponse> records = activeBanks.stream()
-                .map(bank -> toRecord(bank, relationMap.get(bank.getId()), relationMap.containsKey(bank.getId())))
+                .map(bank -> toRecord(
+                        bank,
+                        relationMap.get(bank.getId()),
+                        relationMap.containsKey(bank.getId()),
+                        Objects.equals(defaultWordBankId, bank.getId())
+                ))
                 .toList();
         return new KyyyWordBankListResponse(
-                new KyyyWordBankSummaryResponse(records.size(), relationMap.size()),
+                new KyyyWordBankSummaryResponse(records.size(), relationMap.size(), defaultWordBankId),
                 records
         );
     }
@@ -87,9 +99,15 @@ public class KyyyWordBankUserService {
             relation = null;
         }
 
+        KyyyUserPracticeSetting practiceSetting = kyyyWordPracticeSupport.syncDefaultWordBankSelection(userId);
         kyyyWordPracticeSupport.syncStudyUserCount(bankId);
         KyyyWordBank refreshedBank = kyyyWordPracticeSupport.requireActiveWordBank(bankId);
-        return toRecord(refreshedBank, relation, relation != null);
+        return toRecord(
+                refreshedBank,
+                relation,
+                relation != null,
+                practiceSetting != null && Objects.equals(practiceSetting.getDefaultWordBankId(), refreshedBank.getId())
+        );
     }
 
     private Map<Long, KyyyUserWordBank> buildSelectedRelationMap(Long userId, List<Long> bankIds) {
@@ -108,7 +126,8 @@ public class KyyyWordBankUserService {
 
     private KyyyWordBankRecordResponse toRecord(KyyyWordBank bank,
                                                 KyyyUserWordBank relation,
-                                                boolean selected) {
+                                                boolean selected,
+                                                boolean isDefault) {
         return new KyyyWordBankRecordResponse(
                 bank.getId(),
                 bank.getBankCode(),
@@ -121,7 +140,8 @@ public class KyyyWordBankUserService {
                 selected && relation != null ? relation.getJoinSource() : null,
                 selected && relation != null ? relation.getCreatedAt() : null,
                 selected && relation != null ? relation.getLastPracticeAt() : null,
-                selected
+                selected,
+                selected && isDefault
         );
     }
 }

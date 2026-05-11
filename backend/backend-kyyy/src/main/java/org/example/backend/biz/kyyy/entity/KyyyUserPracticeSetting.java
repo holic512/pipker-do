@@ -25,6 +25,9 @@ public class KyyyUserPracticeSetting implements Serializable {
     /** 考试方向：english_one/english_two。 */
     private String examDirection;
 
+    /** 默认词库 ID。 */
+    private Long defaultWordBankId;
+
     /** 创建时间。 */
     private LocalDateTime createdAt;
 

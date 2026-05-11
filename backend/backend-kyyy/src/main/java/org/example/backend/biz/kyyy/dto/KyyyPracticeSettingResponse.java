@@ -17,5 +17,9 @@ public class KyyyPracticeSettingResponse implements Serializable {
 
     private String examDirectionLabel;
 
+    private Long defaultWordBankId;
+
+    private String defaultWordBankName;
+
     private List<KyyyPracticeSettingOptionResponse> examDirectionOptions;
 }

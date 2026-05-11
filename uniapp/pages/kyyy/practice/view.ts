@@ -33,6 +33,8 @@ export function createDefaultPracticeSettings(): KyyyPracticeSettingState {
 	return {
 		examDirection: DEFAULT_KYYY_EXAM_DIRECTION,
 		examDirectionLabel: resolveExamDirectionLabel(DEFAULT_KYYY_EXAM_DIRECTION),
+		defaultWordBankId: null,
+		defaultWordBankName: '',
 		examDirectionOptions: DEFAULT_KYYY_EXAM_DIRECTION_OPTIONS,
 		loaded: false,
 		syncing: false
@@ -48,9 +50,14 @@ export function normalizePracticeSettings(result: KyyyPracticeSettingResponse | 
 		}))
 		: DEFAULT_KYYY_EXAM_DIRECTION_OPTIONS
 	const examDirection = normalizeExamDirection(result?.examDirection)
+	const defaultWordBankId = result?.defaultWordBankId === null || result?.defaultWordBankId === undefined
+		? null
+		: Number(result.defaultWordBankId)
 	return {
 		examDirection,
 		examDirectionLabel: result?.examDirectionLabel || resolveExamDirectionLabel(examDirection, options),
+		defaultWordBankId: defaultWordBankId !== null && Number.isFinite(defaultWordBankId) && defaultWordBankId > 0 ? defaultWordBankId : null,
+		defaultWordBankName: typeof result?.defaultWordBankName === 'string' ? result.defaultWordBankName.trim() : '',
 		examDirectionOptions: options,
 		loaded: true,
 		syncing: false

@@ -3,25 +3,23 @@ package org.example.backend.biz.kyyy.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.example.backend.biz.kyyy.dto.KyyyHomeDashboardResponse;
 import org.example.backend.biz.kyyy.dto.KyyyPracticeNextWordResponse;
-import org.example.backend.biz.kyyy.dto.KyyyRelatedWordResponse;
 import org.example.backend.biz.kyyy.dto.KyyyPracticeSettingRequest;
 import org.example.backend.biz.kyyy.dto.KyyyPracticeSettingResponse;
+import org.example.backend.biz.kyyy.dto.KyyyRelatedWordResponse;
 import org.example.backend.biz.kyyy.dto.KyyyWordSourceBankResponse;
 import org.example.backend.biz.kyyy.entity.KyyyUserPracticeSetting;
-import org.example.backend.biz.kyyy.entity.KyyyUserWordBank;
 import org.example.backend.biz.kyyy.entity.KyyyUserWordProgress;
 import org.example.backend.biz.kyyy.entity.KyyyWord;
 import org.example.backend.biz.kyyy.entity.KyyyWordBank;
 import org.example.backend.biz.kyyy.entity.KyyyWordBankWordRel;
 import org.example.backend.biz.kyyy.entity.KyyyWordRelated;
 import org.example.backend.biz.kyyy.mapper.KyyyUserPracticeSettingMapper;
-import org.example.backend.biz.kyyy.mapper.KyyyUserWordBankMapper;
 import org.example.backend.biz.kyyy.mapper.KyyyUserWordProgressMapper;
-import org.example.backend.biz.kyyy.mapper.KyyyWordBankMapper;
 import org.example.backend.biz.kyyy.mapper.KyyyWordBankWordRelMapper;
 import org.example.backend.biz.kyyy.mapper.KyyyWordMapper;
 import org.example.backend.biz.kyyy.mapper.KyyyWordRelatedMapper;
 import org.example.backend.biz.kyyy.support.KyyyExamDirectionSupport;
+import org.example.backend.biz.kyyy.support.KyyyWordPracticeSupport;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
 import org.springframework.stereotype.Service;
@@ -29,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -43,89 +40,58 @@ import java.util.Map;
 public class KyyyPracticeUserService {
 
     private static final String DEFAULT_STUDY_STATUS = "new";
+    private static final KyyyHomeDashboardResponse EMPTY_HOME_DASHBOARD =
+            new KyyyHomeDashboardResponse(0, 0, null, null);
 
     private final KyyyUserPracticeSettingMapper kyyyUserPracticeSettingMapper;
-    private final KyyyWordBankMapper kyyyWordBankMapper;
     private final KyyyWordMapper kyyyWordMapper;
     private final KyyyWordBankWordRelMapper kyyyWordBankWordRelMapper;
-    private final KyyyUserWordBankMapper kyyyUserWordBankMapper;
     private final KyyyUserWordProgressMapper kyyyUserWordProgressMapper;
     private final KyyyWordRelatedMapper kyyyWordRelatedMapper;
+    private final KyyyWordPracticeSupport kyyyWordPracticeSupport;
 
     public KyyyPracticeUserService(KyyyUserPracticeSettingMapper kyyyUserPracticeSettingMapper,
-                                   KyyyWordBankMapper kyyyWordBankMapper,
                                    KyyyWordMapper kyyyWordMapper,
                                    KyyyWordBankWordRelMapper kyyyWordBankWordRelMapper,
-                                   KyyyUserWordBankMapper kyyyUserWordBankMapper,
                                    KyyyUserWordProgressMapper kyyyUserWordProgressMapper,
-                                   KyyyWordRelatedMapper kyyyWordRelatedMapper) {
+                                   KyyyWordRelatedMapper kyyyWordRelatedMapper,
+                                   KyyyWordPracticeSupport kyyyWordPracticeSupport) {
         this.kyyyUserPracticeSettingMapper = kyyyUserPracticeSettingMapper;
-        this.kyyyWordBankMapper = kyyyWordBankMapper;
         this.kyyyWordMapper = kyyyWordMapper;
         this.kyyyWordBankWordRelMapper = kyyyWordBankWordRelMapper;
-        this.kyyyUserWordBankMapper = kyyyUserWordBankMapper;
         this.kyyyUserWordProgressMapper = kyyyUserWordProgressMapper;
         this.kyyyWordRelatedMapper = kyyyWordRelatedMapper;
+        this.kyyyWordPracticeSupport = kyyyWordPracticeSupport;
     }
 
     public KyyyPracticeSettingResponse getSettings(Long userId) {
-        return toPracticeSettingResponse(loadPracticeSetting(userId));
+        KyyyUserPracticeSetting setting = kyyyWordPracticeSupport.syncDefaultWordBankSelection(userId);
+        KyyyWordBank defaultWordBank = setting == null
+                ? null
+                : kyyyWordPracticeSupport.loadActiveSelectedWordBank(userId, setting.getDefaultWordBankId());
+        return toPracticeSettingResponse(setting, defaultWordBank);
     }
 
     public KyyyHomeDashboardResponse getHomeDashboard(Long userId) {
-        List<KyyyUserWordBank> selectedRelations = kyyyUserWordBankMapper.selectList(new LambdaQueryWrapper<KyyyUserWordBank>()
-                .eq(KyyyUserWordBank::getUserId, userId)
-                .orderByDesc(KyyyUserWordBank::getCreatedAt)
-                .orderByDesc(KyyyUserWordBank::getId));
-        if (selectedRelations.isEmpty()) {
-            return new KyyyHomeDashboardResponse(0, 0);
+        KyyyUserPracticeSetting setting = kyyyWordPracticeSupport.syncDefaultWordBankSelection(userId);
+        KyyyWordBank defaultWordBank = setting == null
+                ? null
+                : kyyyWordPracticeSupport.loadActiveSelectedWordBank(userId, setting.getDefaultWordBankId());
+        if (defaultWordBank == null) {
+            return EMPTY_HOME_DASHBOARD;
         }
 
-        Map<Long, KyyyUserWordBank> relationMap = new LinkedHashMap<>();
-        selectedRelations.forEach(item -> relationMap.putIfAbsent(item.getWordBankId(), item));
-        List<KyyyWordBank> activeBanks = kyyyWordBankMapper.selectList(new LambdaQueryWrapper<KyyyWordBank>()
-                .in(KyyyWordBank::getId, relationMap.keySet())
-                .eq(KyyyWordBank::getStatus, 1)
-                .orderByAsc(KyyyWordBank::getSortNo)
-                .orderByDesc(KyyyWordBank::getId));
-        if (activeBanks.isEmpty()) {
-            return new KyyyHomeDashboardResponse(0, 0);
+        CandidateWordBundle bundle;
+        try {
+            bundle = buildCandidateWordBundle(userId, defaultWordBank);
+        } catch (BusinessException error) {
+            return new KyyyHomeDashboardResponse(0, 0, defaultWordBank.getId(), defaultWordBank.getBankName());
         }
-
-        List<KyyyWordBankWordRel> bankWordRelations = kyyyWordBankWordRelMapper.selectList(new LambdaQueryWrapper<KyyyWordBankWordRel>()
-                .in(KyyyWordBankWordRel::getWordBankId, activeBanks.stream().map(KyyyWordBank::getId).toList())
-                .orderByAsc(KyyyWordBankWordRel::getWordBankId)
-                .orderByAsc(KyyyWordBankWordRel::getSortNo)
-                .orderByAsc(KyyyWordBankWordRel::getId));
-        if (bankWordRelations.isEmpty()) {
-            return new KyyyHomeDashboardResponse(0, 0);
-        }
-
-        LinkedHashSet<Long> orderedWordIds = new LinkedHashSet<>();
-        bankWordRelations.forEach(item -> orderedWordIds.add(item.getWordId()));
-        if (orderedWordIds.isEmpty()) {
-            return new KyyyHomeDashboardResponse(0, 0);
-        }
-
-        List<KyyyWord> activeWords = kyyyWordMapper.selectList(new LambdaQueryWrapper<KyyyWord>()
-                .in(KyyyWord::getId, orderedWordIds)
-                .eq(KyyyWord::getStatus, 1));
-        Map<Long, KyyyWord> wordMap = new LinkedHashMap<>();
-        activeWords.forEach(item -> wordMap.putIfAbsent(item.getId(), item));
-
-        List<Long> candidateWordIds = orderedWordIds.stream()
-                .filter(wordMap::containsKey)
-                .toList();
-        if (candidateWordIds.isEmpty()) {
-            return new KyyyHomeDashboardResponse(0, 0);
-        }
-
-        Map<Long, KyyyUserWordProgress> progressMap = buildUserWordProgressMap(userId, candidateWordIds);
         LocalDateTime now = LocalDateTime.now();
         int studyCount = 0;
         int reviewCount = 0;
-        for (Long wordId : candidateWordIds) {
-            KyyyUserWordProgress progress = progressMap.get(wordId);
+        for (Long wordId : bundle.candidateWordIds()) {
+            KyyyUserWordProgress progress = bundle.progressMap().get(wordId);
             if (!isStudied(progress)) {
                 studyCount++;
                 continue;
@@ -135,11 +101,23 @@ public class KyyyPracticeUserService {
             }
         }
 
-        return new KyyyHomeDashboardResponse(studyCount, reviewCount);
+        return new KyyyHomeDashboardResponse(
+                studyCount,
+                reviewCount,
+                defaultWordBank.getId(),
+                defaultWordBank.getBankName()
+        );
     }
 
     public KyyyPracticeNextWordResponse getNextWord(Long userId) {
-        CandidateWordBundle bundle = buildCandidateWordBundle(userId);
+        KyyyUserPracticeSetting setting = kyyyWordPracticeSupport.syncDefaultWordBankSelection(userId);
+        KyyyWordBank defaultWordBank = setting == null
+                ? null
+                : kyyyWordPracticeSupport.loadActiveSelectedWordBank(userId, setting.getDefaultWordBankId());
+        if (defaultWordBank == null) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "请先选择默认词库后再开始背词");
+        }
+        CandidateWordBundle bundle = buildCandidateWordBundle(userId, defaultWordBank);
         Long targetWordId = resolveNextWordId(bundle.candidateWordIds(), bundle.progressMap());
         return buildNextWordResponse(targetWordId, bundle);
     }
@@ -147,65 +125,61 @@ public class KyyyPracticeUserService {
     @Transactional
     public KyyyPracticeSettingResponse updateSettings(Long userId, KyyyPracticeSettingRequest request) {
         KyyyUserPracticeSetting existing = loadPracticeSetting(userId);
+        KyyyWordBank requestedDefaultWordBank = request == null || request.getDefaultWordBankId() == null
+                ? null
+                : kyyyWordPracticeSupport.requireActiveSelectedWordBank(userId, request.getDefaultWordBankId());
         if (existing == null) {
             KyyyUserPracticeSetting setting = new KyyyUserPracticeSetting();
             setting.setUserId(userId);
             setting.setExamDirection(KyyyExamDirectionSupport.normalizeOrDefault(
                     request == null ? null : request.getExamDirection()
             ));
+            setting.setDefaultWordBankId(requestedDefaultWordBank == null ? null : requestedDefaultWordBank.getId());
             kyyyUserPracticeSettingMapper.insert(setting);
-            return toPracticeSettingResponse(setting);
+            KyyyUserPracticeSetting normalizedSetting = kyyyWordPracticeSupport.syncDefaultWordBankSelection(userId);
+            KyyyWordBank defaultWordBank = normalizedSetting == null
+                    ? null
+                    : kyyyWordPracticeSupport.loadActiveSelectedWordBank(userId, normalizedSetting.getDefaultWordBankId());
+            return toPracticeSettingResponse(normalizedSetting == null ? setting : normalizedSetting, defaultWordBank);
         }
 
-        if (request != null && request.getExamDirection() != null) {
-            existing.setExamDirection(KyyyExamDirectionSupport.normalize(request.getExamDirection()));
+        if (request != null) {
+            if (request.getExamDirection() != null) {
+                existing.setExamDirection(KyyyExamDirectionSupport.normalize(request.getExamDirection()));
+            }
+            if (request.getDefaultWordBankId() != null) {
+                existing.setDefaultWordBankId(requestedDefaultWordBank.getId());
+            }
             kyyyUserPracticeSettingMapper.updateById(existing);
         }
-        return toPracticeSettingResponse(existing);
+        KyyyUserPracticeSetting normalizedSetting = kyyyWordPracticeSupport.syncDefaultWordBankSelection(userId);
+        KyyyWordBank defaultWordBank = normalizedSetting == null
+                ? null
+                : kyyyWordPracticeSupport.loadActiveSelectedWordBank(userId, normalizedSetting.getDefaultWordBankId());
+        return toPracticeSettingResponse(normalizedSetting == null ? existing : normalizedSetting, defaultWordBank);
     }
 
-    private CandidateWordBundle buildCandidateWordBundle(Long userId) {
-        List<KyyyUserWordBank> selectedRelations = kyyyUserWordBankMapper.selectList(new LambdaQueryWrapper<KyyyUserWordBank>()
-                .eq(KyyyUserWordBank::getUserId, userId)
-                .orderByDesc(KyyyUserWordBank::getCreatedAt)
-                .orderByDesc(KyyyUserWordBank::getId));
-        if (selectedRelations.isEmpty()) {
-            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "请先选择词库后再开始背词");
-        }
-
-        Map<Long, KyyyUserWordBank> relationMap = new LinkedHashMap<>();
-        selectedRelations.forEach(item -> relationMap.putIfAbsent(item.getWordBankId(), item));
-        List<KyyyWordBank> activeBanks = kyyyWordBankMapper.selectList(new LambdaQueryWrapper<KyyyWordBank>()
-                .in(KyyyWordBank::getId, relationMap.keySet())
-                .eq(KyyyWordBank::getStatus, 1)
-                .orderByAsc(KyyyWordBank::getSortNo)
-                .orderByDesc(KyyyWordBank::getId));
-        if (activeBanks.isEmpty()) {
-            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "当前已选词库暂不可用");
+    private CandidateWordBundle buildCandidateWordBundle(Long userId, KyyyWordBank defaultWordBank) {
+        if (defaultWordBank == null || defaultWordBank.getId() == null) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "请先选择默认词库后再开始背词");
         }
 
         List<KyyyWordBankWordRel> bankWordRelations = kyyyWordBankWordRelMapper.selectList(new LambdaQueryWrapper<KyyyWordBankWordRel>()
-                .in(KyyyWordBankWordRel::getWordBankId, activeBanks.stream().map(KyyyWordBank::getId).toList())
-                .orderByAsc(KyyyWordBankWordRel::getWordBankId)
+                .eq(KyyyWordBankWordRel::getWordBankId, defaultWordBank.getId())
                 .orderByAsc(KyyyWordBankWordRel::getSortNo)
                 .orderByAsc(KyyyWordBankWordRel::getId));
         if (bankWordRelations.isEmpty()) {
-            throw new BusinessException(ApiResponseCode.NOT_FOUND, "当前已选词库暂无可学习单词");
+            throw new BusinessException(ApiResponseCode.NOT_FOUND, "当前默认词库暂无可学习单词");
         }
-
-        Map<Long, List<KyyyWordBankWordRel>> relationByBankId = new LinkedHashMap<>();
-        bankWordRelations.forEach(item -> relationByBankId.computeIfAbsent(item.getWordBankId(), key -> new ArrayList<>()).add(item));
 
         LinkedHashSet<Long> orderedWordIds = new LinkedHashSet<>();
         Map<Long, List<KyyyWordBank>> sourceBanksByWordId = new LinkedHashMap<>();
-        for (KyyyWordBank bank : activeBanks) {
-            for (KyyyWordBankWordRel relation : relationByBankId.getOrDefault(bank.getId(), List.of())) {
-                orderedWordIds.add(relation.getWordId());
-                sourceBanksByWordId.computeIfAbsent(relation.getWordId(), key -> new ArrayList<>()).add(bank);
-            }
+        for (KyyyWordBankWordRel relation : bankWordRelations) {
+            orderedWordIds.add(relation.getWordId());
+            sourceBanksByWordId.put(relation.getWordId(), List.of(defaultWordBank));
         }
         if (orderedWordIds.isEmpty()) {
-            throw new BusinessException(ApiResponseCode.NOT_FOUND, "当前已选词库暂无可学习单词");
+            throw new BusinessException(ApiResponseCode.NOT_FOUND, "当前默认词库暂无可学习单词");
         }
 
         List<KyyyWord> activeWords = kyyyWordMapper.selectList(new LambdaQueryWrapper<KyyyWord>()
@@ -218,7 +192,7 @@ public class KyyyPracticeUserService {
                 .filter(wordMap::containsKey)
                 .toList();
         if (candidateWordIds.isEmpty()) {
-            throw new BusinessException(ApiResponseCode.NOT_FOUND, "当前已选词库暂无可学习单词");
+            throw new BusinessException(ApiResponseCode.NOT_FOUND, "当前默认词库暂无可学习单词");
         }
 
         Map<Long, KyyyUserWordProgress> progressMap = buildUserWordProgressMap(userId, candidateWordIds);
@@ -319,18 +293,18 @@ public class KyyyPracticeUserService {
     }
 
     private KyyyUserPracticeSetting loadPracticeSetting(Long userId) {
-        return kyyyUserPracticeSettingMapper.selectOne(new LambdaQueryWrapper<KyyyUserPracticeSetting>()
-                .eq(KyyyUserPracticeSetting::getUserId, userId)
-                .last("limit 1"));
+        return kyyyWordPracticeSupport.loadPracticeSetting(userId);
     }
 
-    private KyyyPracticeSettingResponse toPracticeSettingResponse(KyyyUserPracticeSetting setting) {
+    private KyyyPracticeSettingResponse toPracticeSettingResponse(KyyyUserPracticeSetting setting, KyyyWordBank defaultWordBank) {
         String examDirection = KyyyExamDirectionSupport.normalizeOrDefault(
                 setting == null ? null : setting.getExamDirection()
         );
         return new KyyyPracticeSettingResponse(
                 examDirection,
                 KyyyExamDirectionSupport.labelOf(examDirection),
+                defaultWordBank == null ? null : defaultWordBank.getId(),
+                defaultWordBank == null ? null : defaultWordBank.getBankName(),
                 KyyyExamDirectionSupport.options()
         );
     }

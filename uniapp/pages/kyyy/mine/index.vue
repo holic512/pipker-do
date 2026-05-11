@@ -6,6 +6,14 @@
 			profile-url="/pages/kyyy/profile/edit"
 		>
 			<template #special>
+				<view class="mine-page__menu-item" @tap="openWordBankPage">
+					<view class="mine-page__menu-icon">
+						<uni-icons type="list" size="18" color="#64748b" />
+					</view>
+					<text class="mine-page__menu-text">词库</text>
+					<text class="kyyy-mine__menu-value">{{ practiceSettings.defaultWordBankName || '未选择' }}</text>
+					<uni-icons type="right" size="16" color="#c3cad7" />
+				</view>
 				<view class="mine-page__menu-item" @tap="openPracticeSettingsPopup">
 					<view class="mine-page__menu-icon">
 						<uni-icons type="gear" size="18" color="#64748b" />
@@ -89,6 +97,18 @@ export default {
 				...settings,
 				syncing: false
 			}
+		},
+		openWordBankPage() {
+			uni.reLaunch({
+				url: '/pages/kyyy/word-bank/index',
+				fail: (error) => {
+					console.warn('[kyyy-mine] open word bank failed', error)
+					uni.showToast({
+						title: '打开词库失败',
+						icon: 'none'
+					})
+				}
+			})
 		},
 		openPracticeSettingsPopup() {
 			this.practiceSettingsPopupVisible = true
