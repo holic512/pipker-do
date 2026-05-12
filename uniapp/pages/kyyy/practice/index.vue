@@ -2,9 +2,9 @@
 @file KyyyPracticePage
 @project pipker-do
 @module 考研英语 / 小程序背词页
-@description 提供默认词库下的学习与复习卡片流，支持揭晓释义后评分、会话恢复与完成总结。
-@logic 1. 加载或恢复学习会话；2. 在揭晓释义后提交认识程度反馈；3. 在缺少默认词库、空态和完成态之间切换。
-@dependencies API: @/pages/kyyy/api/practice, Component: PageShell, Shared: @/shared/session/session
+@description 编排默认词库下的背词会话页，负责会话加载、反馈提交以及子组件状态分发。
+@logic 1. 加载或恢复学习会话；2. 用户先选择认识程度再显示释义并确认反馈；3. 将卡片、底栏和导航拆分到独立组件后统一调度。
+@dependencies API: @/pages/kyyy/api/practice, Component: PageShell, Component: PracticeSessionCard, Shared: @/shared/session/session
 @index_tags 考研英语, 背词页, 学习卡片, 复习会话
 @author holic512
 -->
@@ -14,7 +14,7 @@
 		content-style="padding: 0 24rpx 220rpx;"
 		:show-navbar="false"
 	>
-		<practice-session-navbar :progress-text="progressText" @exit="handleExit" />
+		<practice-session-navbar @exit="handleExit" />
 
 		<view class="kyyy-practice-page__ambient kyyy-practice-page__ambient--left"></view>
 		<view class="kyyy-practice-page__ambient kyyy-practice-page__ambient--right"></view>
@@ -25,72 +25,18 @@
 			<text class="kyyy-practice-page__state-desc">会优先恢复你还没完成的那一轮。</text>
 		</view>
 
-		<view v-else-if="sessionState.status === 'active' && sessionState.currentCard" class="kyyy-practice-page__card">
-			<view class="kyyy-practice-page__card-top">
-				<view class="kyyy-practice-page__card-tag">{{ currentSourceLabel }}</view>
-				<view class="kyyy-practice-page__card-tag kyyy-practice-page__card-tag--muted">
-					第 {{ sessionState.currentCard.roundNo }} 轮
-				</view>
-			</view>
-
-			<view class="kyyy-practice-page__card-head">
-				<text class="kyyy-practice-page__word">{{ sessionState.currentCard.wordText }}</text>
-				<view v-if="phoneticText" class="kyyy-practice-page__phonetic-row">
-					<view class="kyyy-practice-page__phonetic-pill">
-						<text>美</text>
-						<uni-icons type="sound" size="12" color="#7d8898" />
-					</view>
-					<text class="kyyy-practice-page__phonetic">{{ phoneticText }}</text>
-				</view>
-			</view>
-
-			<view v-if="!sessionState.revealed" class="kyyy-practice-page__memory-panel">
-				<text class="kyyy-practice-page__memory-title">先在脑中回忆词义</text>
-				<text class="kyyy-practice-page__memory-desc">想到后再点“查看释义”，再判断自己是认识、模糊还是不认识。</text>
-				<view class="kyyy-practice-page__reveal-button" @tap="handleReveal">
-					<text>查看释义</text>
-				</view>
-			</view>
-
-			<view v-else class="kyyy-practice-page__detail-panel">
-				<view class="kyyy-practice-page__meaning-row">
-					<text v-if="sessionState.currentCard.partOfSpeech" class="kyyy-practice-page__part-of-speech">
-						{{ sessionState.currentCard.partOfSpeech }}
-					</text>
-					<text class="kyyy-practice-page__meaning">{{ sessionState.currentCard.meaningCn || '释义暂缺' }}</text>
-				</view>
-
-				<view class="kyyy-practice-page__detail-block">
-					<view class="kyyy-practice-page__detail-title">
-						<view class="kyyy-practice-page__detail-mark"></view>
-						<text>例句</text>
-					</view>
-					<text class="kyyy-practice-page__detail-text">
-						{{ sessionState.currentCard.exampleSentence || '当前单词暂未补充例句。' }}
-					</text>
-					<text v-if="sessionState.currentCard.exampleTranslation" class="kyyy-practice-page__detail-subtext">
-						{{ sessionState.currentCard.exampleTranslation }}
-					</text>
-				</view>
-
-				<view v-if="sessionState.currentCard.relatedWords.length" class="kyyy-practice-page__detail-block">
-					<view class="kyyy-practice-page__detail-title">
-						<view class="kyyy-practice-page__detail-mark"></view>
-						<text>相关词</text>
-					</view>
-					<view class="kyyy-practice-page__related-list">
-						<view
-							v-for="item in sessionState.currentCard.relatedWords"
-							:key="`${item.id || item.relatedWordText}-${item.relationType}`"
-							class="kyyy-practice-page__related-item"
-						>
-							<text class="kyyy-practice-page__related-word">{{ item.relatedWordText }}</text>
-							<text class="kyyy-practice-page__related-meaning">{{ item.meaningCn }}</text>
-						</view>
-					</view>
-				</view>
-			</view>
-		</view>
+		<practice-session-card
+			v-else-if="sessionState.status === 'active' && sessionState.currentCard"
+			:card="sessionState.currentCard"
+			:revealed="sessionState.revealed"
+			:progress-text="progressText"
+			:progress-percent="progressPercent"
+			:current-source-label="currentSourceLabel"
+			:show-source-star-badge="showSourceStarBadge"
+			:round-star-slots="roundStarSlots"
+			:display-round-star-count="displayRoundStarCount"
+			:round-stars-state-class="roundStarsStateClass"
+		/>
 
 		<view v-else-if="sessionState.status === 'completed'" class="kyyy-practice-page__result-card">
 			<text class="kyyy-practice-page__result-title">这一轮结束了</text>
@@ -132,34 +78,15 @@
 			</view>
 		</view>
 
-		<view v-if="sessionState.status === 'active'" class="kyyy-practice-page__footer">
-			<text class="kyyy-practice-page__footer-hint">
-				{{ sessionState.revealed ? '按照刚才的回忆状态，给这个单词一个判断。' : '先点“查看释义”，再选择认识程度。' }}
-			</text>
-			<view class="kyyy-practice-page__footer-actions">
-				<view
-					class="kyyy-practice-page__rate-button kyyy-practice-page__rate-button--know"
-					:class="{ 'is-disabled': !canSubmitFeedback }"
-					@tap="handleSubmitRating('know')"
-				>
-					<text class="kyyy-practice-page__rate-text">认识</text>
-				</view>
-				<view
-					class="kyyy-practice-page__rate-button kyyy-practice-page__rate-button--fuzzy"
-					:class="{ 'is-disabled': !canSubmitFeedback }"
-					@tap="handleSubmitRating('fuzzy')"
-				>
-					<text class="kyyy-practice-page__rate-text">模糊</text>
-				</view>
-				<view
-					class="kyyy-practice-page__rate-button kyyy-practice-page__rate-button--unknown"
-					:class="{ 'is-disabled': !canSubmitFeedback }"
-					@tap="handleSubmitRating('unknown')"
-				>
-					<text class="kyyy-practice-page__rate-text">不认识</text>
-				</view>
-			</view>
-		</view>
+		<practice-session-footer-actions
+			v-if="sessionState.status === 'active'"
+			:revealed="sessionState.revealed"
+			:footer-hint-text="footerHintText"
+			:show-mistake-action="showMistakeAction"
+			@select-rating="handleSelectRating"
+			@next="handleAdvanceToNextWord"
+			@mistake="handleMarkAsMistake"
+		/>
 	</page-shell>
 </template>
 
@@ -167,6 +94,8 @@
 import { defineComponent } from 'vue'
 import PageShell from '@/components/page-shell/page-shell.vue'
 import PracticeSessionNavbar from '@/components/kyyy/practice/PracticeSessionNavbar.vue'
+import PracticeSessionCard from '@/components/kyyy/practice/PracticeSessionCard.vue'
+import PracticeSessionFooterActions from '@/components/kyyy/practice/PracticeSessionFooterActions.vue'
 import { bootstrapAuth } from '@/shared/session/session'
 import { getPracticeSession, submitPracticeFeedback } from '@/pages/kyyy/api/practice'
 import type {
@@ -185,20 +114,24 @@ interface PracticePageState {
 	sessionState: KyyyPracticeSessionState
 	cardShownAt: number
 	cardToken: string
+	pendingRating: KyyyPracticeRating | ''
 }
 
 export default defineComponent({
 	name: 'KyyyPracticePage',
 	components: {
 		PageShell,
-		PracticeSessionNavbar
+		PracticeSessionNavbar,
+		PracticeSessionCard,
+		PracticeSessionFooterActions
 	},
 	data(): PracticePageState {
 		return {
 			entryMode: 'study',
 			sessionState: createEmptyPracticeSession('study'),
 			cardShownAt: 0,
-			cardToken: ''
+			cardToken: '',
+			pendingRating: ''
 		}
 	},
 	onLoad(query?: Record<string, string | undefined>) {
@@ -210,19 +143,27 @@ export default defineComponent({
 	},
 	computed: {
 		progressText(): string {
-			const progress = this.sessionState.progressSummary
-			if (!progress.totalCards) {
+			const total = this.progressTotalNumber
+			if (!total) {
 				return '0/20'
 			}
-			const current = Math.max(progress.currentIndex || progress.completedCards || 0, 0)
-			return `${current}/${progress.totalCards}`
+			return `${this.progressCurrentNumber}/${total}`
 		},
-		phoneticText(): string {
-			const card = this.sessionState.currentCard
-			if (!card) {
-				return ''
+		progressCurrentNumber(): number {
+			const progress = this.sessionState.progressSummary
+			const fallbackCurrent = this.sessionState.status === 'active' && this.sessionState.currentCard
+				? (progress.completedCards || 0) + 1
+				: progress.completedCards || 0
+			return Math.max(progress.currentIndex || fallbackCurrent || 0, 0)
+		},
+		progressTotalNumber(): number {
+			return Math.max(this.sessionState.progressSummary.totalCards || 0, 0)
+		},
+		progressPercent(): number {
+			if (!this.progressTotalNumber) {
+				return 0
 			}
-			return card.phoneticUs || card.phoneticUk || ''
+			return Math.min(100, Math.max(0, Math.round((this.progressCurrentNumber / this.progressTotalNumber) * 100)))
 		},
 		currentSourceLabel(): string {
 			const sourceType = this.sessionState.currentCard?.sourceType || ''
@@ -234,13 +175,71 @@ export default defineComponent({
 			}
 			return '新词学习'
 		},
-		canSubmitFeedback(): boolean {
+		showSourceStarBadge(): boolean {
+			const sourceType = this.sessionState.currentCard?.sourceType || ''
+			return sourceType !== 'review' && sourceType !== 'relearn'
+		},
+		baseRoundStarCount(): number {
+			return Math.max(1, Math.min(Number(this.sessionState.currentCard?.roundNo || 1), 3))
+		},
+		displayRoundStarCount(): number {
+			if (this.sessionState.revealed && this.pendingRating === 'know') {
+				return Math.min(this.baseRoundStarCount + 1, 3)
+			}
+			return this.baseRoundStarCount
+		},
+		roundStarSlots(): number[] {
+			return [0, 1, 2]
+		},
+		roundStarsStateClass(): string {
+			if (!this.sessionState.revealed) {
+				return ''
+			}
+			if (this.pendingRating === 'know') {
+				return 'is-success'
+			}
+			if (this.pendingRating === 'unknown') {
+				return 'is-failure'
+			}
+			if (this.pendingRating === 'fuzzy') {
+				return 'is-fuzzy'
+			}
+			return ''
+		},
+		canChooseRating(): boolean {
+			return this.sessionState.status === 'active'
+				&& !!this.sessionState.sessionId
+				&& !!this.sessionState.currentCard?.wordId
+				&& !this.sessionState.revealed
+				&& !this.sessionState.loading
+				&& !this.sessionState.submitting
+		},
+		canConfirmPendingRating(): boolean {
 			return this.sessionState.status === 'active'
 				&& !!this.sessionState.sessionId
 				&& !!this.sessionState.currentCard?.wordId
 				&& this.sessionState.revealed
+				&& !!this.pendingRating
 				&& !this.sessionState.loading
 				&& !this.sessionState.submitting
+		},
+		showMistakeAction(): boolean {
+			return this.pendingRating === 'know' || this.pendingRating === 'fuzzy'
+		},
+		footerHintText(): string {
+			if (!this.sessionState.revealed) {
+				return '先按第一反应判断，释义会在你选择后展开。'
+			}
+			if (this.pendingRating === 'unknown') {
+				return '释义已经展开，看完后直接进入下一词。'
+			}
+			if (this.pendingRating === 'know') {
+				return '你刚才选了“认识”，确认无误就下一词；如果记偏了，点“记错了”。'
+			}
+			if (this.pendingRating === 'fuzzy') {
+				return '你刚才选了“模糊”，确认后进入下一词；如果其实记错了，点“记错了”。'
+			}
+			return ''
 		},
 		primaryActionText(): string {
 			const mode = this.sessionState.completionSummary?.primaryActionMode || this.sessionState.emptyState?.suggestedMode
@@ -303,6 +302,7 @@ export default defineComponent({
 				submitting: false,
 				revealed: false
 			}
+			this.pendingRating = ''
 			if (isNextCard) {
 				this.cardToken = cardToken
 				this.cardShownAt = Date.now()
@@ -313,23 +313,18 @@ export default defineComponent({
 				this.cardShownAt = 0
 			}
 		},
-		handleReveal(): void {
-			if (this.sessionState.status !== 'active' || !this.sessionState.currentCard) {
+		handleSelectRating(rating: KyyyPracticeRating): void {
+			if (!this.canChooseRating) {
 				return
 			}
+			this.pendingRating = rating
 			this.sessionState = {
 				...this.sessionState,
 				revealed: true
 			}
 		},
-		async handleSubmitRating(rating: KyyyPracticeRating): Promise<void> {
-			if (!this.canSubmitFeedback || !this.sessionState.sessionId || !this.sessionState.currentCard?.wordId) {
-				if (!this.sessionState.revealed) {
-					uni.showToast({
-						title: '先查看释义再评分',
-						icon: 'none'
-					})
-				}
+		async submitPendingRating(rating: KyyyPracticeRating): Promise<void> {
+			if (!this.canConfirmPendingRating || !this.sessionState.sessionId || !this.sessionState.currentCard?.wordId) {
 				return
 			}
 			this.sessionState = {
@@ -340,7 +335,7 @@ export default defineComponent({
 				const response = await submitPracticeFeedback(this.sessionState.sessionId, {
 					wordId: this.sessionState.currentCard.wordId,
 					rating,
-					revealed: this.sessionState.revealed,
+					revealed: true,
 					responseDurationMs: Math.max(Date.now() - this.cardShownAt, 0)
 				})
 				this.applySessionState(normalizePracticeSession(response, this.entryMode))
@@ -355,6 +350,18 @@ export default defineComponent({
 					icon: 'none'
 				})
 			}
+		},
+		handleAdvanceToNextWord(): void {
+			if (!this.pendingRating) {
+				return
+			}
+			this.submitPendingRating(this.pendingRating)
+		},
+		handleMarkAsMistake(): void {
+			if (!this.showMistakeAction) {
+				return
+			}
+			this.submitPendingRating('unknown')
 		},
 		handlePrimaryAction(): void {
 			if (this.sessionState.status === 'completed' && this.sessionState.completionSummary?.primaryActionMode) {
@@ -372,6 +379,7 @@ export default defineComponent({
 			this.sessionState = createEmptyPracticeSession(mode)
 			this.cardShownAt = 0
 			this.cardToken = ''
+			this.pendingRating = ''
 			this.bootstrapAndLoad(true)
 		},
 		handleExit(): void {
@@ -399,16 +407,6 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-.kyyy-practice-page__card {
-	position: relative;
-	margin-top: 20rpx;
-	padding: 0;
-	background: transparent;
-	box-shadow: none;
-	border-radius: 0;
-	overflow: visible;
-}
-
 .kyyy-practice-page__state-card,
 .kyyy-practice-page__result-card {
 	position: relative;
@@ -423,10 +421,6 @@ export default defineComponent({
 	overflow: hidden;
 }
 
-.kyyy-practice-page__card::before {
-	display: none;
-}
-
 .kyyy-practice-page__state-card::before,
 .kyyy-practice-page__result-card::before {
 	content: '';
@@ -438,10 +432,6 @@ export default defineComponent({
 	pointer-events: none;
 }
 
-.kyyy-practice-page__card-top,
-.kyyy-practice-page__card-head,
-.kyyy-practice-page__memory-panel,
-.kyyy-practice-page__detail-panel,
 .kyyy-practice-page__result-title,
 .kyyy-practice-page__result-desc,
 .kyyy-practice-page__result-grid,
@@ -450,200 +440,6 @@ export default defineComponent({
 .kyyy-practice-page__panel-actions {
 	position: relative;
 	z-index: 1;
-}
-
-.kyyy-practice-page__card-top {
-	display: flex;
-	align-items: center;
-	gap: 12rpx;
-	padding: 0 4rpx;
-}
-
-.kyyy-practice-page__card-tag {
-	display: inline-flex;
-	align-items: center;
-	height: 46rpx;
-	padding: 0 18rpx;
-	border-radius: 999rpx;
-	background: rgba(88, 112, 141, 0.12);
-	font-size: 21rpx;
-	font-weight: 700;
-	color: #50627a;
-}
-
-.kyyy-practice-page__card-tag--muted {
-	background: rgba(255, 255, 255, 0.7);
-	color: #77859a;
-}
-
-.kyyy-practice-page__card-head {
-	margin-top: 32rpx;
-	padding: 0 4rpx;
-}
-
-.kyyy-practice-page__word {
-	display: block;
-	font-size: 88rpx;
-	line-height: 1.04;
-	font-weight: 820;
-	letter-spacing: -0.05em;
-	color: #151d28;
-	word-break: break-word;
-}
-
-.kyyy-practice-page__phonetic-row {
-	margin-top: 20rpx;
-	display: flex;
-	align-items: center;
-	gap: 12rpx;
-}
-
-.kyyy-practice-page__phonetic-pill {
-	display: inline-flex;
-	align-items: center;
-	gap: 8rpx;
-	height: 46rpx;
-	padding: 0 16rpx;
-	border-radius: 999rpx;
-	background: rgba(255, 255, 255, 0.84);
-	box-shadow: inset 0 0 0 1rpx rgba(220, 227, 236, 0.92);
-	font-size: 20rpx;
-	font-weight: 700;
-	color: #6d7a8a;
-}
-
-.kyyy-practice-page__phonetic {
-	font-size: 38rpx;
-	line-height: 1.3;
-	color: #60708a;
-}
-
-.kyyy-practice-page__memory-panel,
-.kyyy-practice-page__detail-panel {
-	margin-top: 44rpx;
-	padding: 28rpx 26rpx;
-	border-radius: 26rpx;
-	background: rgba(255, 255, 255, 0.66);
-	box-shadow: inset 0 0 0 1rpx rgba(228, 233, 241, 0.88);
-}
-
-.kyyy-practice-page__memory-title {
-	display: block;
-	font-size: 31rpx;
-	line-height: 1.34;
-	font-weight: 760;
-	color: #243143;
-}
-
-.kyyy-practice-page__memory-desc {
-	display: block;
-	margin-top: 14rpx;
-	font-size: 24rpx;
-	line-height: 1.72;
-	color: #69788f;
-}
-
-.kyyy-practice-page__reveal-button {
-	margin-top: 26rpx;
-	height: 84rpx;
-	border-radius: 999rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: linear-gradient(135deg, rgba(92, 114, 144, 0.96), rgba(72, 89, 115, 0.98));
-	box-shadow: 0 18rpx 36rpx rgba(76, 95, 118, 0.18);
-	font-size: 28rpx;
-	font-weight: 760;
-	color: #ffffff;
-}
-
-.kyyy-practice-page__meaning-row {
-	display: flex;
-	align-items: flex-start;
-	gap: 12rpx;
-}
-
-.kyyy-practice-page__part-of-speech {
-	margin-top: 2rpx;
-	font-size: 24rpx;
-	line-height: 1.5;
-	font-weight: 700;
-	color: #627287;
-	white-space: nowrap;
-}
-
-.kyyy-practice-page__meaning {
-	flex: 1;
-	font-size: 31rpx;
-	line-height: 1.64;
-	font-weight: 700;
-	color: #1f2b39;
-}
-
-.kyyy-practice-page__detail-block {
-	margin-top: 28rpx;
-}
-
-.kyyy-practice-page__detail-title {
-	display: flex;
-	align-items: center;
-	gap: 10rpx;
-	font-size: 24rpx;
-	font-weight: 700;
-	color: #4f6078;
-}
-
-.kyyy-practice-page__detail-mark {
-	width: 10rpx;
-	height: 10rpx;
-	border-radius: 999rpx;
-	background: #6e8099;
-}
-
-.kyyy-practice-page__detail-text {
-	display: block;
-	margin-top: 14rpx;
-	font-size: 27rpx;
-	line-height: 1.78;
-	color: #2d3848;
-}
-
-.kyyy-practice-page__detail-subtext {
-	display: block;
-	margin-top: 10rpx;
-	font-size: 24rpx;
-	line-height: 1.7;
-	color: #73839a;
-}
-
-.kyyy-practice-page__related-list {
-	display: flex;
-	flex-direction: column;
-	gap: 14rpx;
-	margin-top: 16rpx;
-}
-
-.kyyy-practice-page__related-item {
-	padding: 18rpx 20rpx;
-	border-radius: 22rpx;
-	background: rgba(255, 255, 255, 0.7);
-	box-shadow: inset 0 0 0 1rpx rgba(228, 233, 241, 0.88);
-}
-
-.kyyy-practice-page__related-word {
-	display: block;
-	font-size: 26rpx;
-	line-height: 1.4;
-	font-weight: 700;
-	color: #293444;
-}
-
-.kyyy-practice-page__related-meaning {
-	display: block;
-	margin-top: 6rpx;
-	font-size: 23rpx;
-	line-height: 1.56;
-	color: #728197;
 }
 
 .kyyy-practice-page__state-card,
@@ -666,7 +462,7 @@ export default defineComponent({
 	margin-top: 16rpx;
 	font-size: 25rpx;
 	line-height: 1.7;
-	color: #6f7d93;
+	color: #4e5d72;
 }
 
 .kyyy-practice-page__result-grid {
@@ -696,7 +492,7 @@ export default defineComponent({
 	margin-top: 10rpx;
 	font-size: 22rpx;
 	line-height: 1.5;
-	color: #728197;
+	color: #556478;
 }
 
 .kyyy-practice-page__panel-actions {
@@ -723,65 +519,6 @@ export default defineComponent({
 	background: rgba(255, 255, 255, 0.76);
 	box-shadow: inset 0 0 0 1rpx rgba(220, 227, 236, 0.92);
 	color: #586879;
-}
-
-.kyyy-practice-page__footer {
-	position: fixed;
-	left: 24rpx;
-	right: 24rpx;
-	bottom: calc(env(safe-area-inset-bottom) + 20rpx);
-	padding: 0;
-	background: transparent;
-	box-shadow: none;
-	backdrop-filter: none;
-}
-
-.kyyy-practice-page__footer-hint {
-	display: block;
-	font-size: 23rpx;
-	line-height: 1.6;
-	text-align: center;
-	color: #6f7b8d;
-}
-
-.kyyy-practice-page__footer-actions {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 16rpx;
-	margin-top: 18rpx;
-}
-
-.kyyy-practice-page__rate-button {
-	height: 94rpx;
-	border-radius: 26rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	box-shadow: inset 0 0 0 1rpx rgba(255, 255, 255, 0.55);
-}
-
-.kyyy-practice-page__rate-button--know {
-	background: linear-gradient(180deg, rgba(203, 234, 226, 0.95), rgba(179, 220, 209, 0.98));
-	color: #264f48;
-}
-
-.kyyy-practice-page__rate-button--fuzzy {
-	background: linear-gradient(180deg, rgba(248, 231, 191, 0.96), rgba(243, 214, 137, 0.98));
-	color: #6a5312;
-}
-
-.kyyy-practice-page__rate-button--unknown {
-	background: linear-gradient(180deg, rgba(246, 210, 205, 0.96), rgba(238, 184, 177, 0.98));
-	color: #7a2f2b;
-}
-
-.kyyy-practice-page__rate-button.is-disabled {
-	opacity: 0.48;
-}
-
-.kyyy-practice-page__rate-text {
-	font-size: 30rpx;
-	font-weight: 780;
 }
 
 .kyyy-practice-page__loader {

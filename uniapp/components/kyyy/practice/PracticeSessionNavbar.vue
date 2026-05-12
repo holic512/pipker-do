@@ -3,7 +3,7 @@
 @project pipker-do
 @module 考研英语 / 练习导航
 @description 为英语背词页提供独立顶部导航，不复用项目切换按钮。
-@logic 1. 读取安全区与胶囊尺寸生成顶部占位；2. 展示退出与进度信息；3. 通过事件把退出行为交给页面处理。
+@logic 1. 读取安全区与胶囊尺寸生成顶部占位；2. 提供轻量退出入口并为内容区让出空间；3. 通过事件把退出行为交给页面处理。
 @dependencies Component: uni-icons
 @index_tags 考研英语, 独立导航, 背词页, 顶部栏
 @author holic512
@@ -16,9 +16,6 @@
 					<uni-icons type="left" size="18" color="#607085" />
 					<text>退出</text>
 				</view>
-				<view class="practice-session-navbar__progress-pill">
-					<text>{{ progressText }}</text>
-				</view>
 				<view class="practice-session-navbar__spacer"></view>
 			</view>
 		</view>
@@ -30,12 +27,6 @@ import { defineComponent } from 'vue'
 
 export default defineComponent({
 	name: 'PracticeSessionNavbar',
-	props: {
-		progressText: {
-			type: String,
-			default: '0/20'
-		}
-	},
 	emits: ['exit'],
 	data() {
 		return {
@@ -107,10 +98,8 @@ export default defineComponent({
 }
 
 .practice-session-navbar__bar {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+	display: flex;
 	align-items: center;
-	gap: 14rpx;
 	box-sizing: border-box;
 }
 
@@ -129,24 +118,6 @@ export default defineComponent({
 }
 
 .practice-session-navbar__spacer {
-	min-width: 0;
-}
-
-.practice-session-navbar__progress-pill {
-	min-width: 132rpx;
-	height: 54rpx;
-	padding: 0 24rpx;
-	border-radius: 999rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: rgba(255, 255, 255, 0.86);
-	box-shadow:
-		0 10rpx 24rpx rgba(70, 88, 112, 0.08),
-		inset 0 0 0 1rpx rgba(216, 225, 237, 0.92);
-	font-size: 24rpx;
-	font-weight: 700;
-	color: #354255;
-	box-sizing: border-box;
+	flex: 1;
 }
 </style>
