@@ -478,6 +478,19 @@
 	gap: 18rpx;
 }
 
+.kyyy-home-page__word-detail-example-item {
+	display: flex;
+	flex-direction: column;
+	gap: 10rpx;
+	padding-bottom: 18rpx;
+	border-bottom: 1rpx solid rgba(221, 226, 233, 0.72);
+}
+
+.kyyy-home-page__word-detail-example-item:last-child {
+	padding-bottom: 0;
+	border-bottom: 0;
+}
+
 .kyyy-home-page__word-detail-sentence {
 	font-size: 30rpx;
 	line-height: 1.62;

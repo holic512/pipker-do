@@ -3,9 +3,9 @@
  * @project pipker-do
  * @module 考研英语 / 用户侧背词
  * @description 承担默认词库设置、首页学习统计、单词学习会话生成与学习反馈推进。
- * @logic 1. 解析默认词库并生成学习或复习会话；2. 按认识程度更新单词进度与回插队列；3. 维护首页学习统计与兼容 next-word 查询。
- * @dependencies Mapper: KyyyWordMapper, Mapper: KyyyWordPracticeSessionMapper, Mapper: KyyyWordPracticeSessionItemMapper, Support: KyyyWordPracticeSupport
- * @index_tags 考研英语, 背词服务, 学习算法, 复习会话
+ * @logic 1. 解析默认词库并生成学习或复习会话；2. 按认识程度更新单词进度与回插队列；3. 返回多例句和相关词详情。
+ * @dependencies Mapper: KyyyWordMapper, Mapper: KyyyWordExampleMapper, Mapper: KyyyWordPracticeSessionMapper, Support: KyyyWordPracticeSupport
+ * @index_tags 考研英语, 背词服务, 多例句, 复习会话
  * @author holic512
  */
 package org.example.backend.biz.kyyy.service;
@@ -24,18 +24,21 @@ import org.example.backend.biz.kyyy.dto.KyyyPracticeSessionResponse;
 import org.example.backend.biz.kyyy.dto.KyyyPracticeSettingRequest;
 import org.example.backend.biz.kyyy.dto.KyyyPracticeSettingResponse;
 import org.example.backend.biz.kyyy.dto.KyyyRelatedWordResponse;
+import org.example.backend.biz.kyyy.dto.KyyyWordExampleResponse;
 import org.example.backend.biz.kyyy.dto.KyyyWordSourceBankResponse;
 import org.example.backend.biz.kyyy.entity.KyyyUserPracticeSetting;
 import org.example.backend.biz.kyyy.entity.KyyyUserWordProgress;
 import org.example.backend.biz.kyyy.entity.KyyyWord;
 import org.example.backend.biz.kyyy.entity.KyyyWordBank;
 import org.example.backend.biz.kyyy.entity.KyyyWordBankWordRel;
+import org.example.backend.biz.kyyy.entity.KyyyWordExample;
 import org.example.backend.biz.kyyy.entity.KyyyWordPracticeSession;
 import org.example.backend.biz.kyyy.entity.KyyyWordPracticeSessionItem;
 import org.example.backend.biz.kyyy.entity.KyyyWordRelated;
 import org.example.backend.biz.kyyy.mapper.KyyyUserPracticeSettingMapper;
 import org.example.backend.biz.kyyy.mapper.KyyyUserWordProgressMapper;
 import org.example.backend.biz.kyyy.mapper.KyyyWordBankWordRelMapper;
+import org.example.backend.biz.kyyy.mapper.KyyyWordExampleMapper;
 import org.example.backend.biz.kyyy.mapper.KyyyWordMapper;
 import org.example.backend.biz.kyyy.mapper.KyyyWordPracticeSessionItemMapper;
 import org.example.backend.biz.kyyy.mapper.KyyyWordPracticeSessionMapper;
@@ -113,6 +116,7 @@ public class KyyyPracticeUserService {
     private final KyyyWordBankWordRelMapper kyyyWordBankWordRelMapper;
     private final KyyyUserWordProgressMapper kyyyUserWordProgressMapper;
     private final KyyyWordRelatedMapper kyyyWordRelatedMapper;
+    private final KyyyWordExampleMapper kyyyWordExampleMapper;
     private final KyyyWordPracticeSessionMapper kyyyWordPracticeSessionMapper;
     private final KyyyWordPracticeSessionItemMapper kyyyWordPracticeSessionItemMapper;
     private final KyyyWordPracticeSupport kyyyWordPracticeSupport;
@@ -122,6 +126,7 @@ public class KyyyPracticeUserService {
                                    KyyyWordBankWordRelMapper kyyyWordBankWordRelMapper,
                                    KyyyUserWordProgressMapper kyyyUserWordProgressMapper,
                                    KyyyWordRelatedMapper kyyyWordRelatedMapper,
+                                   KyyyWordExampleMapper kyyyWordExampleMapper,
                                    KyyyWordPracticeSessionMapper kyyyWordPracticeSessionMapper,
                                    KyyyWordPracticeSessionItemMapper kyyyWordPracticeSessionItemMapper,
                                    KyyyWordPracticeSupport kyyyWordPracticeSupport) {
@@ -130,6 +135,7 @@ public class KyyyPracticeUserService {
         this.kyyyWordBankWordRelMapper = kyyyWordBankWordRelMapper;
         this.kyyyUserWordProgressMapper = kyyyUserWordProgressMapper;
         this.kyyyWordRelatedMapper = kyyyWordRelatedMapper;
+        this.kyyyWordExampleMapper = kyyyWordExampleMapper;
         this.kyyyWordPracticeSessionMapper = kyyyWordPracticeSessionMapper;
         this.kyyyWordPracticeSessionItemMapper = kyyyWordPracticeSessionItemMapper;
         this.kyyyWordPracticeSupport = kyyyWordPracticeSupport;
@@ -622,6 +628,8 @@ public class KyyyPracticeUserService {
         if (word == null) {
             throw new BusinessException(ApiResponseCode.NOT_FOUND, "当前单词已失效，请重新开始学习");
         }
+        List<KyyyWordExampleResponse> examples = buildExampleResponses(word);
+        KyyyWordExampleResponse primaryExample = examples.isEmpty() ? null : examples.get(0);
         return new KyyyPracticeSessionCardResponse(
                 word.getId(),
                 word.getWordText(),
@@ -629,8 +637,9 @@ public class KyyyPracticeUserService {
                 word.getPhoneticUk(),
                 word.getPartOfSpeech(),
                 word.getMeaningCn(),
-                word.getExampleSentence(),
-                word.getExampleTranslation(),
+                primaryExample == null ? "" : primaryExample.getExampleSentence(),
+                primaryExample == null ? "" : primaryExample.getExampleTranslation(),
+                examples,
                 word.getDifficultyLevel(),
                 normalizeStudyStatus(progress == null ? null : progress.getStudyStatus()),
                 progress == null ? 0 : safeInt(progress.getMasteryLevel(), 0),
@@ -665,6 +674,28 @@ public class KyyyPracticeUserService {
                         item.getRelationType()
                 ))
                 .toList();
+    }
+
+    private List<KyyyWordExampleResponse> buildExampleResponses(KyyyWord word) {
+        if (word == null || word.getId() == null) {
+            return List.of();
+        }
+        List<KyyyWordExample> examples = kyyyWordExampleMapper.selectList(new LambdaQueryWrapper<KyyyWordExample>()
+                .select(KyyyWordExample::getId, KyyyWordExample::getExampleSentence, KyyyWordExample::getExampleTranslation)
+                .eq(KyyyWordExample::getWordId, word.getId())
+                .eq(KyyyWordExample::getStatus, 1)
+                .orderByAsc(KyyyWordExample::getSortNo)
+                .orderByAsc(KyyyWordExample::getId)
+                .last("limit 5"));
+        List<KyyyWordExampleResponse> responses = examples.stream()
+                .map(item -> new KyyyWordExampleResponse(
+                        item.getId(),
+                        normalizeText(item.getExampleSentence()),
+                        normalizeText(item.getExampleTranslation())
+                ))
+                .filter(item -> StringUtils.hasText(item.getExampleSentence()))
+                .toList();
+        return responses;
     }
 
     private KyyyWordPracticeSessionItem createReinsertItem(KyyyWordPracticeSession session,
@@ -917,6 +948,7 @@ public class KyyyPracticeUserService {
                 card.getMeaningCn(),
                 card.getExampleSentence(),
                 card.getExampleTranslation(),
+                card.getExamples(),
                 card.getDifficultyLevel(),
                 card.getStudyStatus(),
                 card.getMasteryLevel(),
@@ -966,6 +998,13 @@ public class KyyyPracticeUserService {
             case STUDY_STATUS_MASTERED -> STUDY_STATUS_MASTERED;
             default -> STUDY_STATUS_NEW;
         };
+    }
+
+    private String normalizeText(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        return value.trim().replaceAll("\\s+", " ");
     }
 
     private int safeInt(Integer value, int defaultValue) {

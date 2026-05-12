@@ -210,8 +210,18 @@
 								<text>详情加载失败，已保留列表释义</text>
 							</view>
 							<view v-else class="kyyy-home-page__word-detail-example-body">
-								<text class="kyyy-home-page__word-detail-sentence">{{ resolveWordDetailExampleSentence() }}</text>
-								<text class="kyyy-home-page__word-detail-translation">{{ resolveWordDetailExampleTranslation() }}</text>
+								<view
+									v-for="(example, exampleIndex) in resolveWordDetailExamples()"
+									:key="`${example.id || example.exampleSentence}-${exampleIndex}`"
+									class="kyyy-home-page__word-detail-example-item"
+								>
+									<text class="kyyy-home-page__word-detail-sentence">{{ example.exampleSentence }}</text>
+									<text v-if="example.exampleTranslation" class="kyyy-home-page__word-detail-translation">{{ example.exampleTranslation }}</text>
+								</view>
+								<view v-if="!resolveWordDetailExamples().length" class="kyyy-home-page__word-detail-example-item">
+									<text class="kyyy-home-page__word-detail-sentence">{{ resolveWordDetailExampleSentence() }}</text>
+									<text class="kyyy-home-page__word-detail-translation">{{ resolveWordDetailExampleTranslation() }}</text>
+								</view>
 							</view>
 						</view>
 					</view>
@@ -278,6 +288,7 @@ import {
 	normalizeWordSearchResult,
 	resolveSearchMeaning as resolveSearchMeaningText,
 	resolveSearchSummary as resolveSearchSummaryText,
+	resolveWordDetailExamples as resolveWordDetailExamplesValue,
 	resolveWordDetailExampleSentence as resolveWordDetailExampleSentenceText,
 	resolveWordDetailExampleTranslation as resolveWordDetailExampleTranslationText,
 	resolveWordDetailMeaning as resolveWordDetailMeaningText,
@@ -286,7 +297,7 @@ import {
 	resolveWordDetailWordStyle as resolveWordDetailWordStyleValue,
 	resolveWordDetailWordText as resolveWordDetailWordTextValue
 } from '@/pages/kyyy/home/search'
-import type { KyyyHomeWordDetailState, KyyyHomeWordSearchState } from '@/pages/kyyy/home/search'
+import type { KyyyHomeWordDetailState, KyyyHomeWordSearchState, KyyyWordExampleState } from '@/pages/kyyy/home/search'
 import type {
 	KyyyHomeDashboardState,
 	KyyyHomeDailyWordState,
@@ -773,6 +784,9 @@ export default defineComponent({
 		},
 		resolveWordDetailExampleTranslation(): string {
 			return resolveWordDetailExampleTranslationText(this.wordDetail)
+		},
+		resolveWordDetailExamples(): KyyyWordExampleState[] {
+			return resolveWordDetailExamplesValue(this.wordDetail)
 		},
 		clearSearchDebounceTimer(): void {
 			if (this.searchDebounceTimer) {

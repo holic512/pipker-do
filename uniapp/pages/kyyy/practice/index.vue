@@ -323,17 +323,19 @@ export default defineComponent({
 				revealed: true
 			}
 		},
-		async submitPendingRating(rating: KyyyPracticeRating): Promise<void> {
-			if (!this.canConfirmPendingRating || !this.sessionState.sessionId || !this.sessionState.currentCard?.wordId) {
-				return
-			}
+			async submitPendingRating(rating: KyyyPracticeRating): Promise<void> {
+				const sessionId = this.sessionState.sessionId
+				const wordId = this.sessionState.currentCard?.wordId
+				if (!this.canConfirmPendingRating || !sessionId || !wordId) {
+					return
+				}
 			this.sessionState = {
 				...this.sessionState,
 				submitting: true
-			}
-			try {
-				const response = await submitPracticeFeedback(this.sessionState.sessionId, {
-					wordId: this.sessionState.currentCard.wordId,
+				}
+				try {
+					const response = await submitPracticeFeedback(sessionId, {
+						wordId,
 					rating,
 					revealed: true,
 					responseDurationMs: Math.max(Date.now() - this.cardShownAt, 0)

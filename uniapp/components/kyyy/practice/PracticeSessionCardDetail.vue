@@ -3,7 +3,7 @@
 @project pipker-do
 @module 考研英语 / 背词卡片详情
 @description 渲染背词卡片释义区域，在未揭晓时显示骨架，占位后切换为完整释义详情。
-@logic 1. 未揭晓时输出骨架块；2. 揭晓后展示词性、释义、例句和相关词；3. 保持详情区样式和骨架动画收敛。
+@logic 1. 未揭晓时输出骨架块；2. 揭晓后展示词性、释义、多例句和相关词；3. 保持详情区样式和骨架动画收敛。
 @dependencies Types: @/pages/kyyy/practice/types
 @index_tags 考研英语, 卡片详情, 骨架屏, 单词释义
 @author holic512
@@ -28,12 +28,28 @@
 				<text>例句</text>
 			</view>
 			<view class="practice-session-card-detail__divider practice-session-card-detail__divider--example"></view>
-			<text class="practice-session-card-detail__text">
-				{{ card.exampleSentence || '当前单词暂未补充例句。' }}
-			</text>
-			<text v-if="card.exampleTranslation" class="practice-session-card-detail__subtext">
-				{{ card.exampleTranslation }}
-			</text>
+			<view v-if="card.examples.length" class="practice-session-card-detail__example-list">
+				<view
+					v-for="(example, exampleIndex) in card.examples"
+					:key="`${example.id || example.exampleSentence}-${exampleIndex}`"
+					class="practice-session-card-detail__example-item"
+				>
+					<text class="practice-session-card-detail__text">
+						{{ example.exampleSentence }}
+					</text>
+					<text v-if="example.exampleTranslation" class="practice-session-card-detail__subtext">
+						{{ example.exampleTranslation }}
+					</text>
+				</view>
+			</view>
+			<view v-else class="practice-session-card-detail__example-item practice-session-card-detail__example-item--fallback">
+				<text class="practice-session-card-detail__text">
+					{{ card.exampleSentence || '当前单词暂未补充例句。' }}
+				</text>
+				<text v-if="card.exampleTranslation" class="practice-session-card-detail__subtext">
+					{{ card.exampleTranslation }}
+				</text>
+			</view>
 		</view>
 
 		<view v-if="card.relatedWords.length" class="practice-session-card-detail__block practice-session-card-detail__block--related">
@@ -204,9 +220,25 @@ export default defineComponent({
 	background: #596d87;
 }
 
+.practice-session-card-detail__example-list {
+	display: flex;
+	flex-direction: column;
+	gap: 18rpx;
+	margin-top: 14rpx;
+}
+
+.practice-session-card-detail__example-item {
+	display: flex;
+	flex-direction: column;
+	gap: 10rpx;
+}
+
+.practice-session-card-detail__example-item--fallback {
+	margin-top: 14rpx;
+}
+
 .practice-session-card-detail__text {
 	display: block;
-	margin-top: 14rpx;
 	font-size: 27rpx;
 	line-height: 1.78;
 	color: #24303f;
@@ -214,7 +246,6 @@ export default defineComponent({
 
 .practice-session-card-detail__subtext {
 	display: block;
-	margin-top: 10rpx;
 	font-size: 24rpx;
 	line-height: 1.7;
 	color: #566579;

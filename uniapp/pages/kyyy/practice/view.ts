@@ -30,6 +30,8 @@ import type {
 	KyyyPracticeSettingOption,
 	KyyyPracticeSettingResponse,
 	KyyyPracticeSettingState,
+	KyyyPracticeWordExampleResponse,
+	KyyyPracticeWordExampleState,
 	KyyyPracticeWordSourceBankResponse,
 	KyyyPracticeWordSourceBankState
 } from '@/pages/kyyy/practice/types'
@@ -171,6 +173,30 @@ function normalizeRelatedWords(result: KyyyPracticeRelatedWordResponse[] | null 
 		: []
 }
 
+function normalizeWordExamples(result: KyyyPracticeWordExampleResponse[] | null | undefined,
+	fallbackSentence: unknown,
+	fallbackTranslation: unknown): KyyyPracticeWordExampleState[] {
+	const examples = Array.isArray(result)
+		? result.map((item) => ({
+			id: item?.id === null || item?.id === undefined ? null : Math.max(toNumber(item.id), 0) || null,
+			exampleSentence: normalizeText(item?.exampleSentence),
+			exampleTranslation: normalizeText(item?.exampleTranslation)
+		})).filter((item) => !!item.exampleSentence)
+		: []
+	if (examples.length) {
+		return examples
+	}
+	const sentence = normalizeText(fallbackSentence)
+	if (!sentence) {
+		return []
+	}
+	return [{
+		id: null,
+		exampleSentence: sentence,
+		exampleTranslation: normalizeText(fallbackTranslation)
+	}]
+}
+
 function normalizeCard(result: KyyyPracticeCardResponse | null | undefined): KyyyPracticeCardState | null {
 	const wordId = result?.wordId === null || result?.wordId === undefined ? null : Number(result.wordId)
 	if (!wordId || !Number.isFinite(wordId) || wordId <= 0) {
@@ -185,6 +211,7 @@ function normalizeCard(result: KyyyPracticeCardResponse | null | undefined): Kyy
 		meaningCn: normalizeText(result?.meaningCn),
 		exampleSentence: normalizeText(result?.exampleSentence),
 		exampleTranslation: normalizeText(result?.exampleTranslation),
+		examples: normalizeWordExamples(result?.examples, result?.exampleSentence, result?.exampleTranslation),
 		difficultyLevel: Math.max(toNumber(result?.difficultyLevel, 1), 0),
 		studyStatus: normalizeText(result?.studyStatus),
 		masteryLevel: Math.max(toNumber(result?.masteryLevel), 0),

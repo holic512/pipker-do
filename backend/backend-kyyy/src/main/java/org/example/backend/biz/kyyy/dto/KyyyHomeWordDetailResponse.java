@@ -4,15 +4,16 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * @file KyyyHomeWordDetailResponse
  * @project pipker-do
  * @module 考研英语 / 首页查词
- * @description 承载小程序首页查词详情页的单词释义与例句内容。
- * @logic 1. 暴露单词基础释义字段；2. 补充例句与翻译；3. 使用 wordId 对齐列表点击详情。
- * @dependencies Entity: KyyyWord
- * @index_tags 考研英语, 首页查词, 单词详情, 例句
+ * @description 承载小程序首页查词详情页的单词释义与多例句内容。
+ * @logic 1. 暴露单词基础释义字段；2. 保留旧单例句字段；3. 补充 examples 列表用于多例句展示。
+ * @dependencies Entity: KyyyWord, DTO: KyyyWordExampleResponse
+ * @index_tags 考研英语, 首页查词, 单词详情, 多例句
  * @author holic512
  */
 @Data
@@ -34,4 +35,6 @@ public class KyyyHomeWordDetailResponse implements Serializable {
     private String exampleSentence;
 
     private String exampleTranslation;
+
+    private List<KyyyWordExampleResponse> examples;
 }

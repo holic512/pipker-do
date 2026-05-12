@@ -1,3 +1,4 @@
+-- ai-index: backend database baseline schema
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -411,8 +412,6 @@ CREATE TABLE IF NOT EXISTS kyyy_word (
     phonetic_uk VARCHAR(100) DEFAULT NULL COMMENT '英式音标',
     part_of_speech VARCHAR(50) DEFAULT NULL COMMENT '词性',
     meaning_cn TEXT COMMENT '中文释义',
-    example_sentence VARCHAR(500) DEFAULT NULL COMMENT '例句',
-    example_translation VARCHAR(500) DEFAULT NULL COMMENT '例句翻译',
     difficulty_level TINYINT NOT NULL DEFAULT 1 COMMENT '难度等级：1基础 2进阶 3高频 4冲刺',
     status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0停用 1启用',
     created_by BIGINT UNSIGNED DEFAULT NULL COMMENT '创建后台管理员ID',
@@ -533,6 +532,8 @@ CREATE TABLE IF NOT EXISTS kyyy_word_related (
     normalized_related_word VARCHAR(100) NOT NULL COMMENT '标准化延伸词，统一小写去空格',
     meaning_cn VARCHAR(255) DEFAULT NULL COMMENT '中文释义',
     relation_type VARCHAR(30) NOT NULL DEFAULT 'derivative' COMMENT '关系类型：derivative/synonym/antonym/phrase/association',
+    source_type VARCHAR(30) NOT NULL DEFAULT 'manual' COMMENT '来源类型：manual/ai/import',
+    source_run_id VARCHAR(64) DEFAULT NULL COMMENT 'AI补齐运行ID',
     sort_no INT NOT NULL DEFAULT 0 COMMENT '展示排序值',
     status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0停用 1启用',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -545,6 +546,50 @@ CREATE TABLE IF NOT EXISTS kyyy_word_related (
     CONSTRAINT fk_kyyy_word_related_word_id FOREIGN KEY (word_id) REFERENCES kyyy_word (id),
     CONSTRAINT fk_kyyy_word_related_related_word_id FOREIGN KEY (related_word_id) REFERENCES kyyy_word (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYYY单词延伸关系表';
+
+CREATE TABLE IF NOT EXISTS kyyy_word_example (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '单词例句ID',
+    word_id BIGINT UNSIGNED NOT NULL COMMENT '单词ID',
+    example_sentence VARCHAR(500) NOT NULL COMMENT '英文例句',
+    example_translation VARCHAR(500) NOT NULL COMMENT '例句中文翻译',
+    example_hash CHAR(64) NOT NULL COMMENT '例句标准化SHA-256',
+    source_type VARCHAR(30) NOT NULL DEFAULT 'manual' COMMENT '来源类型：manual/ai/import/legacy',
+    source_run_id VARCHAR(64) DEFAULT NULL COMMENT 'AI补齐运行ID',
+    sort_no INT NOT NULL DEFAULT 0 COMMENT '展示排序值',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0停用 1启用',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyyy_word_example_word_hash (word_id, example_hash),
+    KEY idx_kyyy_word_example_word_status_sort (word_id, status, sort_no),
+    KEY idx_kyyy_word_example_source_run_id (source_run_id),
+    CONSTRAINT fk_kyyy_word_example_word_id FOREIGN KEY (word_id) REFERENCES kyyy_word (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYYY单词多例句表';
+
+CREATE TABLE IF NOT EXISTS kyyy_word_ai_enrichment_log (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '词库AI补齐日志ID',
+    run_id VARCHAR(64) NOT NULL COMMENT '运行ID',
+    word_id BIGINT UNSIGNED DEFAULT NULL COMMENT '单词ID',
+    word_text VARCHAR(100) DEFAULT NULL COMMENT '单词原文快照',
+    run_mode VARCHAR(20) NOT NULL COMMENT '运行模式：single/all/validate',
+    status VARCHAR(30) NOT NULL COMMENT '状态：skipped/success/failed/validation_failed',
+    needs_ai TINYINT NOT NULL DEFAULT 0 COMMENT '是否判定需要AI补齐：0否 1是',
+    reason VARCHAR(500) DEFAULT NULL COMMENT '校验或跳过原因',
+    model VARCHAR(80) DEFAULT NULL COMMENT '调用模型',
+    prompt_hash CHAR(64) DEFAULT NULL COMMENT 'Prompt SHA-256',
+    response_hash CHAR(64) DEFAULT NULL COMMENT '响应 SHA-256',
+    example_count INT NOT NULL DEFAULT 0 COMMENT '写入例句数',
+    synonym_count INT NOT NULL DEFAULT 0 COMMENT '写入近义词数',
+    input_tokens INT DEFAULT NULL COMMENT '输入token数',
+    output_tokens INT DEFAULT NULL COMMENT '输出token数',
+    total_tokens INT DEFAULT NULL COMMENT '总token数',
+    error_message VARCHAR(1000) DEFAULT NULL COMMENT '错误信息',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_kyyy_word_ai_enrichment_log_run_id (run_id),
+    KEY idx_kyyy_word_ai_enrichment_log_word_status (word_id, status),
+    CONSTRAINT fk_kyyy_word_ai_enrichment_log_word_id FOREIGN KEY (word_id) REFERENCES kyyy_word (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYYY词库AI补齐日志表';
 
 CREATE TABLE IF NOT EXISTS kyzz_exam_session (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '考试会话ID',

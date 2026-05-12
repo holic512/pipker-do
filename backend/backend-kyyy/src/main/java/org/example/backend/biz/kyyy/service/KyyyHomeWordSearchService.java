@@ -3,7 +3,10 @@ package org.example.backend.biz.kyyy.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.example.backend.biz.kyyy.dto.KyyyHomeWordDetailResponse;
 import org.example.backend.biz.kyyy.dto.KyyyHomeWordSearchResponse;
+import org.example.backend.biz.kyyy.dto.KyyyWordExampleResponse;
 import org.example.backend.biz.kyyy.entity.KyyyWord;
+import org.example.backend.biz.kyyy.entity.KyyyWordExample;
+import org.example.backend.biz.kyyy.mapper.KyyyWordExampleMapper;
 import org.example.backend.biz.kyyy.mapper.KyyyWordMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -18,20 +21,24 @@ import java.util.Map;
  * @project pipker-do
  * @module 考研英语 / 首页查词
  * @description 为小程序首页提供全局有效单词检索与详情能力。
- * @logic 1. 标准化查询词；2. 在全局有效单词中按精确、前缀、包含顺序查询；3. 按 wordId 拉取详情例句。
- * @dependencies Mapper: KyyyWordMapper, DTO: KyyyHomeWordSearchResponse, DTO: KyyyHomeWordDetailResponse
- * @index_tags 考研英语, 首页查词, 单词检索, 词库
+ * @logic 1. 标准化查询词；2. 在全局有效单词中按精确、前缀、包含顺序查询；3. 按 wordId 拉取详情与多例句。
+ * @dependencies Mapper: KyyyWordMapper, Mapper: KyyyWordExampleMapper, DTO: KyyyHomeWordDetailResponse
+ * @index_tags 考研英语, 首页查词, 单词检索, 多例句
  * @author holic512
  */
 @Service
 public class KyyyHomeWordSearchService {
 
     private static final int RESULT_LIMIT = 12;
+    private static final int EXAMPLE_LIMIT = 5;
 
     private final KyyyWordMapper kyyyWordMapper;
+    private final KyyyWordExampleMapper kyyyWordExampleMapper;
 
-    public KyyyHomeWordSearchService(KyyyWordMapper kyyyWordMapper) {
+    public KyyyHomeWordSearchService(KyyyWordMapper kyyyWordMapper,
+                                     KyyyWordExampleMapper kyyyWordExampleMapper) {
         this.kyyyWordMapper = kyyyWordMapper;
+        this.kyyyWordExampleMapper = kyyyWordExampleMapper;
     }
 
     public List<KyyyHomeWordSearchResponse> searchWords(String keyword) {
@@ -128,9 +135,7 @@ public class KyyyHomeWordSearchService {
                         "phonetic_us",
                         "phonetic_uk",
                         "part_of_speech",
-                        "meaning_cn",
-                        "example_sentence",
-                        "example_translation"
+                        "meaning_cn"
                 )
                 .eq("id", wordId)
                 .eq("status", 1)
@@ -149,6 +154,8 @@ public class KyyyHomeWordSearchService {
     }
 
     private KyyyHomeWordDetailResponse toDetailResponse(KyyyWord word) {
+        List<KyyyWordExampleResponse> examples = buildExampleResponses(word);
+        KyyyWordExampleResponse primaryExample = examples.isEmpty() ? null : examples.get(0);
         return new KyyyHomeWordDetailResponse(
                 word.getId(),
                 normalizeText(word.getWordText()),
@@ -156,8 +163,35 @@ public class KyyyHomeWordSearchService {
                 normalizeText(word.getPhoneticUk()),
                 normalizeText(word.getPartOfSpeech()),
                 normalizeText(word.getMeaningCn()),
-                normalizeText(word.getExampleSentence()),
-                normalizeText(word.getExampleTranslation())
+                primaryExample == null ? "" : normalizeText(primaryExample.getExampleSentence()),
+                primaryExample == null ? "" : normalizeText(primaryExample.getExampleTranslation()),
+                examples
+        );
+    }
+
+    private List<KyyyWordExampleResponse> buildExampleResponses(KyyyWord word) {
+        if (word == null || word.getId() == null) {
+            return List.of();
+        }
+        List<KyyyWordExample> examples = kyyyWordExampleMapper.selectList(new QueryWrapper<KyyyWordExample>()
+                .select("id", "example_sentence", "example_translation")
+                .eq("word_id", word.getId())
+                .eq("status", 1)
+                .orderByAsc("sort_no")
+                .orderByAsc("id")
+                .last("limit " + EXAMPLE_LIMIT));
+        List<KyyyWordExampleResponse> result = examples.stream()
+                .map(this::toExampleResponse)
+                .filter(item -> StringUtils.hasText(item.getExampleSentence()))
+                .toList();
+        return result;
+    }
+
+    private KyyyWordExampleResponse toExampleResponse(KyyyWordExample example) {
+        return new KyyyWordExampleResponse(
+                example.getId(),
+                normalizeText(example.getExampleSentence()),
+                normalizeText(example.getExampleTranslation())
         );
     }
 

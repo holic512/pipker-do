@@ -27,6 +27,13 @@ export interface KyyyHomeWordSearchState {
 export interface KyyyHomeWordDetailState extends KyyyHomeWordSearchState {
 	exampleSentence: string
 	exampleTranslation: string
+	examples: KyyyWordExampleState[]
+}
+
+export interface KyyyWordExampleState {
+	id: number | null
+	exampleSentence: string
+	exampleTranslation: string
 }
 
 function trimDisplayText(value: string, maxLength: number): string {
@@ -75,8 +82,30 @@ export function createWordDetailFallback(item: KyyyHomeWordSearchState): KyyyHom
 	return {
 		...item,
 		exampleSentence: '',
-		exampleTranslation: ''
+		exampleTranslation: '',
+		examples: []
 	}
+}
+
+function normalizeWordExamples(item: KyyyHomeWordDetailResponse | null | undefined): KyyyWordExampleState[] {
+	const examples = Array.isArray(item?.examples) ? item.examples : []
+	const normalizedExamples = examples.map((example) => ({
+		id: toNullableNumber(example?.id),
+		exampleSentence: normalizeSearchText(example?.exampleSentence),
+		exampleTranslation: normalizeSearchText(example?.exampleTranslation)
+	})).filter((example) => !!example.exampleSentence)
+	if (normalizedExamples.length) {
+		return normalizedExamples
+	}
+	const fallbackSentence = normalizeSearchText(item?.exampleSentence)
+	if (!fallbackSentence) {
+		return []
+	}
+	return [{
+		id: null,
+		exampleSentence: fallbackSentence,
+		exampleTranslation: normalizeSearchText(item?.exampleTranslation)
+	}]
 }
 
 export function normalizeWordDetailResult(
@@ -99,7 +128,8 @@ export function normalizeWordDetailResult(
 		partOfSpeech: normalizeSearchText(item.partOfSpeech) || fallbackDetail?.partOfSpeech || '',
 		meaningCn: normalizeSearchText(item.meaningCn) || fallbackDetail?.meaningCn || '',
 		exampleSentence: normalizeSearchText(item.exampleSentence),
-		exampleTranslation: normalizeSearchText(item.exampleTranslation)
+		exampleTranslation: normalizeSearchText(item.exampleTranslation),
+		examples: normalizeWordExamples(item)
 	}
 }
 
@@ -152,4 +182,21 @@ export function resolveWordDetailExampleSentence(detail: KyyyHomeWordDetailState
 
 export function resolveWordDetailExampleTranslation(detail: KyyyHomeWordDetailState | null): string {
 	return detail?.exampleTranslation || '翻译待补充'
+}
+
+export function resolveWordDetailExamples(detail: KyyyHomeWordDetailState | null): KyyyWordExampleState[] {
+	if (!detail) {
+		return []
+	}
+	if (detail.examples.length) {
+		return detail.examples
+	}
+	if (!detail.exampleSentence) {
+		return []
+	}
+	return [{
+		id: null,
+		exampleSentence: detail.exampleSentence,
+		exampleTranslation: detail.exampleTranslation
+	}]
 }

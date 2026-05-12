@@ -20,9 +20,16 @@ export interface KyyyHomeWordSearchResponse {
 	meaningCn?: string | null
 }
 
+export interface KyyyWordExampleResponse {
+	id?: number | string | null
+	exampleSentence?: string | null
+	exampleTranslation?: string | null
+}
+
 export interface KyyyHomeWordDetailResponse extends KyyyHomeWordSearchResponse {
 	exampleSentence?: string | null
 	exampleTranslation?: string | null
+	examples?: KyyyWordExampleResponse[] | null
 }
 
 export function getHomeDashboard(): Promise<KyyyHomeDashboardResponse> {

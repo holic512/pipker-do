@@ -1,3 +1,13 @@
+/**
+ * @file KyyyPracticeNextWordResponse
+ * @project pipker-do
+ * @module 考研英语 / 背词会话
+ * @description 返回兼容旧入口的下一个学习单词数据。
+ * @logic 1. 复用当前会话卡片字段；2. 保留旧单例句字段；3. 返回多例句和相关词用于详情展示。
+ * @dependencies DTO: KyyyWordExampleResponse, DTO: KyyyRelatedWordResponse, DTO: KyyyWordSourceBankResponse
+ * @index_tags 考研英语, 下一个单词, 多例句, 背词
+ * @author holic512
+ */
 package org.example.backend.biz.kyyy.dto;
 
 import lombok.AllArgsConstructor;
@@ -7,9 +17,6 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * AI 索引: KYYY 用户侧下一个学习单词响应。
- */
 @Data
 @AllArgsConstructor
 public class KyyyPracticeNextWordResponse implements Serializable {
@@ -29,6 +36,8 @@ public class KyyyPracticeNextWordResponse implements Serializable {
     private String exampleSentence;
 
     private String exampleTranslation;
+
+    private List<KyyyWordExampleResponse> examples;
 
     private Integer difficultyLevel;
 

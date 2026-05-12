@@ -3,6 +3,8 @@ package org.example.backend.biz.kyyy.service;
 import org.example.backend.biz.kyyy.dto.KyyyHomeWordDetailResponse;
 import org.example.backend.biz.kyyy.dto.KyyyHomeWordSearchResponse;
 import org.example.backend.biz.kyyy.entity.KyyyWord;
+import org.example.backend.biz.kyyy.entity.KyyyWordExample;
+import org.example.backend.biz.kyyy.mapper.KyyyWordExampleMapper;
 import org.example.backend.biz.kyyy.mapper.KyyyWordMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,8 +29,8 @@ import static org.mockito.Mockito.when;
  * @module 考研英语 / 首页查词测试
  * @description 验证首页查词服务的关键词处理、排序优先级、数量裁剪与详情查询。
  * @logic 1. 模拟 Mapper 查询结果；2. 覆盖空关键词、精确优先、去重与结果上限；3. 校验详情例句字段。
- * @dependencies Service: KyyyHomeWordSearchService, Mapper: KyyyWordMapper
- * @index_tags 考研英语, 首页查词, 单元测试, Mockito
+ * @dependencies Service: KyyyHomeWordSearchService, Mapper: KyyyWordMapper, Mapper: KyyyWordExampleMapper
+ * @index_tags 考研英语, 首页查词, 多例句, Mockito
  * @author holic512
  */
 @ExtendWith(MockitoExtension.class)
@@ -37,11 +39,14 @@ class KyyyHomeWordSearchServiceTest {
     @Mock
     private KyyyWordMapper kyyyWordMapper;
 
+    @Mock
+    private KyyyWordExampleMapper kyyyWordExampleMapper;
+
     private KyyyHomeWordSearchService kyyyHomeWordSearchService;
 
     @BeforeEach
     void setUp() {
-        kyyyHomeWordSearchService = new KyyyHomeWordSearchService(kyyyWordMapper);
+        kyyyHomeWordSearchService = new KyyyHomeWordSearchService(kyyyWordMapper, kyyyWordExampleMapper);
     }
 
     @Test
@@ -98,6 +103,10 @@ class KyyyHomeWordSearchServiceTest {
         word.setExampleSentence("Never abandon your plan.");
         word.setExampleTranslation("永远不要放弃你的计划。");
         when(kyyyWordMapper.selectOne(any())).thenReturn(word);
+        when(kyyyWordExampleMapper.selectList(any())).thenReturn(List.of(
+                createExample(1L, "Never abandon your plan.", "永远不要放弃你的计划。"),
+                createExample(2L, "They refused to abandon the project.", "他们拒绝放弃这个项目。")
+        ));
 
         KyyyHomeWordDetailResponse result = kyyyHomeWordSearchService.getWordDetail(12L);
 
@@ -105,6 +114,8 @@ class KyyyHomeWordSearchServiceTest {
         assertEquals("abandon", result.getWordText());
         assertEquals("Never abandon your plan.", result.getExampleSentence());
         assertEquals("永远不要放弃你的计划。", result.getExampleTranslation());
+        assertEquals(2, result.getExamples().size());
+        assertEquals("They refused to abandon the project.", result.getExamples().get(1).getExampleSentence());
     }
 
     private KyyyWord createWord(Long id, String wordText) {
@@ -116,5 +127,13 @@ class KyyyHomeWordSearchServiceTest {
         word.setPartOfSpeech("n.");
         word.setMeaningCn("释义");
         return word;
+    }
+
+    private KyyyWordExample createExample(Long id, String sentence, String translation) {
+        KyyyWordExample example = new KyyyWordExample();
+        example.setId(id);
+        example.setExampleSentence(sentence);
+        example.setExampleTranslation(translation);
+        return example;
     }
 }

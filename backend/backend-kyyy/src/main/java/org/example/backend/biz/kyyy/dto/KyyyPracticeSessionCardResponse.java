@@ -3,9 +3,9 @@
  * @project pipker-do
  * @module 考研英语 / 背词会话
  * @description 返回当前待学习单词卡片及其记忆上下文。
- * @logic 1. 暴露单词正文、音标、释义与例句；2. 暴露来源、轮次与顺序；3. 暴露长期进度与关联词。
- * @dependencies Entity: KyyyWord, DTO: KyyyRelatedWordResponse, DTO: KyyyWordSourceBankResponse
- * @index_tags 考研英语, 单词卡片, 学习卡片, 会话当前题
+ * @logic 1. 暴露单词正文、音标、释义与多例句；2. 暴露来源、轮次与顺序；3. 暴露长期进度与关联词。
+ * @dependencies Entity: KyyyWord, DTO: KyyyWordExampleResponse, DTO: KyyyRelatedWordResponse, DTO: KyyyWordSourceBankResponse
+ * @index_tags 考研英语, 单词卡片, 学习卡片, 多例句
  * @author holic512
  */
 package org.example.backend.biz.kyyy.dto;
@@ -36,6 +36,8 @@ public class KyyyPracticeSessionCardResponse implements Serializable {
     private String exampleSentence;
 
     private String exampleTranslation;
+
+    private List<KyyyWordExampleResponse> examples;
 
     private Integer difficultyLevel;
 

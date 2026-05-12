@@ -1,3 +1,13 @@
+/**
+ * @file KyyyWord
+ * @project pipker-do
+ * @module 考研英语 / 单词词库
+ * @description 映射 KYYY 单词主表，承载单词基础释义、音标、难度与启停状态。
+ * @logic 1. 保存单词基础信息；2. 通过 normalizedWord 做唯一归一化；3. 例句改由 kyyy_word_example 独立维护。
+ * @dependencies Table: kyyy_word
+ * @index_tags 考研英语, 单词主表, 词库, 基础释义
+ * @author holic512
+ */
 package org.example.backend.biz.kyyy.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
@@ -8,9 +18,6 @@ import lombok.Data;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-/**
- * AI 索引: KYYY 单词实体。
- */
 @Data
 @TableName("kyyy_word")
 public class KyyyWord implements Serializable {
@@ -36,12 +43,6 @@ public class KyyyWord implements Serializable {
 
     /** 中文释义。 */
     private String meaningCn;
-
-    /** 例句。 */
-    private String exampleSentence;
-
-    /** 例句翻译。 */
-    private String exampleTranslation;
 
     /** 难度等级。 */
     private Integer difficultyLevel;

@@ -70,6 +70,12 @@ export interface KyyyPracticeRelatedWordResponse {
 	relationType?: string | null
 }
 
+export interface KyyyPracticeWordExampleResponse {
+	id?: number | string | null
+	exampleSentence?: string | null
+	exampleTranslation?: string | null
+}
+
 export interface KyyyPracticeWordSourceBankResponse {
 	id?: number | string | null
 	bankCode?: string | null
@@ -85,6 +91,7 @@ export interface KyyyPracticeCardResponse {
 	meaningCn?: string | null
 	exampleSentence?: string | null
 	exampleTranslation?: string | null
+	examples?: KyyyPracticeWordExampleResponse[] | null
 	difficultyLevel?: number | string | null
 	studyStatus?: string | null
 	masteryLevel?: number | string | null
@@ -160,6 +167,12 @@ export interface KyyyPracticeRelatedWordState {
 	relationType: string
 }
 
+export interface KyyyPracticeWordExampleState {
+	id: number | null
+	exampleSentence: string
+	exampleTranslation: string
+}
+
 export interface KyyyPracticeWordSourceBankState {
 	id: number | null
 	bankCode: string
@@ -175,6 +188,7 @@ export interface KyyyPracticeCardState {
 	meaningCn: string
 	exampleSentence: string
 	exampleTranslation: string
+	examples: KyyyPracticeWordExampleState[]
 	difficultyLevel: number
 	studyStatus: string
 	masteryLevel: number
