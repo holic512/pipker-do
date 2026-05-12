@@ -12,27 +12,6 @@
 	<view v-if="!revealed" class="practice-session-card-detail practice-session-card-detail--skeleton">
 		<view class="practice-session-card-detail__skeleton-line practice-session-card-detail__skeleton-line--meaning"></view>
 		<view class="practice-session-card-detail__skeleton-line practice-session-card-detail__skeleton-line--meaning-short"></view>
-
-		<view class="practice-session-card-detail__block">
-			<view class="practice-session-card-detail__title">
-				<view class="practice-session-card-detail__mark"></view>
-				<text>例句</text>
-			</view>
-			<view class="practice-session-card-detail__skeleton-line practice-session-card-detail__skeleton-line--text"></view>
-			<view class="practice-session-card-detail__skeleton-line practice-session-card-detail__skeleton-line--text-short"></view>
-		</view>
-
-		<view class="practice-session-card-detail__block">
-			<view class="practice-session-card-detail__title">
-				<view class="practice-session-card-detail__mark"></view>
-				<text>相关词</text>
-			</view>
-			<view class="practice-session-card-detail__skeleton-chip-row">
-				<view class="practice-session-card-detail__skeleton-chip"></view>
-				<view class="practice-session-card-detail__skeleton-chip practice-session-card-detail__skeleton-chip--wide"></view>
-				<view class="practice-session-card-detail__skeleton-chip"></view>
-			</view>
-		</view>
 	</view>
 
 	<view v-else class="practice-session-card-detail">
@@ -43,11 +22,12 @@
 			<text class="practice-session-card-detail__meaning">{{ card.meaningCn || '释义暂缺' }}</text>
 		</view>
 
-		<view class="practice-session-card-detail__block">
+		<view class="practice-session-card-detail__block practice-session-card-detail__block--example">
 			<view class="practice-session-card-detail__title">
 				<view class="practice-session-card-detail__mark"></view>
 				<text>例句</text>
 			</view>
+			<view class="practice-session-card-detail__divider practice-session-card-detail__divider--example"></view>
 			<text class="practice-session-card-detail__text">
 				{{ card.exampleSentence || '当前单词暂未补充例句。' }}
 			</text>
@@ -56,11 +36,12 @@
 			</text>
 		</view>
 
-		<view v-if="card.relatedWords.length" class="practice-session-card-detail__block">
+		<view v-if="card.relatedWords.length" class="practice-session-card-detail__block practice-session-card-detail__block--related">
 			<view class="practice-session-card-detail__title">
 				<view class="practice-session-card-detail__mark"></view>
 				<text>相关词</text>
 			</view>
+			<view class="practice-session-card-detail__divider practice-session-card-detail__divider--related"></view>
 			<view class="practice-session-card-detail__related-list">
 				<view
 					v-for="item in card.relatedWords"
@@ -180,6 +161,31 @@ export default defineComponent({
 
 .practice-session-card-detail__block {
 	margin-top: 28rpx;
+}
+
+.practice-session-card-detail__divider {
+	width: 100%;
+	height: 3rpx;
+	margin-top: 12rpx;
+	border-radius: 999rpx;
+	background: rgba(224, 231, 240, 0.82);
+	overflow: hidden;
+}
+
+.practice-session-card-detail__divider::after {
+	content: '';
+	display: block;
+	height: 100%;
+	width: 132rpx;
+	border-radius: inherit;
+}
+
+.practice-session-card-detail__divider--example::after {
+	background: linear-gradient(90deg, rgba(98, 124, 168, 0.95), rgba(98, 124, 168, 0.14));
+}
+
+.practice-session-card-detail__divider--related::after {
+	background: linear-gradient(90deg, rgba(191, 148, 77, 0.95), rgba(191, 148, 77, 0.14));
 }
 
 .practice-session-card-detail__title {

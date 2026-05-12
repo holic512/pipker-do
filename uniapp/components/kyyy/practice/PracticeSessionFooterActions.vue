@@ -90,8 +90,8 @@ export default defineComponent({
 
 .practice-session-footer__hint {
 	display: block;
-	font-size: 24rpx;
-	line-height: 1.6;
+	font-size: 20rpx;
+	line-height: 1.45;
 	text-align: center;
 	color: #445266;
 }
@@ -100,32 +100,32 @@ export default defineComponent({
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: 16rpx;
-	margin-top: 18rpx;
+	margin-top: 10rpx;
 }
 
 .practice-session-footer__rate-button {
-	height: 102rpx;
+	height: 84rpx;
 	border-radius: 30rpx;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 12rpx;
+	gap: 8rpx;
 	background: transparent;
 	box-shadow: none;
 }
 
 .practice-session-footer__rate-text {
-	font-size: 34rpx;
+	font-size: 28rpx;
 	line-height: 1.08;
-	font-weight: 720;
+	font-weight: 700;
 	letter-spacing: 0.04em;
 	color: #111111;
 }
 
 .practice-session-footer__rate-accent {
-	width: 28rpx;
-	height: 6rpx;
+	width: 22rpx;
+	height: 5rpx;
 	border-radius: 999rpx;
 }
 
@@ -145,7 +145,7 @@ export default defineComponent({
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 16rpx;
-	margin-top: 18rpx;
+	margin-top: 10rpx;
 }
 
 .practice-session-footer__confirm.is-single {
@@ -153,14 +153,14 @@ export default defineComponent({
 }
 
 .practice-session-footer__confirm-button {
-	height: 88rpx;
+	height: 80rpx;
 	border-radius: 999rpx;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	background: #1f2833;
 	box-shadow: 0 14rpx 28rpx rgba(44, 57, 74, 0.16);
-	font-size: 28rpx;
+	font-size: 25rpx;
 	font-weight: 700;
 	color: #ffffff;
 }
