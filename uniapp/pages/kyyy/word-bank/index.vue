@@ -1,8 +1,17 @@
+<!--
+@file KyyyWordBankPage
+@project pipker-do
+@module 考研英语 / 小程序词库页
+@description 展示英语词库列表、默认词库状态，并在学习/复习入口下承接返回练习页的动作。
+@logic 1. 加载词库与默认词库信息；2. 管理选择、取消和设默认；3. 在学习/复习模式下提供固定 CTA 返回练习页。
+@dependencies API: @/pages/kyyy/api/word-bank, API: @/pages/kyyy/practice/settings, Component: PageShell, Component: KyyyTabbar
+@index_tags 考研英语, 词库页, 默认词库, 学习入口
+@author holic512
+-->
 <template>
-	<!-- AI 索引: KYYY 英语词库选择页。 -->
 	<page-shell
 		root-class="kyyy-word-bank-page theme-page"
-		content-style="padding: 0 24rpx 40rpx;"
+		content-style="padding: 0 24rpx 180rpx;"
 	>
 		<view class="kyyy-word-bank-page__ambient kyyy-word-bank-page__ambient--left"></view>
 		<view class="kyyy-word-bank-page__ambient kyyy-word-bank-page__ambient--right"></view>
@@ -92,6 +101,18 @@
 			<view v-else class="kyyy-word-bank-page__state-card">
 				<text class="kyyy-word-bank-page__state-text">当前还没有可用词库</text>
 			</view>
+
+			<view v-if="footerAction.visible" class="kyyy-word-bank-page__footer-spacer"></view>
+		</view>
+
+		<view v-if="footerAction.visible" class="kyyy-word-bank-page__footer">
+			<view
+				class="kyyy-word-bank-page__footer-button"
+				:class="{ 'is-disabled': footerAction.disabled }"
+				@tap="handleFooterAction"
+			>
+				<text>{{ footerAction.text }}</text>
+			</view>
 		</view>
 
 		<template #tabbar>
@@ -110,6 +131,7 @@ import { loadPracticeSettingsWithFallback, readCachedPracticeSettings, syncPract
 import type { KyyyPracticeSettingState } from '@/pages/kyyy/practice/types'
 import type {
 	KyyyWordBankEntryMode,
+	KyyyWordBankFooterActionState,
 	KyyyWordBankListResponse,
 	KyyyWordBankListState,
 	KyyyWordBankRecordResponse,
@@ -235,6 +257,22 @@ export default defineComponent({
 				return null
 			}
 			return this.listState.records.find((item) => item.id === defaultWordBankId) || null
+		},
+		footerAction(): KyyyWordBankFooterActionState {
+			if (this.entryMode === 'default') {
+				return {
+					visible: false,
+					text: '',
+					mode: 'default',
+					disabled: true
+				}
+			}
+			return {
+				visible: true,
+				text: this.entryMode === 'review' ? '开始复习' : '开始学习',
+				mode: this.entryMode,
+				disabled: !this.defaultRecord || this.loading || !!this.togglingId || !!this.defaultingId
+			}
 		}
 	},
 	methods: {
@@ -285,6 +323,10 @@ export default defineComponent({
 					selected: nextSelected
 				})
 				await this.loadData()
+				const refreshed = this.listState.records.find((record) => record.id === item.id)
+				if (this.entryMode !== 'default' && nextSelected && refreshed?.isDefault) {
+					this.routeBackToPractice()
+				}
 			} catch (error) {
 				console.warn('[kyyy-word-bank] toggle selection failed', error)
 				uni.showToast({
@@ -305,6 +347,9 @@ export default defineComponent({
 					defaultWordBankId: item.id
 				})
 				await this.loadData()
+				if (this.entryMode !== 'default') {
+					this.routeBackToPractice()
+				}
 			} catch (error) {
 				console.warn('[kyyy-word-bank] set default failed', error)
 				uni.showToast({
@@ -314,6 +359,28 @@ export default defineComponent({
 			} finally {
 				this.defaultingId = null
 			}
+		},
+		handleFooterAction(): void {
+			if (this.footerAction.disabled) {
+				uni.showToast({
+					title: '先确认默认词库',
+					icon: 'none'
+				})
+				return
+			}
+			this.routeBackToPractice()
+		},
+		routeBackToPractice(): void {
+			uni.reLaunch({
+				url: `/pages/kyyy/practice/index?mode=${this.entryMode}`,
+				fail: (error: unknown) => {
+					console.warn('[kyyy-word-bank] route back practice failed', error)
+					uni.showToast({
+						title: '返回学习页失败',
+						icon: 'none'
+					})
+				}
+			})
 		}
 	}
 })
@@ -555,5 +622,40 @@ export default defineComponent({
 
 .kyyy-word-bank-page__action.is-disabled {
 	opacity: 0.55;
+}
+
+.kyyy-word-bank-page__footer-spacer {
+	height: 120rpx;
+}
+
+.kyyy-word-bank-page__footer {
+	position: fixed;
+	left: 24rpx;
+	right: 24rpx;
+	bottom: calc(env(safe-area-inset-bottom) + 18rpx);
+	padding: 18rpx;
+	border-radius: 28rpx;
+	background: rgba(247, 243, 239, 0.95);
+	box-shadow:
+		0 16rpx 40rpx rgba(70, 83, 102, 0.12),
+		inset 0 0 0 1rpx rgba(226, 232, 239, 0.94);
+	backdrop-filter: blur(12rpx);
+}
+
+.kyyy-word-bank-page__footer-button {
+	height: 84rpx;
+	border-radius: 999rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(135deg, rgba(92, 113, 141, 0.96), rgba(72, 89, 115, 0.98));
+	box-shadow: 0 16rpx 34rpx rgba(73, 90, 116, 0.16);
+	font-size: 28rpx;
+	font-weight: 760;
+	color: #ffffff;
+}
+
+.kyyy-word-bank-page__footer-button.is-disabled {
+	opacity: 0.48;
 }
 </style>

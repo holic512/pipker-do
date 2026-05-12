@@ -1,3 +1,13 @@
+/**
+ * @file KyyyWordPracticeSupport
+ * @project pipker-do
+ * @module 考研英语 / 背词支撑
+ * @description 提供默认词库解析、用户词库关系同步与学习公共操作。
+ * @logic 1. 校验词库状态与用户选择关系；2. 同步默认词库与学习人数；3. 更新用户在词库层面的最近学习时间。
+ * @dependencies Mapper: KyyyWordBankMapper, Mapper: KyyyUserWordBankMapper, Mapper: KyyyUserPracticeSettingMapper
+ * @index_tags 考研英语, 默认词库, 背词支持, 用户词库
+ * @author holic512
+ */
 package org.example.backend.biz.kyyy.support;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -8,11 +18,11 @@ import org.example.backend.biz.kyyy.entity.KyyyWordBank;
 import org.example.backend.biz.kyyy.mapper.KyyyUserPracticeSettingMapper;
 import org.example.backend.biz.kyyy.mapper.KyyyUserWordBankMapper;
 import org.example.backend.biz.kyyy.mapper.KyyyWordBankMapper;
-import org.example.backend.biz.kyyy.support.KyyyExamDirectionSupport;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -153,6 +163,16 @@ public class KyyyWordPracticeSupport {
             return null;
         }
         return requireActiveWordBank(bankId);
+    }
+
+    public void touchUserWordBankPractice(Long userId, Long bankId, LocalDateTime practicedAt) {
+        if (userId == null || bankId == null || practicedAt == null) {
+            return;
+        }
+        kyyyUserWordBankMapper.update(null, new LambdaUpdateWrapper<KyyyUserWordBank>()
+                .eq(KyyyUserWordBank::getUserId, userId)
+                .eq(KyyyUserWordBank::getWordBankId, bankId)
+                .set(KyyyUserWordBank::getLastPracticeAt, practicedAt));
     }
 
     private Map<Long, KyyyWordBank> loadActiveBankMap(List<Long> bankIds) {

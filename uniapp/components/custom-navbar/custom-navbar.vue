@@ -19,7 +19,9 @@
 				>
 					<uni-icons type="bars" :size="iconSize" color="#1f2937" />
 				</view>
-				<view class="custom-navbar__center"></view>
+				<view class="custom-navbar__center">
+					<slot />
+				</view>
 				<view class="custom-navbar__side" :style="sideStyle"></view>
 			</view>
 		</view>
@@ -285,6 +287,7 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	min-width: 0;
 }
 
 .project-drawer-layer {

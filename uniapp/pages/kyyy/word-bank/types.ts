@@ -1,4 +1,13 @@
-// AI 索引: KYYY 小程序词库页面类型。
+/**
+ * @file KyyyWordBankTypes
+ * @project pipker-do
+ * @module 考研英语 / 小程序词库页
+ * @description 定义词库列表、选择状态与学习入口底部动作的前端类型。
+ * @logic 1. 约束词库列表接口结构；2. 约束页面内的词库记录状态；3. 约束学习/复习模式下的底部 CTA 状态。
+ * @dependencies API: @/pages/kyyy/api/word-bank
+ * @index_tags 考研英语, 词库类型, 默认词库, 学习入口
+ * @author holic512
+ */
 
 export type KyyyWordBankEntryMode = 'default' | 'study' | 'review'
 
@@ -59,4 +68,11 @@ export interface KyyyWordBankListState {
 	summary: KyyyWordBankSummaryState
 	records: KyyyWordBankRecordState[]
 	loaded: boolean
+}
+
+export interface KyyyWordBankFooterActionState {
+	visible: boolean
+	text: string
+	mode: KyyyWordBankEntryMode
+	disabled: boolean
 }

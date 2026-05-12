@@ -14,6 +14,7 @@ public class AntiCrawlerRouteClassifier {
     private static final Pattern PRACTICE_ANSWER_PREVIEW_PATH = Pattern.compile("^/api/kyzz/practice/questions/\\d+/answer-preview$");
     private static final Pattern PRACTICE_REVIEW_PATH = Pattern.compile("^/api/kyzz/practice/questions/\\d+/review$");
     private static final Pattern PRACTICE_SELF_JUDGEMENT_PATH = Pattern.compile("^/api/kyzz/practice/questions/\\d+/self-judgement$");
+    private static final Pattern KYYY_PRACTICE_FEEDBACK_PATH = Pattern.compile("^/api/kyyy/practice/session/\\d+/feedback$");
 
     public AntiCrawlerRouteMatch match(String path, String method) {
         if ("POST".equalsIgnoreCase(method) && "/api/auth/wechat/login".equals(path)) {
@@ -49,14 +50,26 @@ public class AntiCrawlerRouteClassifier {
         if ("GET".equalsIgnoreCase(method) && "/api/kyzz/practice/settings".equals(path)) {
             return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PRACTICE_SESSION_READ, "/api/kyzz/practice/settings", true);
         }
+        if ("GET".equalsIgnoreCase(method) && "/api/kyyy/practice/session".equals(path)) {
+            return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PRACTICE_SESSION_READ, "/api/kyyy/practice/session", true);
+        }
+        if ("GET".equalsIgnoreCase(method) && "/api/kyyy/practice/settings".equals(path)) {
+            return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PRACTICE_SESSION_READ, "/api/kyyy/practice/settings", true);
+        }
         if ("GET".equalsIgnoreCase(method) && PRACTICE_ANSWER_PREVIEW_PATH.matcher(path).matches()) {
             return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PRACTICE_SESSION_READ, "/api/kyzz/practice/questions/{questionId}/answer-preview", true);
         }
         if ("PUT".equalsIgnoreCase(method) && "/api/kyzz/practice/settings".equals(path)) {
             return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PROFILE_READWRITE, "/api/kyzz/practice/settings", false);
         }
+        if ("PUT".equalsIgnoreCase(method) && "/api/kyyy/practice/settings".equals(path)) {
+            return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PROFILE_READWRITE, "/api/kyyy/practice/settings", false);
+        }
         if ("POST".equalsIgnoreCase(method) && "/api/kyzz/practice/progress/reset".equals(path)) {
             return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PRACTICE_SUBMIT, "/api/kyzz/practice/progress/reset", false);
+        }
+        if ("POST".equalsIgnoreCase(method) && KYYY_PRACTICE_FEEDBACK_PATH.matcher(path).matches()) {
+            return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PRACTICE_SUBMIT, "/api/kyyy/practice/session/{sessionId}/feedback", false);
         }
         if ("GET".equalsIgnoreCase(method) && "/api/kyzz/leaderboard".equals(path)) {
             return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.QUESTION_BANK_READ, "/api/kyzz/leaderboard", true);
