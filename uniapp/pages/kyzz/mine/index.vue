@@ -248,4 +248,34 @@ export default {
 .kyzz-mine__special-action {
 	margin: 0;
 }
+
+.mine-page__menu-item {
+	display: flex;
+	align-items: center;
+	min-height: 68rpx;
+	padding: 18rpx 22rpx 18rpx 18rpx;
+	border-radius: 14rpx;
+	background: #ffffff;
+	box-shadow: 0 14rpx 32rpx rgba(176, 185, 198, 0.12);
+}
+
+.mine-page__menu-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 42rpx;
+	height: 42rpx;
+	border-radius: 8rpx;
+	background: #eef2f5;
+	flex-shrink: 0;
+}
+
+.mine-page__menu-text {
+	flex: 1;
+	margin-left: 16rpx;
+	font-size: 26rpx;
+	line-height: 1.2;
+	font-weight: 600;
+	color: #2f343a;
+}
 </style>
