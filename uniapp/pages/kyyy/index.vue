@@ -489,13 +489,13 @@ export default defineComponent({
 					navigationType: 'navigateTo'
 				},
 				{
-					key: 'ai-practice',
-					title: 'AI练习',
-					description: '智能练习位',
-					icon: 'chatboxes-filled',
+					key: 'reading',
+					title: '阅读',
+					description: '整篇阅读作答',
+					icon: 'compose',
 					iconColor: '#5a5f7f',
 					iconBackground: 'linear-gradient(135deg, rgba(231, 233, 246, 0.98), rgba(212, 217, 238, 0.95))',
-					path: '/pages/kyyy/ai-practice/index',
+					path: '/pages/kyyy/reading/index',
 					navigationType: 'navigateTo'
 				}
 			]

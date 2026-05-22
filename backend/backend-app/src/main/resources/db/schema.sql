@@ -746,6 +746,29 @@ CREATE TABLE IF NOT EXISTS kyyy_user_reading_wrong_question (
     CONSTRAINT fk_kyyy_user_reading_wrong_question_question_id FOREIGN KEY (question_id) REFERENCES kyyy_reading_question (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYYY用户阅读错题表';
 
+CREATE TABLE IF NOT EXISTS kyyy_user_reading_annotation (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户阅读标注ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    passage_id BIGINT UNSIGNED NOT NULL COMMENT '阅读文章ID',
+    question_id BIGINT UNSIGNED DEFAULT NULL COMMENT '阅读题目ID，空表示正文标注',
+    content_type VARCHAR(30) NOT NULL COMMENT '标注内容类型：passage_text/question_stem',
+    start_offset INT NOT NULL COMMENT '选区起始偏移，含头',
+    end_offset INT NOT NULL COMMENT '选区结束偏移，不含尾',
+    selected_text_snapshot TEXT NOT NULL COMMENT '选中文本快照',
+    note_content VARCHAR(200) NOT NULL COMMENT '备注内容',
+    source_text_hash CHAR(64) NOT NULL COMMENT '来源文本 SHA-256',
+    status VARCHAR(20) NOT NULL DEFAULT 'active' COMMENT '状态：active/deleted',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_kyyy_user_reading_annotation_user_content_status (user_id, passage_id, question_id, content_type, status),
+    KEY idx_kyyy_user_reading_annotation_passage_status (passage_id, status),
+    KEY idx_kyyy_user_reading_annotation_question_status (question_id, status),
+    CONSTRAINT fk_kyyy_user_reading_annotation_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
+    CONSTRAINT fk_kyyy_user_reading_annotation_passage_id FOREIGN KEY (passage_id) REFERENCES kyyy_reading_passage (id),
+    CONSTRAINT fk_kyyy_user_reading_annotation_question_id FOREIGN KEY (question_id) REFERENCES kyyy_reading_question (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYYY用户阅读标注表';
+
 CREATE TABLE IF NOT EXISTS kyyy_reading_ai_enrichment_log (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '阅读AI补齐日志ID',
     run_id VARCHAR(64) NOT NULL COMMENT '运行ID',

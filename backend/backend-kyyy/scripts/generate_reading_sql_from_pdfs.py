@@ -353,7 +353,7 @@ def generate_sql(passages: list[ReadingPassage], output_path: Path, source_pdf: 
         "-- @project pipker-do",
         "-- @module 考研英语 / 阅读导入",
         f"-- @description 从 {source_pdf.name} 真实解析生成阅读篇章、小题和选项导入 SQL。",
-        "-- @logic 1. passage 以篇章入库；2. question 以题号挂到篇章；3. option 以 A-D 选项挂到题目；4. 对缺失答案和解析保留 NULL，待 AI 补齐。",
+        "-- @logic 1. passage 以篇章入库；2. question 以题号挂到篇章；3. option 以 A-D 选项挂到题目；4. 标准答案与解析按当前题库版本一并导出。",
         "-- @dependencies Table: kyyy_reading_passage, Table: kyyy_reading_question, Table: kyyy_reading_question_option",
         f"-- @index_tags 考研英语, 阅读导入, {title}, 真题SQL, PDF转SQL",
         "-- @author holic512",

@@ -98,6 +98,12 @@
 			}
 		},
 		{
+			"path": "pages/kyyy/reading/index",
+			"style": {
+				"navigationBarTitleText": "阅读"
+			}
+		},
+		{
 			"path": "pages/kyyy/word-bank/index",
 			"style": {
 				"navigationBarTitleText": "词库"
