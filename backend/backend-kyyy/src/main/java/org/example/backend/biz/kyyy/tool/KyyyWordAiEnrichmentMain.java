@@ -49,6 +49,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -74,6 +76,7 @@ public final class KyyyWordAiEnrichmentMain {
     private static final int MAX_TRANSLATION_LENGTH = 500;
     private static final int MAX_WORD_LENGTH = 100;
     private static final int MAX_MEANING_LENGTH = 255;
+    private static final Map<String, Set<String>> IRREGULAR_WORD_FORMS = buildIrregularWordForms();
 
     private KyyyWordAiEnrichmentMain() {
     }
@@ -257,7 +260,7 @@ public final class KyyyWordAiEnrichmentMain {
             for (int attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
                     AiCallResult aiCall = aiGenerator.generate(word, assessment, retryFeedback);
-                    ValidatedEnrichment enrichment = validateAiResult(word, aiCall.response());
+                    ValidatedEnrichment enrichment = validateAiResult(word, aiCall.response(), config.qualityAiReviewEnabled());
                     validateQualityThreshold(enrichment);
                     if (config.qualityAiReviewEnabled()) {
                         AiReviewResult review = aiGenerator.review(word, enrichment, aiCall.rawJson());
@@ -343,19 +346,20 @@ public final class KyyyWordAiEnrichmentMain {
                            ) AS primary_example_translation
                     FROM kyyy_word word_row
                     WHERE word_row.status = 1
-                    ORDER BY word_row.id
                     """);
+            sql.append(" ORDER BY word_row.id\n");
             if (args.limit() != null && args.limit() > 0) {
                 sql.append(" LIMIT ").append(args.limit());
             }
             try (Connection connection = openConnection();
-                 PreparedStatement statement = connection.prepareStatement(sql.toString());
-                 ResultSet resultSet = statement.executeQuery()) {
+                 PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+                try (ResultSet resultSet = statement.executeQuery()) {
                 List<WordRecord> words = new ArrayList<>();
                 while (resultSet.next()) {
                     words.add(toWordRecord(resultSet));
                 }
                 return words;
+                }
             }
         }
 
@@ -705,7 +709,8 @@ public final class KyyyWordAiEnrichmentMain {
             String systemPrompt = """
                     你是考研英语词库编辑。只基于给定单词、词性和中文释义补充学习资料。
                     不要编造中文释义，不要输出隐藏推理过程，不要解释 JSON 外的内容。
-                    例句必须适合考研英语阅读或写作语境，英文自然、简洁、包含目标词或合理词形变化。
+                    例句必须适合考研英语阅读或写作语境，英文自然、简洁、包含目标词本身，或同一词条的常见屈折词形变化。
+                    不要把派生词、同词根但不同词条的词、近义替换词当作“词形变化”。
                     近义词必须是英文词或短语，不能与目标词相同，中文释义要短。
                     """;
             String userPrompt = buildUserPrompt(word, assessment, retryFeedback);
@@ -732,7 +737,9 @@ public final class KyyyWordAiEnrichmentMain {
         private AiReviewResult review(WordRecord word, ValidatedEnrichment enrichment, String rawJson) throws Exception {
             String systemPrompt = """
                     你是考研英语词库质检员。只判断给定 AI 补齐内容是否可以写入词库。
-                    审核重点是语义准确、中文翻译忠实、例句包含目标词或合理词形、近义词与给定中文释义相关。
+                    审核重点是语义准确、中文翻译忠实、例句包含目标词本身或同一词条的常见屈折词形、近义词与给定中文释义相关。
+                    如果本地规则未命中词形，你需要判断例句中的词是否仍属于目标词同一词条的合法屈折变化。
+                    如果只是派生词、同词根但不同词条的词、或近义替换词，必须拒绝。
                     不追求文采完美；只有存在明显错误、无关内容、格式缺失或翻译不匹配时才拒绝。
                     只返回 JSON，不要输出解释性正文。
                     """;
@@ -918,7 +925,8 @@ public final class KyyyWordAiEnrichmentMain {
                     上轮退回原因：%s
 
                     输出要求：
-                    1. examples 返回 2 到 4 条英文例句，每条必须包含目标词或合理词形变化。
+                    1. examples 返回 2 到 4 条英文例句，每条必须包含目标词本身，或同一词条的常见屈折词形变化。
+                       不要把派生词、同词根但不同词条的词、近义替换词当作“词形变化”。
                     2. synonyms 返回 3 到 6 个近义词，不能包含目标词本身。
                     3. 不要补写或改写中文基础释义 meaning_cn。
                     4. 只返回下面形状的 JSON，不要返回 Markdown，不要把 examples 或 synonyms 写成字符串数组：
@@ -959,16 +967,28 @@ public final class KyyyWordAiEnrichmentMain {
             builder.append("中文释义：").append(safeText(word.meaningCn())).append('\n');
             builder.append("候选例句：\n");
             for (ValidatedExample example : enrichment.examples()) {
-                builder.append("- ").append(example.sentence()).append(" / ").append(example.translation()).append('\n');
+                builder.append("- ").append(example.sentence())
+                        .append(" / ")
+                        .append(example.translation())
+                        .append(" / 本地词形命中=")
+                        .append(example.localWordFormMatched() ? "是" : "否")
+                        .append('\n');
             }
             builder.append("候选近义词：\n");
             for (ValidatedSynonym synonym : enrichment.synonyms()) {
                 builder.append("- ").append(synonym.wordText()).append(" / ").append(synonym.meaningCn()).append('\n');
             }
+            if (enrichment.hasLocalValidationWarnings()) {
+                builder.append("本地待复核项：\n");
+                for (String warning : enrichment.localValidationWarnings()) {
+                    builder.append("- ").append(warning).append('\n');
+                }
+            }
             builder.append("原始 JSON：\n").append(truncate(rawJson, 3000)).append('\n');
             builder.append("""
 
                     请审核候选内容是否可以写入数据库。
+                    如果本地词形命中=否，必须重点判断它是否仍然是目标词同一词条的合法屈折变化。
                     返回 JSON 形状：
                     {"approved":true,"reason":"通过或拒绝原因","retryInstruction":"如果拒绝，写出下一轮必须修正的具体要求"}
                     """);
@@ -1061,19 +1081,23 @@ public final class KyyyWordAiEnrichmentMain {
         }
     }
 
-    private static ValidatedEnrichment validateAiResult(WordRecord word, AiResponse response) {
+    private static ValidatedEnrichment validateAiResult(WordRecord word, AiResponse response, boolean allowAiWordFormReview) {
         if (response == null) {
             throw new IllegalArgumentException("AI JSON 为空");
         }
-        List<ValidatedExample> examples = validateExamples(word, response.examples());
+        List<ValidatedExample> examples = validateExamples(word, response.examples(), allowAiWordFormReview);
         List<ValidatedSynonym> synonyms = validateSynonyms(word, response.synonyms());
         if (examples.isEmpty()) {
             throw new IllegalArgumentException("AI 未返回有效例句");
         }
-        return new ValidatedEnrichment(examples, synonyms);
+        List<String> localValidationWarnings = examples.stream()
+                .filter(example -> !example.localWordFormMatched())
+                .map(example -> "例句未命中本地词形规则，需 AI 复核是否属于同一词条合法词形：" + truncate(example.sentence(), 160))
+                .toList();
+        return new ValidatedEnrichment(examples, synonyms, localValidationWarnings);
     }
 
-    private static List<ValidatedExample> validateExamples(WordRecord word, List<AiExample> examples) {
+    private static List<ValidatedExample> validateExamples(WordRecord word, List<AiExample> examples, boolean allowAiWordFormReview) {
         if (examples == null || examples.isEmpty()) {
             return List.of();
         }
@@ -1091,12 +1115,13 @@ public final class KyyyWordAiEnrichmentMain {
             if (sentence.length() > MAX_SENTENCE_LENGTH || translation.length() > MAX_TRANSLATION_LENGTH) {
                 throw new IllegalArgumentException("AI 例句超过字段长度限制：" + sentence);
             }
-            if (!sentenceContainsWordForm(sentence, word.normalizedWord())) {
+            boolean localWordFormMatched = sentenceContainsWordForm(sentence, word.normalizedWord());
+            if (!localWordFormMatched && !allowAiWordFormReview) {
                 throw new IllegalArgumentException("AI 例句未包含目标词或合理词形：" + sentence);
             }
             String key = sentence.toLowerCase(Locale.ROOT);
             if (seen.add(key)) {
-                result.add(new ValidatedExample(sentence, translation));
+                result.add(new ValidatedExample(sentence, translation, localWordFormMatched));
             }
             if (result.size() >= MAX_EXAMPLE_COUNT) {
                 break;
@@ -1152,20 +1177,86 @@ public final class KyyyWordAiEnrichmentMain {
             return forms;
         }
         forms.add(normalized);
-        forms.add(normalized + "s");
-        forms.add(normalized + "es");
-        forms.add(normalized + "ed");
-        forms.add(normalized + "ing");
-        if (normalized.endsWith("e") && normalized.length() > 3) {
-            String stem = normalized.substring(0, normalized.length() - 1);
-            forms.add(stem + "ed");
-            forms.add(stem + "ing");
-        }
-        if (normalized.endsWith("y") && normalized.length() > 3) {
-            String stem = normalized.substring(0, normalized.length() - 1);
-            forms.add(stem + "ies");
-        }
+        forms.addAll(IRREGULAR_WORD_FORMS.getOrDefault(normalized, Collections.emptySet()));
+        addPluralOrThirdPersonForms(normalized, forms);
+        addPastForms(normalized, forms);
+        addProgressiveForms(normalized, forms);
         return forms;
+    }
+
+    private static void addPluralOrThirdPersonForms(String normalized, Set<String> forms) {
+        forms.add(normalized + "s");
+        if (endsWithAny(normalized, "s", "ss", "sh", "ch", "x", "z", "o")) {
+            forms.add(normalized + "es");
+        }
+        if (endsWithConsonantY(normalized)) {
+            forms.add(normalized.substring(0, normalized.length() - 1) + "ies");
+        }
+    }
+
+    private static void addPastForms(String normalized, Set<String> forms) {
+        forms.add(normalized + "ed");
+        if (normalized.endsWith("e") && normalized.length() > 2) {
+            forms.add(normalized + "d");
+        }
+        if (endsWithConsonantY(normalized)) {
+            forms.add(normalized.substring(0, normalized.length() - 1) + "ied");
+        }
+        if (shouldDoubleFinalConsonant(normalized)) {
+            forms.add(normalized + normalized.charAt(normalized.length() - 1) + "ed");
+        }
+    }
+
+    private static void addProgressiveForms(String normalized, Set<String> forms) {
+        forms.add(normalized + "ing");
+        if (normalized.endsWith("ie") && normalized.length() > 2) {
+            forms.add(normalized.substring(0, normalized.length() - 2) + "ying");
+        } else if (normalized.endsWith("e") && !normalized.endsWith("ee") && normalized.length() > 2) {
+            forms.add(normalized.substring(0, normalized.length() - 1) + "ing");
+        }
+        if (shouldDoubleFinalConsonant(normalized)) {
+            forms.add(normalized + normalized.charAt(normalized.length() - 1) + "ing");
+        }
+    }
+
+    private static boolean endsWithConsonantY(String word) {
+        return word.endsWith("y") && word.length() > 1 && !isVowel(word.charAt(word.length() - 2));
+    }
+
+    private static boolean shouldDoubleFinalConsonant(String word) {
+        if (word.length() < 3) {
+            return false;
+        }
+        char last = word.charAt(word.length() - 1);
+        char middle = word.charAt(word.length() - 2);
+        char first = word.charAt(word.length() - 3);
+        return isConsonant(last)
+                && !endsWithAny(word, "w", "x", "y")
+                && isVowel(middle)
+                && isConsonant(first);
+    }
+
+    private static boolean isVowel(char ch) {
+        return "aeiou".indexOf(Character.toLowerCase(ch)) >= 0;
+    }
+
+    private static boolean isConsonant(char ch) {
+        return ch >= 'a' && ch <= 'z' && !isVowel(ch);
+    }
+
+    private static boolean endsWithAny(String text, String... suffixes) {
+        return Arrays.stream(suffixes).anyMatch(text::endsWith);
+    }
+
+    private static Map<String, Set<String>> buildIrregularWordForms() {
+        Map<String, Set<String>> forms = new LinkedHashMap<>();
+        forms.put("awake", linkedSet("awakes", "awoke", "awoken", "awaked", "awaking"));
+        forms.put("begin", linkedSet("begins", "began", "begun", "beginning"));
+        return Collections.unmodifiableMap(forms);
+    }
+
+    private static Set<String> linkedSet(String... values) {
+        return new LinkedHashSet<>(Arrays.asList(values));
     }
 
     private static boolean isValidLegacyExample(WordRecord word) {
@@ -1350,50 +1441,50 @@ public final class KyyyWordAiEnrichmentMain {
 
             String configPath = promptWithDefault("配置文件路径", DEFAULT_CONFIG_PATH);
             return switch (choice) {
-                case "1" -> new CliArgs(
-                        configPath,
-                        "all",
-                        null,
-                        promptOptionalPositiveInteger("校验数量上限，留空表示全部"),
-                        null,
-                        false,
-                        true,
-                        false,
-                        false
-                );
+	                case "1" -> new CliArgs(
+	                        configPath,
+	                        "all",
+	                        null,
+	                        promptOptionalPositiveInteger("校验数量上限，留空表示全部"),
+	                        null,
+	                        false,
+	                        true,
+	                        false,
+	                        false
+	                );
                 case "2" -> new CliArgs(
                         configPath,
                         "single",
-                        promptRequired("请输入要测试的单词"),
-                        null,
-                        null,
-                        false,
-                        false,
-                        false,
-                        false
-                );
+	                        promptRequired("请输入要测试的单词"),
+	                        null,
+	                        null,
+	                        false,
+	                        false,
+	                        false,
+	                        false
+	                );
                 case "3" -> new CliArgs(
                         configPath,
                         "single",
-                        promptRequired("请输入要补齐并写库的单词"),
-                        null,
-                        null,
-                        true,
-                        false,
-                        promptYesNo("是否跳过后续 YES 二次确认", false),
-                        false
-                );
+	                        promptRequired("请输入要补齐并写库的单词"),
+	                        null,
+	                        null,
+	                        true,
+	                        false,
+	                        promptYesNo("是否跳过后续 YES 二次确认", false),
+	                        false
+	                );
                 case "4" -> new CliArgs(
                         configPath,
                         "all",
-                        null,
-                        promptOptionalPositiveInteger("全量执行数量上限，留空表示全部"),
-                        promptOptionalPositiveInteger("线程数，留空使用配置文件 run.threads"),
-                        true,
-                        false,
-                        false,
-                        false
-                );
+	                        null,
+	                        promptOptionalPositiveInteger("全量执行数量上限，留空表示全部"),
+	                        promptOptionalPositiveInteger("线程数，留空使用配置文件 run.threads"),
+	                        true,
+	                        false,
+	                        false,
+	                        false
+	                );
                 default -> throw new IllegalArgumentException("未知操作编号：" + choice);
             };
         }
@@ -1426,9 +1517,9 @@ public final class KyyyWordAiEnrichmentMain {
             return hasText(value) ? value.trim() : defaultValue;
         }
 
-        private Integer promptOptionalPositiveInteger(String label) throws IOException {
-            while (true) {
-                System.out.print(label + "：");
+	        private Integer promptOptionalPositiveInteger(String label) throws IOException {
+	            while (true) {
+	                System.out.print(label + "：");
                 String value = reader.readLine();
                 if (!hasText(value)) {
                     return null;
@@ -1441,9 +1532,9 @@ public final class KyyyWordAiEnrichmentMain {
                 } catch (NumberFormatException ignored) {
                     // Fall through to the shared validation message.
                 }
-                System.out.println("请输入大于 0 的整数，或直接回车跳过。");
-            }
-        }
+	                System.out.println("请输入大于 0 的整数，或直接回车跳过。");
+	            }
+	        }
 
         private boolean promptYesNo(String label, boolean defaultValue) throws IOException {
             String suffix = defaultValue ? "Y/n" : "y/N";
@@ -1467,13 +1558,13 @@ public final class KyyyWordAiEnrichmentMain {
 
     private record CliArgs(String configPath,
                            String mode,
-                           String word,
-                           Integer limit,
-                           Integer threads,
-                           boolean apply,
-                           boolean validateOnly,
-                           boolean yes,
-                           boolean shouldExit) {
+	                           String word,
+	                           Integer limit,
+	                           Integer threads,
+	                           boolean apply,
+	                           boolean validateOnly,
+	                           boolean yes,
+	                           boolean shouldExit) {
 
         private static boolean shouldUseMenu(String[] rawArgs) {
             if (rawArgs == null || rawArgs.length == 0) {
@@ -1487,9 +1578,9 @@ public final class KyyyWordAiEnrichmentMain {
             return false;
         }
 
-        private static CliArgs exitArgs() {
-            return new CliArgs(DEFAULT_CONFIG_PATH, "single", null, null, null, false, false, false, true);
-        }
+	        private static CliArgs exitArgs() {
+	            return new CliArgs(DEFAULT_CONFIG_PATH, "single", null, null, null, false, false, false, true);
+	        }
 
         private static CliArgs parse(String[] rawArgs) {
             Map<String, String> values = new LinkedHashMap<>();
@@ -1525,27 +1616,28 @@ public final class KyyyWordAiEnrichmentMain {
             return new CliArgs(
                     values.getOrDefault("config", DEFAULT_CONFIG_PATH),
                     mode,
-                    values.get("word"),
-                    parsePositiveInteger(values.get("limit")),
-                    parsePositiveInteger(values.get("threads")),
-                    flags.contains("apply"),
-                    flags.contains("validate-only"),
-                    flags.contains("yes"),
-                    false
-            );
-        }
+	                    values.get("word"),
+	                    parsePositiveInteger(values.get("limit")),
+	                    parsePositiveInteger(values.get("threads")),
+	                    flags.contains("apply"),
+	                    flags.contains("validate-only"),
+	                    flags.contains("yes"),
+	                    false
+	            );
+	        }
 
-        private static Integer parsePositiveInteger(String value) {
-            if (!hasText(value)) {
-                return null;
-            }
+	        private static Integer parsePositiveInteger(String value) {
+	            if (!hasText(value)) {
+	                return null;
+	            }
             int parsed = Integer.parseInt(value.trim());
             if (parsed <= 0) {
                 throw new IllegalArgumentException("数字参数必须大于 0：" + value);
-            }
-            return parsed;
-        }
-    }
+	            }
+	            return parsed;
+	        }
+
+	    }
 
     private record ToolConfig(String dbUrl,
                               String dbUsername,
@@ -1722,11 +1814,17 @@ public final class KyyyWordAiEnrichmentMain {
     }
 
     private record ValidatedEnrichment(List<ValidatedExample> examples,
-                                       List<ValidatedSynonym> synonyms) {
+                                       List<ValidatedSynonym> synonyms,
+                                       List<String> localValidationWarnings) {
+
+        private boolean hasLocalValidationWarnings() {
+            return localValidationWarnings != null && !localValidationWarnings.isEmpty();
+        }
     }
 
     private record ValidatedExample(String sentence,
-                                    String translation) {
+                                    String translation,
+                                    boolean localWordFormMatched) {
     }
 
     private record ValidatedSynonym(String wordText,
