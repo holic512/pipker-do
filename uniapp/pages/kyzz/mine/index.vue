@@ -1,3 +1,13 @@
+<!--
+@file KyzzMinePage
+@project pipker-do
+@module 考研政治 / 小程序我的页
+@description 复用通用我的页框架，承载政治业务的刷题设置、重置进度和意见反馈专项入口。
+@logic 1. 复用公共资料、会员与通用菜单；2. 通过 special 插槽注入政治专项按钮；3. 维护刷题设置弹窗和重置进度交互。
+@dependencies Component: @/components/account/mine-page.vue, Component: @/components/kyzz/kyzz-tabbar.vue, Component: @/components/kyzz/practice/PracticeSettingsPopup.vue, API: @/pages/kyzz/api/practice
+@index_tags 考研政治, 我的页, 刷题设置, 重置进度, 专项入口
+@author holic512
+-->
 <template>
 	<!-- AI 索引: KYZZ 我的页，复用公共我的页并注入政治专项入口。 -->
 	<view>
@@ -6,28 +16,30 @@
 			profile-url="/pages/kyzz/profile/edit"
 		>
 			<template #special>
-				<view class="mine-page__menu-item" @tap="openPracticeSettingsPopup">
-					<view class="mine-page__menu-icon">
-						<uni-icons type="gear" size="18" color="#64748b" />
+				<view class="kyzz-mine__special-actions">
+					<view class="mine-page__menu-item kyzz-mine__special-action" @tap="openPracticeSettingsPopup">
+						<view class="mine-page__menu-icon">
+							<uni-icons type="gear" size="18" color="#64748b" />
+						</view>
+						<text class="mine-page__menu-text">刷题设置</text>
+						<uni-icons type="right" size="16" color="#c3cad7" />
 					</view>
-					<text class="mine-page__menu-text">刷题设置</text>
-					<uni-icons type="right" size="16" color="#c3cad7" />
-				</view>
 
-				<view class="mine-page__menu-item" @tap="confirmAndResetPracticeProgress">
-					<view class="mine-page__menu-icon">
-						<uni-icons type="refreshempty" size="18" color="#64748b" />
+					<view class="mine-page__menu-item kyzz-mine__special-action" @tap="confirmAndResetPracticeProgress">
+						<view class="mine-page__menu-icon">
+							<uni-icons type="refreshempty" size="18" color="#64748b" />
+						</view>
+						<text class="mine-page__menu-text">重置刷题进度</text>
+						<uni-icons type="right" size="16" color="#c3cad7" />
 					</view>
-					<text class="mine-page__menu-text">重置刷题进度</text>
-					<uni-icons type="right" size="16" color="#c3cad7" />
-				</view>
 
-				<view class="mine-page__menu-item" @tap="showFeedbackPlaceholder">
-					<view class="mine-page__menu-icon">
-						<uni-icons type="chatboxes" size="18" color="#64748b" />
+					<view class="mine-page__menu-item kyzz-mine__special-action" @tap="showFeedbackPlaceholder">
+						<view class="mine-page__menu-icon">
+							<uni-icons type="chatboxes" size="18" color="#64748b" />
+						</view>
+						<text class="mine-page__menu-text">意见反馈</text>
+						<uni-icons type="right" size="16" color="#c3cad7" />
 					</view>
-					<text class="mine-page__menu-text">意见反馈</text>
-					<uni-icons type="right" size="16" color="#c3cad7" />
 				</view>
 			</template>
 
@@ -224,3 +236,16 @@ export default {
 	}
 }
 </script>
+
+<style lang="scss" scoped>
+.kyzz-mine__special-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+	padding-top: 6rpx;
+}
+
+.kyzz-mine__special-action {
+	margin: 0;
+}
+</style>

@@ -1,3 +1,13 @@
+<!--
+@file KyyyMinePage
+@project pipker-do
+@module 考研英语 / 小程序我的页
+@description 复用通用我的页框架，承载英语业务的词库入口与刷题设置专项入口。
+@logic 1. 复用公共资料、会员与通用菜单；2. 通过 special 插槽注入英语专项按钮；3. 维护刷题设置弹窗与词库页跳转。
+@dependencies Component: @/components/account/mine-page.vue, Component: @/components/kyyy/kyyy-tabbar.vue, Component: @/components/kyyy/practice/PracticeSettingsPopup.vue
+@index_tags 考研英语, 我的页, 词库, 刷题设置, 专项入口
+@author holic512
+-->
 <template>
 	<!-- AI 索引: KYYY 我的页，复用公共我的页并注入英语专项设置。 -->
 	<view>
@@ -6,21 +16,23 @@
 			profile-url="/pages/kyyy/profile/edit"
 		>
 			<template #special>
-				<view class="mine-page__menu-item" @tap="openWordBankPage">
-					<view class="mine-page__menu-icon">
-						<uni-icons type="list" size="18" color="#64748b" />
+				<view class="kyyy-mine__special-actions">
+					<view class="mine-page__menu-item kyyy-mine__special-action" @tap="openWordBankPage">
+						<view class="mine-page__menu-icon">
+							<uni-icons type="list" size="18" color="#64748b" />
+						</view>
+						<text class="mine-page__menu-text">词库</text>
+						<text class="kyyy-mine__menu-value">{{ practiceSettings.defaultWordBankName || '未选择' }}</text>
+						<uni-icons type="right" size="16" color="#c3cad7" />
 					</view>
-					<text class="mine-page__menu-text">词库</text>
-					<text class="kyyy-mine__menu-value">{{ practiceSettings.defaultWordBankName || '未选择' }}</text>
-					<uni-icons type="right" size="16" color="#c3cad7" />
-				</view>
-				<view class="mine-page__menu-item" @tap="openPracticeSettingsPopup">
-					<view class="mine-page__menu-icon">
-						<uni-icons type="gear" size="18" color="#64748b" />
+					<view class="mine-page__menu-item kyyy-mine__special-action" @tap="openPracticeSettingsPopup">
+						<view class="mine-page__menu-icon">
+							<uni-icons type="gear" size="18" color="#64748b" />
+						</view>
+						<text class="mine-page__menu-text">刷题设置</text>
+						<text class="kyyy-mine__menu-value">{{ practiceSettings.examDirectionLabel }}</text>
+						<uni-icons type="right" size="16" color="#c3cad7" />
 					</view>
-					<text class="mine-page__menu-text">刷题设置</text>
-					<text class="kyyy-mine__menu-value">{{ practiceSettings.examDirectionLabel }}</text>
-					<uni-icons type="right" size="16" color="#c3cad7" />
 				</view>
 			</template>
 
@@ -157,6 +169,17 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.kyyy-mine__special-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+	padding-top: 6rpx;
+}
+
+.kyyy-mine__special-action {
+	margin: 0;
+}
+
 .mine-page__menu-item {
 	display: flex;
 	align-items: center;
