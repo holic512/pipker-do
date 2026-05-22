@@ -15,6 +15,7 @@ backend/backend-app/src/main/resources/application-dev.yml
 backend/backend-app/src/main/resources/application-prod.yml
 backend/backend-app/src/main/resources/application-local.yml
 backend/backend-kyyy/src/main/resources/*kyyy-word-ai-enrichment*.local.properties
+backend/backend-kyyy/src/main/resources/*kyyy-reading-ai-enrichment*.local.properties
 
 # ai-index: ignore backend runtime config and keep example yml templates in git
 
@@ -37,6 +38,8 @@ uniapp/.hbuilderx/
 # OS files
 .DS_Store
 Thumbs.db
+__pycache__/
+*.pyc
 
 # file
 /file/
