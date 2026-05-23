@@ -56,6 +56,7 @@
 				:display-no="questionIndex + 1"
 				:saving="isQuestionSaving(question.questionId)"
 				:submitted="sessionState.status === 'submitted'"
+				:highlighted="locatingQuestionId === question.questionId"
 				:token-class-resolver="createQuestionTokenClassResolver(question.questionId)"
 				:option-class-resolver="createQuestionOptionClassResolver(question)"
 				@token-longpress="handleQuestionTokenLongPress"
@@ -129,7 +130,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, nextTick } from 'vue'
 import PageShell from '@/components/page-shell/page-shell.vue'
 import KyyyTabbar from '@/components/kyyy/kyyy-tabbar.vue'
 import ReadingPassageCard from '@/components/kyyy/reading/ReadingPassageCard.vue'
@@ -186,6 +187,8 @@ export default defineComponent({
 		return {
 			sessionState: createEmptyReadingSession(),
 			passageId: null,
+			targetQuestionId: null,
+			locatingQuestionId: null,
 			savingQuestionIds: {},
 			questionUsedSeconds: {},
 			questionTouchedAt: {},
@@ -207,6 +210,7 @@ export default defineComponent({
 	},
 	onLoad(query?: Record<string, string | undefined>) {
 		this.passageId = toPositiveInt(query?.passageId)
+		this.targetQuestionId = toPositiveInt(query?.questionId)
 	},
 	onShow() {
 		this.bootstrapAndLoad(false)
@@ -301,12 +305,37 @@ export default defineComponent({
 			}
 			this.resetSelectionState()
 			this.closeExplanationPopup()
+			void this.locateTargetQuestion()
 		},
 		reloadSession(freshAttempt: boolean): void {
 			if (this.sessionState.loading || this.sessionState.submitting) {
 				return
 			}
 			this.bootstrapAndLoad(freshAttempt)
+		},
+		async locateTargetQuestion(): Promise<void> {
+			if (!this.targetQuestionId) {
+				this.locatingQuestionId = null
+				return
+			}
+			const targetQuestion = this.sessionState.questions.find((item) => item.questionId === this.targetQuestionId)
+			if (!targetQuestion) {
+				this.locatingQuestionId = null
+				return
+			}
+			this.locatingQuestionId = targetQuestion.questionId
+			await nextTick()
+			uni.pageScrollTo({
+				selector: `#reading-question-${targetQuestion.questionId}`,
+				duration: 0,
+				offsetTop: 88
+			})
+			setTimeout(() => {
+				if (this.locatingQuestionId === targetQuestion.questionId) {
+					this.locatingQuestionId = null
+				}
+			}, 2200)
+			this.targetQuestionId = null
 		},
 		handlePassageTokenLongPress(token: KyyyReadingTextToken, event: unknown): void {
 			this.handleTokenLongPress('passage_text', null, token, event as TextTouchLikeEvent)

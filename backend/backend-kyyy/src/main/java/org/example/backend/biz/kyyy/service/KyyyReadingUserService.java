@@ -531,15 +531,23 @@ public class KyyyReadingUserService {
     }
 
     private void syncWrongQuestion(Long userId, Long passageId, Long questionId, boolean correct, LocalDateTime now) {
-        if (correct) {
-            return;
-        }
         KyyyUserReadingWrongQuestion wrongQuestion = kyyyUserReadingWrongQuestionMapper.selectOne(
                 new LambdaQueryWrapper<KyyyUserReadingWrongQuestion>()
                         .eq(KyyyUserReadingWrongQuestion::getUserId, userId)
                         .eq(KyyyUserReadingWrongQuestion::getQuestionId, questionId)
                         .last("limit 1")
         );
+        if (correct) {
+            if (wrongQuestion == null) {
+                return;
+            }
+            wrongQuestion.setPassageId(passageId);
+            wrongQuestion.setIsMastered(1);
+            wrongQuestion.setMasteredAt(now);
+            wrongQuestion.setUpdatedAt(now);
+            kyyyUserReadingWrongQuestionMapper.updateById(wrongQuestion);
+            return;
+        }
         if (wrongQuestion == null) {
             wrongQuestion = new KyyyUserReadingWrongQuestion();
             wrongQuestion.setUserId(userId);

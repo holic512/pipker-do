@@ -9,7 +9,7 @@
 @author holic512
 -->
 <template>
-	<view class="reading-question-card">
+	<view :id="`reading-question-${question.questionId}`" class="reading-question-card" :class="{ 'is-target': highlighted }">
 		<view class="reading-question-card__head">
 			<text class="reading-question-card__no">第 {{ displayNo }} 题</text>
 			<text v-if="saving" class="reading-question-card__saving">保存中</text>
@@ -77,6 +77,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false
 		},
+		highlighted: {
+			type: Boolean,
+			default: false
+		},
 		tokenClassResolver: {
 			type: Function as PropType<TokenClassResolver>,
 			default: null
@@ -119,6 +123,11 @@ export default defineComponent({
 	border: 1rpx solid rgba(210, 218, 226, 0.92);
 	border-radius: 28rpx;
 	box-shadow: 0 18rpx 36rpx rgba(43, 52, 55, 0.08);
+}
+
+.reading-question-card.is-target {
+	border-color: rgba(141, 106, 58, 0.58);
+	box-shadow: 0 20rpx 40rpx rgba(141, 106, 58, 0.16);
 }
 
 .reading-question-card__head {

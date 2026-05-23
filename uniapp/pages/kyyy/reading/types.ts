@@ -218,6 +218,8 @@ export interface KyyyReadingPopupRef {
 export interface KyyyReadingPageState {
 	sessionState: KyyyReadingSessionState
 	passageId: number | null
+	targetQuestionId: number | null
+	locatingQuestionId: number | null
 	savingQuestionIds: Record<number, boolean>
 	questionUsedSeconds: Record<number, number>
 	questionTouchedAt: Record<number, number>
