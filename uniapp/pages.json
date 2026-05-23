@@ -130,6 +130,20 @@
 			}
 		},
 		{
+			"path": "pages/kyyy/translation/list",
+			"style": {
+				"navigationBarTitleText": "翻译列表",
+				"navigationStyle": "default"
+			}
+		},
+		{
+			"path": "pages/kyyy/translation/detail",
+			"style": {
+				"navigationBarTitleText": "翻译详情",
+				"navigationStyle": "default"
+			}
+		},
+		{
 			"path": "pages/kyyy/wrong-word/index",
 			"style": {
 				"navigationBarTitleText": "错词本",
