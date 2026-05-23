@@ -591,6 +591,36 @@ CREATE TABLE IF NOT EXISTS kyyy_word_ai_enrichment_log (
     CONSTRAINT fk_kyyy_word_ai_enrichment_log_word_id FOREIGN KEY (word_id) REFERENCES kyyy_word (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYYY词库AI补齐日志表';
 
+CREATE TABLE IF NOT EXISTS kyyy_writing_essay (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '作文ID',
+    writing_code VARCHAR(80) NOT NULL COMMENT '作文唯一编码',
+    exam_direction VARCHAR(20) NOT NULL DEFAULT 'english_one' COMMENT '考试方向：english_one英一/english_two英二',
+    source_year SMALLINT NOT NULL COMMENT '来源年份',
+    essay_section VARCHAR(20) NOT NULL COMMENT '作文分区：small/big',
+    prompt_category VARCHAR(30) NOT NULL DEFAULT 'essay' COMMENT '题目类别：email/letter/notice/chart/picture/essay',
+    source_title VARCHAR(120) NOT NULL COMMENT '作文标题',
+    score_value INT NOT NULL DEFAULT 0 COMMENT '题目分值',
+    word_limit_min INT DEFAULT NULL COMMENT '建议字数下限',
+    word_limit_max INT DEFAULT NULL COMMENT '建议字数上限',
+    prompt_content TEXT NOT NULL COMMENT '英文题目',
+    sample_content MEDIUMTEXT NOT NULL COMMENT '英文范文',
+    prompt_translation TEXT COMMENT '中文题目翻译',
+    sample_translation MEDIUMTEXT COMMENT '中文范文翻译',
+    knowledge_tags VARCHAR(255) DEFAULT NULL COMMENT '检索标签，逗号分隔',
+    source_path VARCHAR(255) DEFAULT NULL COMMENT '来源 Markdown 路径',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0停用 1启用',
+    sort_no INT NOT NULL DEFAULT 0 COMMENT '排序值',
+    created_by BIGINT UNSIGNED DEFAULT NULL COMMENT '创建后台管理员ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyyy_writing_essay_code (writing_code),
+    KEY idx_kyyy_writing_essay_exam_year_section (exam_direction, source_year, essay_section),
+    KEY idx_kyyy_writing_essay_category_status_sort (prompt_category, status, sort_no),
+    KEY idx_kyyy_writing_essay_created_by (created_by),
+    CONSTRAINT fk_kyyy_writing_essay_created_by FOREIGN KEY (created_by) REFERENCES admin_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYYY作文知识库主表';
+
 CREATE TABLE IF NOT EXISTS kyyy_reading_passage (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '阅读文章ID',
     passage_code VARCHAR(50) NOT NULL COMMENT '阅读文章编码',
