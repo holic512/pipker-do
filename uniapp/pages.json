@@ -92,6 +92,20 @@
 			}
 		},
 		{
+			"path": "pages/kyyy/composition/list",
+			"style": {
+				"navigationBarTitleText": "作文列表",
+				"navigationStyle": "default"
+			}
+		},
+		{
+			"path": "pages/kyyy/composition/detail",
+			"style": {
+				"navigationBarTitleText": "作文详情",
+				"navigationStyle": "default"
+			}
+		},
+		{
 			"path": "pages/kyyy/practice/index",
 			"style": {
 				"navigationBarTitleText": "练习"

@@ -621,6 +621,54 @@ CREATE TABLE IF NOT EXISTS kyyy_writing_essay (
     CONSTRAINT fk_kyyy_writing_essay_created_by FOREIGN KEY (created_by) REFERENCES admin_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYYY作文知识库主表';
 
+CREATE TABLE IF NOT EXISTS kyyy_translation_passage (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '翻译题ID',
+    translation_code VARCHAR(80) NOT NULL COMMENT '翻译题唯一编码',
+    exam_direction VARCHAR(20) NOT NULL DEFAULT 'english_one' COMMENT '考试方向：english_one英一/english_two英二',
+    source_year SMALLINT NOT NULL COMMENT '来源年份',
+    translation_mode VARCHAR(20) NOT NULL DEFAULT 'segmented' COMMENT '翻译模式：segmented划线句/passage全文',
+    source_title VARCHAR(120) NOT NULL COMMENT '翻译题标题',
+    score_value INT NOT NULL DEFAULT 0 COMMENT '题目分值',
+    segment_count INT NOT NULL DEFAULT 0 COMMENT '分段数量',
+    prompt_instruction TEXT COMMENT '题目说明与答题要求',
+    prompt_content MEDIUMTEXT NOT NULL COMMENT '英文原文',
+    prompt_translation TEXT COMMENT '题目中文说明',
+    reference_translation MEDIUMTEXT COMMENT '参考译文全文',
+    reference_note TEXT COMMENT '补充说明或译文备注',
+    knowledge_tags VARCHAR(255) DEFAULT NULL COMMENT '检索标签，逗号分隔',
+    source_path VARCHAR(255) DEFAULT NULL COMMENT '来源 Markdown 路径',
+    source_prompt_ref VARCHAR(255) DEFAULT NULL COMMENT '原文来源链接或路径',
+    source_answer_ref VARCHAR(255) DEFAULT NULL COMMENT '译文来源链接或路径',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0停用 1启用',
+    sort_no INT NOT NULL DEFAULT 0 COMMENT '排序值',
+    created_by BIGINT UNSIGNED DEFAULT NULL COMMENT '创建后台管理员ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyyy_translation_passage_code (translation_code),
+    KEY idx_kyyy_translation_passage_exam_year_mode (exam_direction, source_year, translation_mode),
+    KEY idx_kyyy_translation_passage_status_sort (status, sort_no),
+    KEY idx_kyyy_translation_passage_created_by (created_by),
+    CONSTRAINT fk_kyyy_translation_passage_created_by FOREIGN KEY (created_by) REFERENCES admin_user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYYY翻译知识库主表';
+
+CREATE TABLE IF NOT EXISTS kyyy_translation_segment (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '翻译分段ID',
+    translation_id BIGINT UNSIGNED NOT NULL COMMENT '翻译题ID',
+    segment_code VARCHAR(100) NOT NULL COMMENT '分段唯一编码',
+    segment_no INT NOT NULL COMMENT '分段题号或顺序',
+    source_text TEXT NOT NULL COMMENT '英文分段原文',
+    translated_text TEXT COMMENT '中文分段译文',
+    sort_no INT NOT NULL DEFAULT 0 COMMENT '排序值',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyyy_translation_segment_code (segment_code),
+    UNIQUE KEY uk_kyyy_translation_segment_translation_no (translation_id, segment_no),
+    KEY idx_kyyy_translation_segment_translation_sort (translation_id, sort_no),
+    CONSTRAINT fk_kyyy_translation_segment_translation_id FOREIGN KEY (translation_id) REFERENCES kyyy_translation_passage (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYYY翻译知识库分段表';
+
 CREATE TABLE IF NOT EXISTS kyyy_reading_passage (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '阅读文章ID',
     passage_code VARCHAR(50) NOT NULL COMMENT '阅读文章编码',
