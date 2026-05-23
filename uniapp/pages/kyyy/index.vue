@@ -182,12 +182,12 @@
 						</view>
 
 						<view class="kyyy-home-page__word-detail-head">
-							<view class="kyyy-home-page__word-detail-title-row">
-								<text class="kyyy-home-page__word-detail-word" :style="resolveWordDetailWordStyle()">{{ resolveWordDetailWordText() }}</text>
-								<view class="kyyy-home-page__word-detail-star">
-									<uni-icons type="star" size="28" color="#6e7782" />
-								</view>
+						<view class="kyyy-home-page__word-detail-title-row">
+							<text class="kyyy-home-page__word-detail-word" :style="resolveWordDetailWordStyle()">{{ resolveWordDetailWordText() }}</text>
+							<view class="kyyy-home-page__word-detail-star" @tap.stop="handleWordDetailFavoriteToggle">
+								<uni-icons :type="resolveFavoriteIcon(resolveWordDetailIsFavorite())" size="28" :color="resolveFavoriteColor(resolveWordDetailIsFavorite())" />
 							</view>
+						</view>
 							<view v-if="resolveWordDetailPhonetic()" class="kyyy-home-page__word-detail-pron">
 								<view class="kyyy-home-page__word-detail-pron-badge">
 									<text>美</text>
@@ -248,8 +248,8 @@
 						>
 							<text class="kyyy-home-page__search-item-word">{{ item.wordText }}</text>
 							<text class="kyyy-home-page__search-item-summary">{{ resolveSearchSummary(item) }}</text>
-							<view class="kyyy-home-page__search-item-star">
-								<uni-icons type="star" size="22" color="#7b858d" />
+							<view class="kyyy-home-page__search-item-star" @tap.stop="handleSearchResultFavoriteToggle(item)">
+								<uni-icons :type="resolveFavoriteIcon(item.isFavorite)" size="22" :color="resolveFavoriteColor(item.isFavorite)" />
 							</view>
 						</view>
 					</view>
@@ -277,6 +277,7 @@ import { defineComponent } from 'vue'
 import PageShell from '@/components/page-shell/page-shell.vue'
 import KyyyTabbar from '@/components/kyyy/kyyy-tabbar.vue'
 import { bootstrapAuth } from '@/shared/session/session'
+import { favoriteWord, unfavoriteWord } from '@/pages/kyyy/api/favorite-word'
 import { getHomeDailyWords, getHomeDashboard, getHomeWordDetail, searchHomeWords } from '@/pages/kyyy/api/home'
 import { cacheDailyWords, readCachedDailyWords } from '@/pages/kyyy/home/daily-word'
 import {
@@ -391,6 +392,13 @@ function hasValidDailyWordText(item: unknown): item is { wordText: string } {
 		&& wordText.trim().length > 0
 }
 
+function resolveErrorMessage(error: unknown, fallback: string): string {
+	if (error instanceof Error && error.message) {
+		return error.message
+	}
+	return fallback
+}
+
 interface HomePageState {
 	keyword: string
 	dashboard: KyyyHomeDashboardState
@@ -420,6 +428,26 @@ interface HomePageState {
 	searchDockLeft: number
 	searchDockRight: number
 	shortcutItems: KyyyHomeShortcutItem[]
+	pendingSearchKeyword: string
+	pendingWordId: number | null
+	favoriteSubmittingWordIds: number[]
+}
+
+interface HomePageLoadQuery {
+	searchKeyword?: string | null
+	wordId?: string | number | null
+}
+
+function toPositiveNumber(value: unknown): number | null {
+	if (value === null || value === undefined || value === '') {
+		return null
+	}
+	const parsed = Number(value)
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+}
+
+function encodeWordNavigationKeyword(value: string): string {
+	return (value || '').trim()
 }
 
 export default defineComponent({
@@ -457,15 +485,18 @@ export default defineComponent({
 			searchDockHeight: 40,
 			searchDockLeft: 12,
 			searchDockRight: 104,
+			pendingSearchKeyword: '',
+			pendingWordId: null,
+			favoriteSubmittingWordIds: [],
 			shortcutItems: [
 				{
-					key: 'wrong-word',
-					title: '错词本',
-					description: '易混词回看',
+					key: 'favorite-word',
+					title: '单词收藏',
+					description: '查词重点回看',
 					icon: 'help-filled',
 					iconColor: '#49627c',
 					iconBackground: 'linear-gradient(135deg, rgba(225, 233, 247, 0.98), rgba(199, 212, 234, 0.95))',
-					path: '/pages/kyyy/wrong-word/index',
+					path: '/pages/kyyy/favorite-word/index',
 					navigationType: 'navigateTo'
 				},
 				{
@@ -521,6 +552,10 @@ export default defineComponent({
 	},
 	created() {
 		this.syncSearchLayoutMetrics()
+	},
+	onLoad(query?: HomePageLoadQuery) {
+		this.pendingSearchKeyword = decodeURIComponent(String(query?.searchKeyword || '')).trim()
+		this.pendingWordId = toPositiveNumber(query?.wordId)
 	},
 	onShow() {
 		this.bootstrapAndLoad()
@@ -637,6 +672,7 @@ export default defineComponent({
 					.map((item) => normalizeWordSearchResult(item))
 					.filter((item) => !!item.wordText)
 				this.searchLoaded = true
+				this.tryOpenPendingWordDetail()
 			} catch (error) {
 				if (requestSeq !== this.searchRequestSeq) {
 					return
@@ -761,8 +797,17 @@ export default defineComponent({
 		resolveSearchSummary(item: KyyyHomeWordSearchState): string {
 			return resolveSearchSummaryText(item)
 		},
+		resolveFavoriteIcon(isFavorite: boolean): string {
+			return isFavorite ? 'star-filled' : 'star'
+		},
+		resolveFavoriteColor(isFavorite: boolean): string {
+			return isFavorite ? '#b06c3d' : '#7b858d'
+		},
 		resolveWordDetailSource(): KyyyHomeWordDetailState | KyyyHomeWordSearchState | null {
 			return this.wordDetail || this.selectedSearchWord
+		},
+		resolveWordDetailIsFavorite(): boolean {
+			return Boolean(this.resolveWordDetailSource()?.isFavorite)
 		},
 		resolveWordDetailWordText(): string {
 			return resolveWordDetailWordTextValue(this.resolveWordDetailSource())
@@ -787,6 +832,87 @@ export default defineComponent({
 		},
 		resolveWordDetailExamples(): KyyyWordExampleState[] {
 			return resolveWordDetailExamplesValue(this.wordDetail)
+		},
+		isFavoriteSubmitting(wordId: number | null): boolean {
+			return wordId ? this.favoriteSubmittingWordIds.includes(wordId) : false
+		},
+		async handleSearchResultFavoriteToggle(item: KyyyHomeWordSearchState): Promise<void> {
+			await this.toggleWordFavorite(item)
+		},
+		async handleWordDetailFavoriteToggle(): Promise<void> {
+			const source = this.resolveWordDetailSource()
+			if (!source) {
+				return
+			}
+			await this.toggleWordFavorite(source)
+		},
+		async toggleWordFavorite(source: KyyyHomeWordSearchState | KyyyHomeWordDetailState): Promise<void> {
+			const wordId = source.wordId
+			if (!wordId || this.isFavoriteSubmitting(wordId)) {
+				return
+			}
+			this.favoriteSubmittingWordIds = [...this.favoriteSubmittingWordIds, wordId]
+			const willFavorite = !source.isFavorite
+			try {
+				const result = willFavorite ? await favoriteWord(wordId) : await unfavoriteWord(wordId)
+				this.applyFavoriteStateToWord(wordId, Boolean(result.isFavorite))
+				uni.showToast({
+					title: result.isFavorite ? '已收藏' : '已取消收藏',
+					icon: 'none'
+				})
+			} catch (error) {
+				console.warn('[kyyy-home] toggle favorite failed', error)
+				uni.showToast({
+					title: resolveErrorMessage(error, willFavorite ? '收藏失败' : '取消收藏失败'),
+					icon: 'none'
+				})
+			} finally {
+				this.favoriteSubmittingWordIds = this.favoriteSubmittingWordIds.filter((item) => item !== wordId)
+			}
+		},
+		applyFavoriteStateToWord(wordId: number, isFavorite: boolean): void {
+			this.searchResults = this.searchResults.map((item) => item.wordId === wordId ? {
+				...item,
+				isFavorite
+			} : item)
+			if (this.selectedSearchWord?.wordId === wordId) {
+				this.selectedSearchWord = {
+					...this.selectedSearchWord,
+					isFavorite
+				}
+			}
+			if (this.wordDetail?.wordId === wordId) {
+				this.wordDetail = {
+					...this.wordDetail,
+					isFavorite
+				}
+			}
+		},
+		tryOpenPendingWordDetail(): void {
+			if (!this.pendingWordId || !this.pendingSearchKeyword || this.wordDetailVisible || !this.searchLoaded || this.searchLoading) {
+				return
+			}
+			const matched = this.searchResults.find((item) => item.wordId === this.pendingWordId)
+			if (!matched) {
+				return
+			}
+			const targetWordId = this.pendingWordId
+			this.pendingSearchKeyword = ''
+			this.pendingWordId = null
+			this.openWordDetail(matched)
+			if (matched.wordId !== targetWordId) {
+				this.pendingWordId = targetWordId
+			}
+		},
+		consumePendingSearchRoute(): void {
+			if (!this.pendingSearchKeyword) {
+				return
+			}
+			this.keyword = encodeWordNavigationKeyword(this.pendingSearchKeyword)
+			this.pendingSearchKeyword = this.keyword
+			this.openSearchScene()
+			this.resetWordDetail()
+			this.loadSearchResults(this.keyword).catch(() => {})
 		},
 		clearSearchDebounceTimer(): void {
 			if (this.searchDebounceTimer) {
@@ -815,6 +941,7 @@ export default defineComponent({
 				this.loadDashboard(),
 				this.loadDailyWord()
 			])
+			this.consumePendingSearchRoute()
 		},
 		applyCachedDailyWord(): void {
 			const cachedDailyWords = readCachedDailyWords()

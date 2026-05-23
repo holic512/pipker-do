@@ -479,6 +479,19 @@ CREATE TABLE IF NOT EXISTS kyyy_user_word_progress (
     CONSTRAINT fk_kyyy_user_word_progress_word_id FOREIGN KEY (word_id) REFERENCES kyyy_word (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYYY用户单词进度表';
 
+CREATE TABLE IF NOT EXISTS kyyy_user_word_favorite (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户单词收藏ID',
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    word_id BIGINT UNSIGNED NOT NULL COMMENT '单词ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_kyyy_user_word_favorite_user_word (user_id, word_id),
+    KEY idx_kyyy_user_word_favorite_word_id (word_id),
+    KEY idx_kyyy_user_word_favorite_user_created_at (user_id, created_at),
+    CONSTRAINT fk_kyyy_user_word_favorite_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
+    CONSTRAINT fk_kyyy_user_word_favorite_word_id FOREIGN KEY (word_id) REFERENCES kyyy_word (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYYY用户单词收藏表';
+
 CREATE TABLE IF NOT EXISTS kyyy_word_practice_session (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '背词会话ID',
     user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',

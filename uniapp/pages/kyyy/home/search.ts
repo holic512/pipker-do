@@ -22,6 +22,7 @@ export interface KyyyHomeWordSearchState {
 	phoneticUk: string
 	partOfSpeech: string
 	meaningCn: string
+	isFavorite: boolean
 }
 
 export interface KyyyHomeWordDetailState extends KyyyHomeWordSearchState {
@@ -74,7 +75,8 @@ export function normalizeWordSearchResult(item: KyyyHomeWordSearchResponse): Kyy
 		phoneticUs: normalizeSearchText(item.phoneticUs),
 		phoneticUk: normalizeSearchText(item.phoneticUk),
 		partOfSpeech: normalizeSearchText(item.partOfSpeech),
-		meaningCn: normalizeSearchText(item.meaningCn)
+		meaningCn: normalizeSearchText(item.meaningCn),
+		isFavorite: Boolean(item.isFavorite)
 	}
 }
 
@@ -127,6 +129,7 @@ export function normalizeWordDetailResult(
 		phoneticUk: normalizeSearchText(item.phoneticUk) || fallbackDetail?.phoneticUk || '',
 		partOfSpeech: normalizeSearchText(item.partOfSpeech) || fallbackDetail?.partOfSpeech || '',
 		meaningCn: normalizeSearchText(item.meaningCn) || fallbackDetail?.meaningCn || '',
+		isFavorite: typeof item.isFavorite === 'boolean' ? item.isFavorite : Boolean(fallbackDetail?.isFavorite),
 		exampleSentence: normalizeSearchText(item.exampleSentence),
 		exampleTranslation: normalizeSearchText(item.exampleTranslation),
 		examples: normalizeWordExamples(item)

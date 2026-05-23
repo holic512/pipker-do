@@ -18,6 +18,7 @@ export interface KyyyHomeWordSearchResponse {
 	phoneticUk?: string | null
 	partOfSpeech?: string | null
 	meaningCn?: string | null
+	isFavorite?: boolean | null
 }
 
 export interface KyyyWordExampleResponse {
@@ -52,15 +53,13 @@ export function searchHomeWords(keyword: string): Promise<KyyyHomeWordSearchResp
 		method: 'GET',
 		data: {
 			keyword
-		},
-		auth: false
+		}
 	})
 }
 
 export function getHomeWordDetail(wordId: number): Promise<KyyyHomeWordDetailResponse | null> {
 	return request({
 		url: `/api/kyyy/home/word-detail/${wordId}`,
-		method: 'GET',
-		auth: false
+		method: 'GET'
 	})
 }

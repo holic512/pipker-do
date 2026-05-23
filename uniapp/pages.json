@@ -144,9 +144,9 @@
 			}
 		},
 		{
-			"path": "pages/kyyy/wrong-word/index",
+			"path": "pages/kyyy/favorite-word/index",
 			"style": {
-				"navigationBarTitleText": "错词本",
+				"navigationBarTitleText": "单词收藏",
 				"navigationStyle": "default"
 			}
 		},

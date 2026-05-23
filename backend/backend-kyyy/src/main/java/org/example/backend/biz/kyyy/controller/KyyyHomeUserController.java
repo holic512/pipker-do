@@ -60,11 +60,17 @@ public class KyyyHomeUserController {
 
     @GetMapping("/word-search")
     public ApiResponse<List<KyyyHomeWordSearchResponse>> searchWords(@RequestParam(required = false) String keyword) {
-        return responseFactory.success(kyyyHomeWordSearchService.searchWords(keyword));
+        return responseFactory.success(kyyyHomeWordSearchService.searchWords(
+                LoginUserContext.currentUserIdOrNull(),
+                keyword
+        ));
     }
 
     @GetMapping("/word-detail/{wordId}")
     public ApiResponse<KyyyHomeWordDetailResponse> getWordDetail(@PathVariable Long wordId) {
-        return responseFactory.success(kyyyHomeWordSearchService.getWordDetail(wordId));
+        return responseFactory.success(kyyyHomeWordSearchService.getWordDetail(
+                LoginUserContext.currentUserIdOrNull(),
+                wordId
+        ));
     }
 }

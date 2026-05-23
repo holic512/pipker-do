@@ -12,6 +12,13 @@ public final class LoginUserContext {
         return StpKit.USER.getLoginIdAsLong();
     }
 
+    public static Long currentUserIdOrNull() {
+        if (!StpKit.USER.isLogin()) {
+            return null;
+        }
+        return StpKit.USER.getLoginIdAsLong();
+    }
+
     public static String currentToken() {
         return StpUtil.getTokenValue();
     }

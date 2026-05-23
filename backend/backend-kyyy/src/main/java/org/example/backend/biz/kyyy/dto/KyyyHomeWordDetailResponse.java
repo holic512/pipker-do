@@ -37,4 +37,6 @@ public class KyyyHomeWordDetailResponse implements Serializable {
     private String exampleTranslation;
 
     private List<KyyyWordExampleResponse> examples;
+
+    private Boolean isFavorite;
 }

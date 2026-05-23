@@ -30,4 +30,6 @@ public class KyyyHomeWordSearchResponse implements Serializable {
     private String partOfSpeech;
 
     private String meaningCn;
+
+    private Boolean isFavorite;
 }

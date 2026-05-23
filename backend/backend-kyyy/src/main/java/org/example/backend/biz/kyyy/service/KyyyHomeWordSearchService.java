@@ -1,21 +1,3 @@
-package org.example.backend.biz.kyyy.service;
-
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import org.example.backend.biz.kyyy.dto.KyyyHomeWordDetailResponse;
-import org.example.backend.biz.kyyy.dto.KyyyHomeWordSearchResponse;
-import org.example.backend.biz.kyyy.dto.KyyyWordExampleResponse;
-import org.example.backend.biz.kyyy.entity.KyyyWord;
-import org.example.backend.biz.kyyy.entity.KyyyWordExample;
-import org.example.backend.biz.kyyy.mapper.KyyyWordExampleMapper;
-import org.example.backend.biz.kyyy.mapper.KyyyWordMapper;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 /**
  * @file KyyyHomeWordSearchService
  * @project pipker-do
@@ -26,6 +8,31 @@ import java.util.Map;
  * @index_tags 考研英语, 首页查词, 单词检索, 多例句
  * @author holic512
  */
+package org.example.backend.biz.kyyy.service;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import org.example.backend.biz.kyyy.dto.KyyyHomeWordDetailResponse;
+import org.example.backend.biz.kyyy.dto.KyyyHomeWordSearchResponse;
+import org.example.backend.biz.kyyy.dto.KyyyWordExampleResponse;
+import org.example.backend.biz.kyyy.entity.KyyyUserWordFavorite;
+import org.example.backend.biz.kyyy.entity.KyyyWord;
+import org.example.backend.biz.kyyy.entity.KyyyWordExample;
+import org.example.backend.biz.kyyy.mapper.KyyyUserWordFavoriteMapper;
+import org.example.backend.biz.kyyy.mapper.KyyyWordExampleMapper;
+import org.example.backend.biz.kyyy.mapper.KyyyWordMapper;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @Service
 public class KyyyHomeWordSearchService {
 
@@ -34,14 +41,17 @@ public class KyyyHomeWordSearchService {
 
     private final KyyyWordMapper kyyyWordMapper;
     private final KyyyWordExampleMapper kyyyWordExampleMapper;
+    private final KyyyUserWordFavoriteMapper kyyyUserWordFavoriteMapper;
 
     public KyyyHomeWordSearchService(KyyyWordMapper kyyyWordMapper,
-                                     KyyyWordExampleMapper kyyyWordExampleMapper) {
+                                     KyyyWordExampleMapper kyyyWordExampleMapper,
+                                     KyyyUserWordFavoriteMapper kyyyUserWordFavoriteMapper) {
         this.kyyyWordMapper = kyyyWordMapper;
         this.kyyyWordExampleMapper = kyyyWordExampleMapper;
+        this.kyyyUserWordFavoriteMapper = kyyyUserWordFavoriteMapper;
     }
 
-    public List<KyyyHomeWordSearchResponse> searchWords(String keyword) {
+    public List<KyyyHomeWordSearchResponse> searchWords(Long userId, String keyword) {
         String displayKeyword = normalizeDisplayKeyword(keyword);
         String normalizedKeyword = normalizeSearchKeyword(displayKeyword);
         if (!StringUtils.hasText(normalizedKeyword)) {
@@ -56,17 +66,31 @@ public class KyyyHomeWordSearchService {
         if (results.size() < RESULT_LIMIT) {
             appendResults(results, queryContainsWords(displayKeyword, normalizedKeyword));
         }
+        Set<Long> favoriteWordIds = loadFavoriteWordIds(userId, results.keySet());
         return results.values().stream()
+                .map(item -> new KyyyHomeWordSearchResponse(
+                        item.getWordId(),
+                        item.getWordText(),
+                        item.getPhoneticUs(),
+                        item.getPhoneticUk(),
+                        item.getPartOfSpeech(),
+                        item.getMeaningCn(),
+                        favoriteWordIds.contains(item.getWordId())
+                ))
                 .limit(RESULT_LIMIT)
                 .toList();
     }
 
-    public KyyyHomeWordDetailResponse getWordDetail(Long wordId) {
+    public KyyyHomeWordDetailResponse getWordDetail(Long userId, Long wordId) {
         if (wordId == null || wordId <= 0) {
             return null;
         }
         KyyyWord word = kyyyWordMapper.selectOne(detailQueryWrapper(wordId));
-        return word == null ? null : toDetailResponse(word);
+        if (word == null) {
+            return null;
+        }
+        boolean isFavorite = loadFavoriteWordIds(userId, List.of(word.getId())).contains(word.getId());
+        return toDetailResponse(word, isFavorite);
     }
 
     private void appendResults(Map<Long, KyyyHomeWordSearchResponse> results, List<KyyyWord> words) {
@@ -149,11 +173,12 @@ public class KyyyHomeWordSearchService {
                 normalizeText(word.getPhoneticUs()),
                 normalizeText(word.getPhoneticUk()),
                 normalizeText(word.getPartOfSpeech()),
-                normalizeText(word.getMeaningCn())
+                normalizeText(word.getMeaningCn()),
+                false
         );
     }
 
-    private KyyyHomeWordDetailResponse toDetailResponse(KyyyWord word) {
+    private KyyyHomeWordDetailResponse toDetailResponse(KyyyWord word, boolean isFavorite) {
         List<KyyyWordExampleResponse> examples = buildExampleResponses(word);
         KyyyWordExampleResponse primaryExample = examples.isEmpty() ? null : examples.get(0);
         return new KyyyHomeWordDetailResponse(
@@ -165,8 +190,31 @@ public class KyyyHomeWordSearchService {
                 normalizeText(word.getMeaningCn()),
                 primaryExample == null ? "" : normalizeText(primaryExample.getExampleSentence()),
                 primaryExample == null ? "" : normalizeText(primaryExample.getExampleTranslation()),
-                examples
+                examples,
+                isFavorite
         );
+    }
+
+    private Set<Long> loadFavoriteWordIds(Long userId, Iterable<Long> wordIds) {
+        if (userId == null || wordIds == null) {
+            return Set.of();
+        }
+        Set<Long> normalizedWordIds = new HashSet<>();
+        for (Long wordId : wordIds) {
+            if (wordId != null && wordId > 0) {
+                normalizedWordIds.add(wordId);
+            }
+        }
+        if (normalizedWordIds.isEmpty()) {
+            return Set.of();
+        }
+        return kyyyUserWordFavoriteMapper.selectList(new LambdaQueryWrapper<KyyyUserWordFavorite>()
+                        .eq(KyyyUserWordFavorite::getUserId, userId)
+                        .in(KyyyUserWordFavorite::getWordId, normalizedWordIds))
+                .stream()
+                .map(KyyyUserWordFavorite::getWordId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
     }
 
     private List<KyyyWordExampleResponse> buildExampleResponses(KyyyWord word) {
