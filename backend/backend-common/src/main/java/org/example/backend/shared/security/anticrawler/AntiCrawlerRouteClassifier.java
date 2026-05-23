@@ -74,6 +74,9 @@ public class AntiCrawlerRouteClassifier {
         if ("GET".equalsIgnoreCase(method) && "/api/kyzz/leaderboard".equals(path)) {
             return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.QUESTION_BANK_READ, "/api/kyzz/leaderboard", true);
         }
+        if ("GET".equalsIgnoreCase(method) && "/api/kyyy/leaderboard".equals(path)) {
+            return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.QUESTION_BANK_READ, "/api/kyyy/leaderboard", true);
+        }
         if ("PUT".equalsIgnoreCase(method) && QUESTION_BANK_SELECTION_PATH.matcher(path).matches()) {
             return new AntiCrawlerRouteMatch(AntiCrawlerRouteGroup.PRACTICE_SUBMIT, "/api/kyzz/question-banks/{bankId}/selection", false);
         }
