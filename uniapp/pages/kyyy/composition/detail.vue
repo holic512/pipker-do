@@ -15,12 +15,6 @@
 		</view>
 		<view v-else-if="detailState" class="kyyy-composition-detail__content">
 			<view class="kyyy-composition-detail__hero">
-				<view class="kyyy-composition-detail__hero-head">
-					<text class="kyyy-composition-detail__year">{{ detailState.sourceYear }}</text>
-					<text class="kyyy-composition-detail__pill">{{ resolveExamDirectionLabel(detailState.examDirection) }}</text>
-					<text class="kyyy-composition-detail__pill">{{ resolveEssaySectionLabel(detailState.essaySection) }}</text>
-					<text class="kyyy-composition-detail__pill">{{ resolvePromptCategoryLabel(detailState.promptCategory) }}</text>
-				</view>
 				<text class="kyyy-composition-detail__title">{{ detailState.sourceTitle }}</text>
 				<text class="kyyy-composition-detail__meta">{{ buildEssayMetaText(detailState) }}</text>
 				<view v-if="detailState.knowledgeTags.length" class="kyyy-composition-detail__tag-row">
@@ -174,7 +168,7 @@ export default defineComponent({
 .kyyy-composition-detail__content {
 	display: flex;
 	flex-direction: column;
-	gap: 20rpx;
+	gap: 16rpx;
 }
 
 .kyyy-composition-detail__hero,
@@ -188,23 +182,16 @@ export default defineComponent({
 .kyyy-composition-detail__hero {
 	display: flex;
 	flex-direction: column;
-	gap: 16rpx;
-	padding: 32rpx;
+	gap: 14rpx;
+	padding: 24rpx;
 	background: linear-gradient(140deg, #5a647c 0%, #8292ad 100%);
 }
 
-.kyyy-composition-detail__hero-head,
 .kyyy-composition-detail__tag-row {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 10rpx;
 	align-items: center;
-}
-
-.kyyy-composition-detail__year {
-	font-size: 32rpx;
-	font-weight: 700;
-	color: #ffffff;
 }
 
 .kyyy-composition-detail__pill,
@@ -232,8 +219,8 @@ export default defineComponent({
 .kyyy-composition-detail__section {
 	display: flex;
 	flex-direction: column;
-	gap: 18rpx;
-	padding: 28rpx;
+	gap: 16rpx;
+	padding: 22rpx;
 }
 
 .kyyy-composition-detail__section-title {

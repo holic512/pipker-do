@@ -15,11 +15,6 @@
 		</view>
 		<view v-else-if="detailState" class="kyyy-translation-detail__content">
 			<view class="kyyy-translation-detail__hero">
-				<view class="kyyy-translation-detail__hero-head">
-					<text class="kyyy-translation-detail__year">{{ detailState.sourceYear }}</text>
-					<text class="kyyy-translation-detail__pill">{{ resolveExamDirectionLabel(detailState.examDirection) }}</text>
-					<text class="kyyy-translation-detail__pill">{{ resolveTranslationModeLabel(detailState.translationMode) }}</text>
-				</view>
 				<text class="kyyy-translation-detail__title">{{ detailState.sourceTitle }}</text>
 				<text class="kyyy-translation-detail__meta">{{ buildTranslationMetaText(detailState) }}</text>
 				<view v-if="detailState.knowledgeTags.length" class="kyyy-translation-detail__tag-row">
@@ -209,18 +204,11 @@ export default defineComponent({
 	background: linear-gradient(140deg, #556070 0%, #7d8c9f 100%);
 }
 
-.kyyy-translation-detail__hero-head,
 .kyyy-translation-detail__tag-row {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 10rpx;
 	align-items: center;
-}
-
-.kyyy-translation-detail__year {
-	font-size: 32rpx;
-	font-weight: 700;
-	color: #ffffff;
 }
 
 .kyyy-translation-detail__pill,

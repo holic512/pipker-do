@@ -2,10 +2,10 @@
 @file KyyyCompositionHomePage
 @project pipker-do
 @module 考研英语 / 小程序作文知识库
-@description 展示作文知识库首页分面、题型入口与近年真题推荐，作为作文模块统一浏览入口。
-@logic 1. 加载作文总览分面；2. 维护英一英二与大小作文切换；3. 提供题型列表、总入口与真题详情跳转。
+@description 展示作文知识库首页筛选、列表入口与近年真题推荐，作为作文模块统一浏览入口。
+@logic 1. 加载作文总览分面；2. 用方向、年份、大小作文与类别下拉筛选；3. 提供列表入口与真题详情跳转。
 @dependencies API: @/pages/kyyy/api/writing, Types: @/pages/kyyy/composition/types, View: @/pages/kyyy/composition/view, Component: PageShell, Component: KyyyTabbar
-@index_tags 考研英语, 作文首页, 知识库, 真题, 小程序
+@index_tags 考研英语, 作文首页, 知识库, 筛选, 真题
 @author holic512
 -->
 <template>
@@ -13,108 +13,86 @@
 		root-class="kyyy-composition-home theme-page"
 		content-style="padding: 0 24rpx 176rpx;"
 	>
-		<view class="kyyy-composition-home__ambient kyyy-composition-home__ambient--left"></view>
-		<view class="kyyy-composition-home__ambient kyyy-composition-home__ambient--right"></view>
-
 		<view class="kyyy-composition-home__inner">
-			<view class="kyyy-composition-home__hero">
-				<text class="kyyy-composition-home__eyebrow">WRITING LIBRARY</text>
-				<text class="kyyy-composition-home__title">英语作文知识库</text>
-				<text class="kyyy-composition-home__desc">按考试方向、大小作文与题型组织历年真题，先查题目，再看范文与中英翻译。</text>
-				<view class="kyyy-composition-home__hero-meta">
-					<text class="kyyy-composition-home__meta-pill">年份 {{ overviewState.recentYears.length }}</text>
-					<text class="kyyy-composition-home__meta-pill">真题 {{ totalCount }}</text>
-				</view>
-			</view>
-
 			<view class="kyyy-composition-home__section">
-				<view class="kyyy-composition-home__section-head">
-					<text class="kyyy-composition-home__section-overline">DIRECTION</text>
-					<text class="kyyy-composition-home__section-title">考试方向</text>
-				</view>
-				<view class="kyyy-composition-home__exam-grid">
-					<view
-						v-for="item in overviewState.examDirections"
-						:key="item.code"
-						class="kyyy-composition-home__exam-card"
-						:class="{ 'is-active': selectedExamDirection === item.code }"
-						@tap="handleSelectExamDirection(item.code)"
-					>
-						<text class="kyyy-composition-home__exam-label">{{ item.label }}</text>
-						<text class="kyyy-composition-home__exam-count">{{ item.count }} 篇</text>
+				<text class="kyyy-composition-home__section-title">英语作文知识库</text>
+				<view class="kyyy-composition-home__toolbar">
+					<view class="kyyy-composition-home__toolbar-row">
+						<picker
+							mode="selector"
+							:range="examDirectionOptions"
+							range-key="label"
+							:value="selectedExamDirectionIndex"
+							@change="handleExamDirectionPickerChange"
+						>
+							<view class="kyyy-composition-home__select">
+								<text class="kyyy-composition-home__select-label">方向</text>
+								<text class="kyyy-composition-home__select-value">{{ selectedExamDirectionLabel }}</text>
+							</view>
+						</picker>
+						<picker
+							mode="selector"
+							:range="yearOptions"
+							range-key="label"
+							:value="selectedYearIndex"
+							@change="handleYearPickerChange"
+						>
+							<view class="kyyy-composition-home__select">
+								<text class="kyyy-composition-home__select-label">年份</text>
+								<text class="kyyy-composition-home__select-value">{{ selectedYearLabel }}</text>
+							</view>
+						</picker>
+					</view>
+					<view class="kyyy-composition-home__toolbar-row">
+						<picker
+							mode="selector"
+							:range="essaySectionOptions"
+							range-key="label"
+							:value="selectedEssaySectionIndex"
+							@change="handleEssaySectionPickerChange"
+						>
+							<view class="kyyy-composition-home__select">
+								<text class="kyyy-composition-home__select-label">分区</text>
+								<text class="kyyy-composition-home__select-value">{{ selectedSectionLabel }}</text>
+							</view>
+						</picker>
+						<picker
+							mode="selector"
+							:range="promptCategoryOptions"
+							range-key="label"
+							:value="selectedPromptCategoryIndex"
+							@change="handlePromptCategoryPickerChange"
+						>
+							<view class="kyyy-composition-home__select">
+								<text class="kyyy-composition-home__select-label">类别</text>
+								<text class="kyyy-composition-home__select-value">{{ selectedPromptCategoryLabel }}</text>
+							</view>
+						</picker>
 					</view>
 				</view>
-			</view>
-
-			<view class="kyyy-composition-home__section">
-				<view class="kyyy-composition-home__section-head">
-					<text class="kyyy-composition-home__section-overline">SECTION</text>
-					<text class="kyyy-composition-home__section-title">作文分区</text>
-				</view>
-				<view class="kyyy-composition-home__chip-row">
-					<view
-						v-for="item in overviewState.essaySections"
-						:key="item.code"
-						class="kyyy-composition-home__chip"
-						:class="{ 'is-active': selectedEssaySection === item.code }"
-						@tap="handleSelectEssaySection(item.code)"
-					>
-						<text>{{ item.label }}</text>
-						<text class="kyyy-composition-home__chip-count">{{ item.count }}</text>
-					</view>
-				</view>
-				<view class="kyyy-composition-home__entry-panel">
-					<view class="kyyy-composition-home__entry-copy">
-						<text class="kyyy-composition-home__entry-title">{{ selectedSectionLabel }}</text>
-						<text class="kyyy-composition-home__entry-desc">先看题型，再按年份逐篇进入真题与范文详情。</text>
+				<view class="kyyy-composition-home__summary-row">
+					<view class="kyyy-composition-home__summary-copy">
+						<text class="kyyy-composition-home__summary-title">{{ currentSelectionTitle }}</text>
 					</view>
 					<view class="kyyy-composition-home__entry-button" @tap="openSectionList">进入列表</view>
 				</view>
 			</view>
 
 			<view class="kyyy-composition-home__section">
-				<view class="kyyy-composition-home__section-head">
-					<text class="kyyy-composition-home__section-overline">CATEGORY</text>
-					<text class="kyyy-composition-home__section-title">题型分类</text>
-				</view>
-				<view v-if="currentPromptCategories.length" class="kyyy-composition-home__category-grid">
-					<view
-						v-for="item in currentPromptCategories"
-						:key="`${item.essaySection}-${item.code}`"
-						class="kyyy-composition-home__category-card"
-						@tap="openPromptCategoryList(item.code)"
-					>
-						<text class="kyyy-composition-home__category-title">{{ item.label }}</text>
-						<text class="kyyy-composition-home__category-meta">{{ selectedSectionLabel }} · {{ item.count }} 篇</text>
-					</view>
-				</view>
-				<view v-else class="kyyy-composition-home__state-card">
-					<text class="kyyy-composition-home__state-text">当前分类还没有可展示题型</text>
-				</view>
-			</view>
-
-			<view class="kyyy-composition-home__section">
-				<view class="kyyy-composition-home__section-head">
-					<text class="kyyy-composition-home__section-overline">RECENT</text>
-					<text class="kyyy-composition-home__section-title">近年真题</text>
-				</view>
 				<view v-if="loading && !overviewState.loaded" class="kyyy-composition-home__state-card">
 					<text class="kyyy-composition-home__state-text">正在整理作文知识库...</text>
 				</view>
-				<view v-else-if="overviewState.featuredRecords.length" class="kyyy-composition-home__record-list">
-					<view
-						v-for="item in overviewState.featuredRecords"
-						:key="item.id"
-						class="kyyy-composition-home__record-card"
-						@tap="openDetail(item.id)"
-					>
-						<view class="kyyy-composition-home__record-head">
-							<text class="kyyy-composition-home__record-year">{{ item.sourceYear }}</text>
-							<text class="kyyy-composition-home__record-pill">{{ resolveExamDirectionLabel(item.examDirection) }}</text>
-							<text class="kyyy-composition-home__record-pill">{{ resolveEssaySectionLabel(item.essaySection) }}</text>
+				<view v-else-if="overviewState.featuredRecords.length" class="kyyy-composition-home__records-panel">
+					<view class="kyyy-composition-home__record-list">
+						<view
+							v-for="item in overviewState.featuredRecords"
+							:key="item.id"
+							class="kyyy-composition-home__record-card"
+							@tap="openDetail(item.id)"
+						>
+							<text class="kyyy-composition-home__record-title">{{ item.sourceTitle }}</text>
+							<text class="kyyy-composition-home__record-meta">{{ buildEssayMetaText(item) }}</text>
 						</view>
-						<text class="kyyy-composition-home__record-title">{{ item.sourceTitle }}</text>
-						<text class="kyyy-composition-home__record-meta">{{ buildEssayMetaText(item) }}</text>
 					</view>
 				</view>
 				<view v-else class="kyyy-composition-home__state-card">
@@ -141,7 +119,8 @@ import {
 	createEmptyOverviewState,
 	normalizeOverviewState,
 	resolveEssaySectionLabel,
-	resolveExamDirectionLabel
+	resolveExamDirectionLabel,
+	resolvePromptCategoryLabel
 } from '@/pages/kyyy/composition/view'
 
 interface CompositionHomePageState {
@@ -149,6 +128,8 @@ interface CompositionHomePageState {
 	overviewState: KyyyWritingOverviewState
 	selectedExamDirection: string
 	selectedEssaySection: KyyyWritingEssaySection
+	selectedPromptCategory: string
+	selectedSourceYear: number | null
 }
 
 export default defineComponent({
@@ -162,26 +143,73 @@ export default defineComponent({
 			loading: false,
 			overviewState: createEmptyOverviewState(),
 			selectedExamDirection: 'english_one',
-			selectedEssaySection: 'small'
+			selectedEssaySection: 'small',
+			selectedPromptCategory: '',
+			selectedSourceYear: null
 		}
 	},
 	onShow() {
 		this.bootstrapAndLoad()
 	},
 	computed: {
-		totalCount(): number {
-			return this.overviewState.examDirections.reduce((sum, item) => sum + item.count, 0)
+		examDirectionOptions(): Array<{ code: string; label: string }> {
+			return this.overviewState.examDirections.map((item) => ({ code: item.code, label: item.label }))
+		},
+		essaySectionOptions(): Array<{ code: string; label: string }> {
+			return this.overviewState.essaySections.map((item) => ({ code: item.code, label: item.label }))
+		},
+		promptCategoryOptions(): Array<{ code: string; label: string }> {
+			return [{ code: '', label: '全部类别' }].concat(
+				this.overviewState.promptCategories
+					.filter((item) => item.essaySection === this.selectedEssaySection)
+					.map((item) => ({ code: item.code, label: item.label }))
+			)
+		},
+		yearOptions(): Array<{ value: number | null; label: string }> {
+			return [{ value: null, label: '全部年份' }].concat(
+				this.overviewState.recentYears.map((year) => ({ value: year, label: `${year}` }))
+			)
+		},
+		selectedExamDirectionIndex(): number {
+			const index = this.examDirectionOptions.findIndex((item) => item.code === this.selectedExamDirection)
+			return index >= 0 ? index : 0
+		},
+		selectedEssaySectionIndex(): number {
+			const index = this.essaySectionOptions.findIndex((item) => item.code === this.selectedEssaySection)
+			return index >= 0 ? index : 0
+		},
+		selectedPromptCategoryIndex(): number {
+			const index = this.promptCategoryOptions.findIndex((item) => item.code === this.selectedPromptCategory)
+			return index >= 0 ? index : 0
+		},
+		selectedYearIndex(): number {
+			const index = this.yearOptions.findIndex((item) => item.value === this.selectedSourceYear)
+			return index >= 0 ? index : 0
+		},
+		selectedExamDirectionLabel(): string {
+			return resolveExamDirectionLabel(this.selectedExamDirection)
 		},
 		selectedSectionLabel(): string {
 			return resolveEssaySectionLabel(this.selectedEssaySection)
 		},
-		currentPromptCategories() {
-			return this.overviewState.promptCategories.filter((item) => item.essaySection === this.selectedEssaySection)
+		selectedPromptCategoryLabel(): string {
+			return this.selectedPromptCategory ? resolvePromptCategoryLabel(this.selectedPromptCategory) : '全部类别'
+		},
+		selectedYearLabel(): string {
+			return this.selectedSourceYear ? `${this.selectedSourceYear}` : '全部年份'
+		},
+		currentSelectionTitle(): string {
+			const parts = [resolveExamDirectionLabel(this.selectedExamDirection), resolveEssaySectionLabel(this.selectedEssaySection)]
+			if (this.selectedPromptCategory) {
+				parts.push(resolvePromptCategoryLabel(this.selectedPromptCategory))
+			}
+			if (this.selectedSourceYear) {
+				parts.push(`${this.selectedSourceYear}`)
+			}
+			return parts.join(' · ')
 		}
 	},
 	methods: {
-		resolveExamDirectionLabel,
-		resolveEssaySectionLabel,
 		buildEssayMetaText,
 		async bootstrapAndLoad(): Promise<void> {
 			try {
@@ -219,30 +247,44 @@ export default defineComponent({
 				this.loading = false
 			}
 		},
-		handleSelectExamDirection(code: string): void {
-			if (!code) {
-				return
-			}
-			this.selectedExamDirection = code
-		},
-		handleSelectEssaySection(code: string): void {
+		handleEssaySectionChange(code: string): void {
 			if (code === 'small' || code === 'big') {
 				this.selectedEssaySection = code
+				this.selectedPromptCategory = ''
 			}
 		},
+		handleExamDirectionPickerChange(event: { detail?: { value?: number | string } }): void {
+			const index = Number(event.detail?.value)
+			const option = this.examDirectionOptions[index]
+			if (option?.code) {
+				this.selectedExamDirection = option.code
+			}
+		},
+		handleEssaySectionPickerChange(event: { detail?: { value?: number | string } }): void {
+			const index = Number(event.detail?.value)
+			const option = this.essaySectionOptions[index]
+			this.handleEssaySectionChange(option?.code || '')
+		},
+		handlePromptCategoryPickerChange(event: { detail?: { value?: number | string } }): void {
+			const index = Number(event.detail?.value)
+			const option = this.promptCategoryOptions[index]
+			this.selectedPromptCategory = option?.code || ''
+		},
+		handleYearPickerChange(event: { detail?: { value?: number | string } }): void {
+			const index = Number(event.detail?.value)
+			const option = this.yearOptions[index]
+			this.selectedSourceYear = typeof option?.value === 'number' ? option.value : null
+		},
 		openSectionList(): void {
-			this.openListByFilters(this.selectedEssaySection)
-		},
-		openPromptCategoryList(promptCategory: string): void {
-			this.openListByFilters(this.selectedEssaySection, promptCategory)
-		},
-		openListByFilters(essaySection: string, promptCategory = ''): void {
 			const query = [
 				`examDirection=${encodeURIComponent(this.selectedExamDirection)}`,
-				`essaySection=${encodeURIComponent(essaySection)}`
+				`essaySection=${encodeURIComponent(this.selectedEssaySection)}`
 			]
-			if (promptCategory) {
-				query.push(`promptCategory=${encodeURIComponent(promptCategory)}`)
+			if (this.selectedPromptCategory) {
+				query.push(`promptCategory=${encodeURIComponent(this.selectedPromptCategory)}`)
+			}
+			if (this.selectedSourceYear) {
+				query.push(`sourceYear=${this.selectedSourceYear}`)
 			}
 			uni.navigateTo({
 				url: `/pages/kyyy/composition/list?${query.join('&')}`
@@ -261,112 +303,26 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-.kyyy-composition-home {
-	position: relative;
-	overflow: hidden;
-}
-
-.kyyy-composition-home__ambient {
-	position: absolute;
-	border-radius: 50%;
-	filter: blur(10rpx);
-	opacity: 0.92;
-}
-
-.kyyy-composition-home__ambient--left {
-	top: 96rpx;
-	left: -110rpx;
-	width: 300rpx;
-	height: 300rpx;
-	background: radial-gradient(circle, rgba(212, 224, 250, 0.88) 0%, rgba(212, 224, 250, 0) 72%);
-}
-
-.kyyy-composition-home__ambient--right {
-	right: -96rpx;
-	bottom: 280rpx;
-	width: 280rpx;
-	height: 280rpx;
-	background: radial-gradient(circle, rgba(238, 227, 216, 0.82) 0%, rgba(238, 227, 216, 0) 72%);
-}
-
 .kyyy-composition-home__inner {
-	position: relative;
-	z-index: 1;
-	display: flex;
-	flex-direction: column;
-	gap: 24rpx;
-	padding-top: 10rpx;
-}
-
-.kyyy-composition-home__hero,
-.kyyy-composition-home__section,
-.kyyy-composition-home__state-card,
-.kyyy-composition-home__record-card,
-.kyyy-composition-home__entry-panel {
-	border-radius: 32rpx;
-	background: rgba(255, 255, 255, 0.9);
-	box-shadow: 0 18rpx 40rpx rgba(43, 52, 55, 0.08);
-}
-
-.kyyy-composition-home__hero {
 	display: flex;
 	flex-direction: column;
 	gap: 16rpx;
-	padding: 36rpx 34rpx;
-	background: linear-gradient(140deg, #59647e 0%, #8392ae 100%);
-	box-shadow: 0 24rpx 48rpx rgba(60, 71, 94, 0.24);
+	padding-top: 6rpx;
 }
 
-.kyyy-composition-home__eyebrow {
-	font-size: 18rpx;
-	letter-spacing: 0.24em;
-	font-weight: 700;
-	color: rgba(244, 247, 255, 0.88);
-}
-
-.kyyy-composition-home__title {
-	font-size: 42rpx;
-	line-height: 1.22;
-	font-weight: 700;
-	color: #ffffff;
-}
-
-.kyyy-composition-home__desc {
-	font-size: 26rpx;
-	line-height: 1.72;
-	color: rgba(241, 245, 253, 0.88);
-}
-
-.kyyy-composition-home__hero-meta {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 12rpx;
-}
-
-.kyyy-composition-home__meta-pill {
-	padding: 10rpx 18rpx;
-	border-radius: 999rpx;
-	background: rgba(255, 255, 255, 0.14);
-	font-size: 22rpx;
-	color: #f4f7ff;
+.kyyy-composition-home__section,
+.kyyy-composition-home__state-card,
+.kyyy-composition-home__record-card {
+	border-radius: 28rpx;
+	background: rgba(255, 255, 255, 0.94);
+	box-shadow: 0 18rpx 40rpx rgba(43, 52, 55, 0.08);
 }
 
 .kyyy-composition-home__section {
-	padding: 30rpx;
-}
-
-.kyyy-composition-home__section-head {
 	display: flex;
 	flex-direction: column;
-	gap: 8rpx;
-	margin-bottom: 20rpx;
-}
-
-.kyyy-composition-home__section-overline {
-	font-size: 18rpx;
-	letter-spacing: 0.2em;
-	font-weight: 700;
-	color: #8a96a6;
+	gap: 16rpx;
+	padding: 22rpx;
 }
 
 .kyyy-composition-home__section-title {
@@ -376,37 +332,87 @@ export default defineComponent({
 	color: #273138;
 }
 
-.kyyy-composition-home__exam-grid,
-.kyyy-composition-home__category-grid {
-	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 18rpx;
+.kyyy-composition-home__toolbar {
+	display: flex;
+	flex-direction: column;
+	gap: 10rpx;
 }
 
-.kyyy-composition-home__exam-card,
-.kyyy-composition-home__category-card {
+.kyyy-composition-home__toolbar-row {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10rpx;
+}
+
+.kyyy-composition-home__select {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+	padding: 18rpx 20rpx;
+	border-radius: 18rpx;
+	background: #f4f7fa;
+}
+
+.kyyy-composition-home__select-label {
+	font-size: 24rpx;
+	color: #6b7785;
+}
+
+.kyyy-composition-home__select-value,
+.kyyy-composition-home__summary-title,
+.kyyy-composition-home__record-title {
+	font-size: 26rpx;
+	font-weight: 700;
+	color: #24313c;
+}
+
+.kyyy-composition-home__summary-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+	padding-top: 2rpx;
+}
+
+.kyyy-composition-home__summary-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+	flex: 1;
+	min-width: 0;
+}
+
+.kyyy-composition-home__entry-button {
+	flex-shrink: 0;
+	padding: 14rpx 20rpx;
+	border-radius: 18rpx;
+	background: #59647d;
+	font-size: 24rpx;
+	font-weight: 600;
+	color: #ffffff;
+}
+
+.kyyy-composition-home__records-panel {
+	padding: 6rpx;
+	border-radius: 20rpx;
+	background: #f6f8fb;
+}
+
+.kyyy-composition-home__record-list {
 	display: flex;
 	flex-direction: column;
 	gap: 12rpx;
-	padding: 24rpx;
-	border-radius: 24rpx;
-	background: linear-gradient(180deg, rgba(248, 250, 253, 0.98), rgba(237, 242, 248, 0.9));
 }
 
-.kyyy-composition-home__exam-card.is-active {
-	background: linear-gradient(140deg, rgba(225, 234, 247, 0.98), rgba(203, 216, 238, 0.96));
-	box-shadow: inset 0 0 0 2rpx rgba(127, 147, 177, 0.38);
+.kyyy-composition-home__record-card {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+	padding: 18rpx 18rpx 16rpx;
+	box-shadow: none;
 }
 
-.kyyy-composition-home__exam-label,
-.kyyy-composition-home__category-title {
-	font-size: 30rpx;
-	font-weight: 700;
-	color: #24303a;
-}
-
-.kyyy-composition-home__exam-count,
-.kyyy-composition-home__category-meta,
 .kyyy-composition-home__record-meta,
 .kyyy-composition-home__state-text {
 	font-size: 24rpx;
@@ -414,114 +420,8 @@ export default defineComponent({
 	color: #687480;
 }
 
-.kyyy-composition-home__chip-row {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 16rpx;
-}
-
-.kyyy-composition-home__chip {
-	display: inline-flex;
-	align-items: center;
-	gap: 10rpx;
-	padding: 16rpx 22rpx;
-	border-radius: 999rpx;
-	background: rgba(241, 245, 249, 0.98);
-	font-size: 24rpx;
-	color: #566372;
-}
-
-.kyyy-composition-home__chip.is-active {
-	background: linear-gradient(135deg, rgba(224, 233, 248, 0.98), rgba(206, 218, 239, 0.95));
-	color: #304150;
-}
-
-.kyyy-composition-home__chip-count {
-	opacity: 0.8;
-}
-
-.kyyy-composition-home__entry-panel {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 20rpx;
-	margin-top: 20rpx;
-	padding: 24rpx 26rpx;
-	background: linear-gradient(135deg, rgba(246, 248, 251, 0.98), rgba(234, 239, 245, 0.92));
-}
-
-.kyyy-composition-home__entry-copy {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	gap: 8rpx;
-}
-
-.kyyy-composition-home__entry-title {
-	font-size: 28rpx;
-	font-weight: 700;
-	color: #24303a;
-}
-
-.kyyy-composition-home__entry-desc {
-	font-size: 24rpx;
-	line-height: 1.6;
-	color: #6c7884;
-}
-
-.kyyy-composition-home__entry-button {
-	flex-shrink: 0;
-	padding: 16rpx 24rpx;
-	border-radius: 999rpx;
-	background: #55637b;
-	font-size: 24rpx;
-	font-weight: 700;
-	color: #ffffff;
-}
-
-.kyyy-composition-home__record-list {
-	display: flex;
-	flex-direction: column;
-	gap: 18rpx;
-}
-
-.kyyy-composition-home__record-card {
-	display: flex;
-	flex-direction: column;
-	gap: 14rpx;
-	padding: 24rpx 26rpx;
-}
-
-.kyyy-composition-home__record-head {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10rpx;
-	align-items: center;
-}
-
-.kyyy-composition-home__record-year {
-	font-size: 30rpx;
-	font-weight: 700;
-	color: #304150;
-}
-
-.kyyy-composition-home__record-pill {
-	padding: 8rpx 14rpx;
-	border-radius: 999rpx;
-	background: rgba(232, 238, 245, 0.95);
-	font-size: 20rpx;
-	color: #607081;
-}
-
-.kyyy-composition-home__record-title {
-	font-size: 28rpx;
-	line-height: 1.45;
-	font-weight: 700;
-	color: #263036;
-}
-
 .kyyy-composition-home__state-card {
-	padding: 28rpx;
+	padding: 32rpx;
 	text-align: center;
 }
 </style>
