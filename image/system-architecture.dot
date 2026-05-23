@@ -1,0 +1,59 @@
+/*
+@file system-architecture
+@project Pipker Do
+@module README / 系统架构图
+@description 用于项目 README 的黑白极简系统架构图，展示前端入口、后端启动模块、共享模块、业务模块与本地存储边界。
+@logic 1. 顶部放置用户侧与运营侧入口；2. 中部聚合到 backend-app；3. 下方展开 shared 与业务模块；4. 右侧独立表示本地文件存储。
+@dependencies CLI: dot, Script: professional-diagrams/scripts/render_graphviz.py, Docs: README.md, README.zh-Hans.md
+@index_tags 系统架构图, Graphviz, README, backend-app, admin-web, uniapp
+@author holic512
+*/
+digraph system_architecture {
+  graph [
+    rankdir=TB,
+    bgcolor="white",
+    pad="0.18",
+    nodesep="0.3",
+    ranksep="0.42",
+    splines=ortho
+  ];
+
+  node [
+    shape=box,
+    style="rounded",
+    color="#111111",
+    fontcolor="#111111",
+    fillcolor="white",
+    penwidth=1.15,
+    margin="0.12,0.08",
+    fontname="Helvetica"
+  ];
+
+  edge [
+    color="#111111",
+    penwidth=1.0,
+    dir=none
+  ];
+
+  admin [label="admin-web"];
+  miniapp [label="uniapp"];
+  app [label="backend-app"];
+  storage [label="file storage"];
+
+  common [label="backend-common"];
+  kyzz [label="backend-kyzz"];
+  kyyy [label="backend-kyyy"];
+  kysx [label="backend-kysx"];
+
+  { rank=same; admin; miniapp; }
+  { rank=same; common; kyzz; kyyy; kysx; }
+
+  admin -> app;
+  miniapp -> app;
+
+  app -> common;
+  app -> kyzz;
+  app -> kyyy;
+  app -> kysx;
+  app -> storage;
+}

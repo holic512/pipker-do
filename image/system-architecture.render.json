@@ -1,0 +1,17 @@
+{
+  "source": "/Volumes/HARDDRIVE1/project/private/pipker-do/image/system-architecture.dot",
+  "dot_executable": "/opt/homebrew/bin/dot",
+  "formats": [
+    "svg",
+    "png"
+  ],
+  "images_dir": "/Volumes/HARDDRIVE1/project/private/pipker-do/image",
+  "image_paths": {
+    "svg": "system-architecture.svg",
+    "png": "system-architecture.png"
+  },
+  "preferred_format": "svg",
+  "markdown_image_path": "system-architecture.svg",
+  "warnings": [],
+  "status": "rendered"
+}
