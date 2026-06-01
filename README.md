@@ -1,9 +1,9 @@
 # Pipker Do
 
 <p align="center">
-  <strong>One learning platform, two clients, three exam domains.</strong>
+  <strong>One repository for learner flows, operator workflows, and three postgraduate exam domains.</strong>
   <br />
-  Build, operate, and deliver a postgraduate exam-prep product from a single repository.
+  Spring Boot backend, Vue admin console, and uni-app mini-program client in one monorepo.
 </p>
 
 <p align="center">
@@ -13,79 +13,44 @@
 </p>
 
 <p align="center">
-  <img alt="Java" src="https://img.shields.io/badge/Java-17-1f6feb?style=flat-square" />
-  <img alt="Spring Boot" src="https://img.shields.io/badge/Spring%20Boot-4.0.5-3fb950?style=flat-square" />
-  <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42b883?style=flat-square" />
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square" />
+  <img alt="Java 17" src="https://img.shields.io/badge/Java-17-1f6feb?style=flat-square" />
+  <img alt="Spring Boot 4.0.5" src="https://img.shields.io/badge/Spring%20Boot-4.0.5-3fb950?style=flat-square" />
+  <img alt="Vue 3" src="https://img.shields.io/badge/Vue-3-42b883?style=flat-square" />
+  <img alt="TypeScript 5.x" src="https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square" />
   <img alt="uni-app" src="https://img.shields.io/badge/uni--app-WeChat%20Mini%20Program-07c160?style=flat-square" />
-  <img alt="License" src="https://img.shields.io/badge/License-TODO-8b949e?style=flat-square" />
 </p>
 
-## Table of Contents
-
-- [Introduction](#introduction)
-- [Why Pipker Do](#why-pipker-do)
-- [Product Surface](#product-surface)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
-- [Existing Docs](#existing-docs)
-- [Roadmap Notes](#roadmap-notes)
-
-## Introduction
-
-Pipker Do is a full-stack monorepo for a postgraduate entrance exam preparation product.  
-The current repository already brings together:
+## Features
 
 - A Spring Boot 4 multi-module backend
 - A Vue 3 admin console for operations and management
-- A uni-app WeChat Mini Program for end users
-- Three domain tracks:
+- A uni-app WeChat Mini Program for end-user learning flows
+- Three exam domains:
   - `kyzz` for politics
   - `kyyy` for English
   - `kysx` for mathematics
 
-From the existing code and directory structure, the platform is already organized around question banks, practice sessions, exam flows, rankings, favorites, wrong-book review, user profile management, storage, authentication, project switching, and selected AI-related capabilities.
+The repository already contains question-bank, practice, exam, leaderboard, favorites, wrong-book review, profile, file storage, authentication, and project-switching related code and docs.
 
-## Why Pipker Do
+## Screenshots
 
-Most education products split learning, operations, and domain content into disconnected projects.  
-Pipker Do keeps them in one repository and one delivery model:
+These images come from the current `image/` folder in the repository.
 
-- One backend for shared identity, storage, config, and business orchestration
-- One admin console for configuration and operations
-- One mini-program client for real user learning flows
-- Three exam domains managed as independent business modules instead of mixed feature sprawl
+| Question bank | Continue practice | Project switch |
+| --- | --- | --- |
+| ![Question bank screen](./image/01-政治-我的题库页.png) | ![Continue practicing screen](./image/02-政治-首页-继续刷题.png) | ![Project switch drawer](./image/03-政治-切换项目抽屉.png) |
 
-This structure is already visible in the repository today and makes the product easier to evolve without losing domain boundaries.
+| Practice answer | English word study | Account center |
+| --- | --- | --- |
+| ![Practice answer screen](./image/04-政治-刷题答题页.png) | ![English word study screen](./image/05-英语-单词学习页.png) | ![Account center screen](./image/06-我的-会员中心页.png) |
 
-## Product Surface
-
-### For learners
-
-- Question bank browsing
-- Practice and exam flows
-- Favorites and wrong-book review
-- Leaderboards and profile-related pages
-- English-specific pages including reading, translation, composition, word bank, and AI practice
-
-### For operators
-
-- Admin-side login and project switching
-- Business modules grouped by subject domain
-- Shared backend modules for account, auth, config, project, storage, and admin capabilities
-
-### For the engineering team
-
-- Multi-module backend instead of a single overloaded service
-- Separate web admin and mini-program clients
-- Clear domain partitioning for `kyzz`, `kyyy`, and `kysx`
-- Shared infrastructure for auth, file storage, rate limiting, and runtime config
+| Composition knowledge base | Reading practice | Translation knowledge base |
+| --- | --- | --- |
+| ![Composition knowledge base](./image/07-英语-作文知识库页.png) | ![Reading practice screen](./image/09-英语-阅读练习页.png) | ![Translation knowledge base](./image/10-英语-翻译知识库页.png) |
 
 ## Architecture
 
-![System Architecture](./image/system-architecture.svg)
+![System architecture](./image/system-architecture.png)
 
 ## Tech Stack
 
@@ -114,16 +79,26 @@ This structure is already visible in the repository today and makes the product 
 - uni-app
 - WeChat Mini Program target
 
+## Configuration
+
+| Item | Value | Notes |
+| --- | --- | --- |
+| Backend port | `8080` | Default Spring Boot port in the repo |
+| Spring profile | `dev` | Default runtime profile |
+| Admin API base path | `/api` | Proxied to `http://localhost:8080` in development |
+| Backend config template | `backend/backend-app/src/main/resources/application-dev.example.yml` | Local example config |
+| Image compression config | `storage.image-compression` | Present in backend application config |
+
 ## Getting Started
 
 ### Backend
 
-Verified from the current repository:
+Verified from the repository:
 
 - Main class: `org.example.backend.BackendApplication`
 - Default port: `8080`
 - Default Spring profile: `dev`
-- Example local config file: `backend/backend-app/src/main/resources/application-dev.example.yml`
+- Example local config: `backend/backend-app/src/main/resources/application-dev.example.yml`
 
 Run locally:
 
@@ -132,7 +107,7 @@ cd backend
 mvn spring-boot:run -pl backend-app
 ```
 
-Before starting, review and localize:
+Before starting, review these local settings:
 
 - MySQL datasource
 - Redis connection
@@ -163,7 +138,7 @@ npm run build
 
 ### Uni-App
 
-Verified from the current repository:
+Current repository entrypoints:
 
 - `uniapp/App.vue`
 - `uniapp/main.js`
@@ -171,6 +146,19 @@ Verified from the current repository:
 - `uniapp/manifest.json`
 
 Open `uniapp/` in HBuilderX or your existing uni-app workflow and run it against the WeChat Mini Program target.
+
+## Development
+
+```bash
+cd backend
+mvn test
+
+cd admin-web
+npm run build
+
+cd backend
+mvn spring-boot:run -pl backend-app
+```
 
 ## Project Structure
 
@@ -183,26 +171,27 @@ pipker-do/
 │   ├── backend-kyyy
 │   ├── backend-kysx
 │   └── backend-kyzz
+├── image/          # local screenshots and architecture assets
 ├── uniapp/         # uni-app WeChat Mini Program
 ├── rules/          # collaboration and architecture rules
-├── 有关文档/        # product and design documents
+├── 有关文档/        # product and design docs
 └── file/           # local upload/runtime files
 ```
 
 ### Backend Modules
 
 - `backend-app`: application entry and runtime configuration
-- `backend-common`: shared auth, account, admin, project, config, storage, and LLM-related modules
+- `backend-common`: shared auth, account, admin, project, config, storage, and LLM-related code
 - `backend-kyzz`: politics business domain
 - `backend-kyyy`: English business domain
 - `backend-kysx`: mathematics business domain
 
 ### Admin Modules
 
-- `system`: login, dashboard, project switching, admin shell
+- `system`: login, dashboard, project switching, backend shell
 - `kyzz`: politics operations module
 - `kyyy`: English operations module
-- `kysx`: mathematics module scaffold currently present in structure
+- `kysx`: mathematics module scaffold
 
 ### Mini Program Pages
 
@@ -212,22 +201,24 @@ pipker-do/
 
 ## Existing Docs
 
-- [rules/README.md](/Volumes/HARDDRIVE1/project/private/pipker-do/rules/README.md)
-- [rules/common.md](/Volumes/HARDDRIVE1/project/private/pipker-do/rules/common.md)
-- [admin-web/README.md](/Volumes/HARDDRIVE1/project/private/pipker-do/admin-web/README.md)
-- [uniapp/README_STRUCTURE.md](/Volumes/HARDDRIVE1/project/private/pipker-do/uniapp/README_STRUCTURE.md)
-- [有关文档/页面功能描述.md](/Volumes/HARDDRIVE1/project/private/pipker-do/%E6%9C%89%E5%85%B3%E6%96%87%E6%A1%A3/%E9%A1%B5%E9%9D%A2%E5%8A%9F%E8%83%BD%E6%8F%8F%E8%BF%B0.md)
-- [有关文档/管理员管理设计.md](/Volumes/HARDDRIVE1/project/private/pipker-do/%E6%9C%89%E5%85%B3%E6%96%87%E6%A1%A3/%E7%AE%A1%E7%90%86%E5%91%98%E7%AE%A1%E7%90%86%E8%AE%BE%E8%AE%A1.md)
-- [有关文档/上线流程.md](/Volumes/HARDDRIVE1/project/private/pipker-do/%E6%9C%89%E5%85%B3%E6%96%87%E6%A1%A3/%E4%B8%8A%E7%BA%BF%E6%B5%81%E7%A8%8B.md)
+- [rules/README.md](./rules/README.md)
+- [rules/common.md](./rules/common.md)
+- [admin-web/README.md](./admin-web/README.md)
+- [uniapp/README_STRUCTURE.md](./uniapp/README_STRUCTURE.md)
+- [有关文档/页面功能描述.md](./有关文档/页面功能描述.md)
+- [有关文档/管理员管理设计.md](./有关文档/管理员管理设计.md)
+- [有关文档/上线流程.md](./有关文档/上线流程.md)
 
-## Roadmap Notes
+## License
 
-This README is intentionally product-forward, but the wording is still constrained to facts verified from the current repository.
+TODO
 
-The following items are still `TODO` or should be confirmed before being added as stronger product claims:
+## Notes
 
-- Public production deployment link
-- Official screenshots and product branding assets
-- License statement
-- Contribution process
+The repository already contains enough source and docs to describe the current system shape. The following items remain unverified and should stay `TODO` until they are available:
+
+- Public production URL
+- Official branding assets
+- Open-source license
 - Release workflow
+- Contribution guide
