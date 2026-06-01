@@ -78,7 +78,8 @@ CREATE TABLE IF NOT EXISTS vip_card_group (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
     KEY idx_vip_card_group_status_created_at (status, created_at),
-    KEY idx_vip_card_group_created_by (created_by)
+    KEY idx_vip_card_group_created_by (created_by),
+    CONSTRAINT fk_vip_card_group_created_by FOREIGN KEY (created_by) REFERENCES admin_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='VIP兑换卡组表';
 
 CREATE TABLE IF NOT EXISTS vip_card_key (
@@ -102,7 +103,8 @@ CREATE TABLE IF NOT EXISTS vip_card_key (
     KEY idx_vip_card_key_redeemed_user (redeemed_user_id, redeemed_at),
     KEY idx_vip_card_key_created_by (created_by),
     CONSTRAINT fk_vip_card_key_group_id FOREIGN KEY (group_id) REFERENCES vip_card_group (id),
-    CONSTRAINT fk_vip_card_key_redeemed_user_id FOREIGN KEY (redeemed_user_id) REFERENCES app_user (id)
+    CONSTRAINT fk_vip_card_key_redeemed_user_id FOREIGN KEY (redeemed_user_id) REFERENCES app_user (id),
+    CONSTRAINT fk_vip_card_key_created_by FOREIGN KEY (created_by) REFERENCES admin_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='VIP兑换Key表';
 
 CREATE TABLE IF NOT EXISTS admin_user (
@@ -140,7 +142,7 @@ CREATE TABLE IF NOT EXISTS admin_user_role (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_admin_user_role_user_role (user_id, role_id),
-    KEY idx_admin_user_role_role_id (role_id),
+    KEY fk_admin_user_role_role_id (role_id),
     CONSTRAINT fk_admin_user_role_user_id FOREIGN KEY (user_id) REFERENCES admin_user (id),
     CONSTRAINT fk_admin_user_role_role_id FOREIGN KEY (role_id) REFERENCES admin_role (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='后台管理员角色关系表';
@@ -154,6 +156,7 @@ CREATE TABLE IF NOT EXISTS admin_project_access (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_admin_project_access_user_project (user_id, project_code),
+    KEY idx_admin_project_access_project_code (project_code),
     KEY idx_admin_project_access_project_enabled (project_code, enabled),
     CONSTRAINT fk_admin_project_access_user_id FOREIGN KEY (user_id) REFERENCES admin_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='后台管理员项目授权表';
@@ -511,6 +514,7 @@ CREATE TABLE IF NOT EXISTS kyyy_word_practice_session (
     PRIMARY KEY (id),
     KEY idx_kyyy_word_practice_session_user_bank_mode_status (user_id, word_bank_id, mode, status),
     KEY idx_kyyy_word_practice_session_started_at (started_at),
+    KEY fk_kyyy_word_practice_session_word_bank_id (word_bank_id),
     CONSTRAINT fk_kyyy_word_practice_session_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
     CONSTRAINT fk_kyyy_word_practice_session_word_bank_id FOREIGN KEY (word_bank_id) REFERENCES kyyy_word_bank (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='KYYY背词会话表';
@@ -1015,6 +1019,7 @@ CREATE TABLE IF NOT EXISTS kyzz_user_wrong_question (
     UNIQUE KEY uk_kyzz_user_wrong_question_user_question (user_id, question_id),
     KEY idx_kyzz_user_wrong_question_user_mastered_last_wrong_at (user_id, is_mastered, last_wrong_at),
     KEY idx_kyzz_user_wrong_question_bank_mastered (question_bank_id, is_mastered),
+    KEY fk_kyzz_user_wrong_question_question_id (question_id),
     CONSTRAINT fk_kyzz_user_wrong_question_user_id FOREIGN KEY (user_id) REFERENCES app_user (id),
     CONSTRAINT fk_kyzz_user_wrong_question_question_id FOREIGN KEY (question_id) REFERENCES kyzz_question (id),
     CONSTRAINT fk_kyzz_user_wrong_question_bank_id FOREIGN KEY (question_bank_id) REFERENCES kyzz_question_bank (id)
@@ -1023,7 +1028,7 @@ CREATE TABLE IF NOT EXISTS kyzz_user_wrong_question (
 CREATE TABLE IF NOT EXISTS kyzz_comment (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '评论ID',
     user_id BIGINT UNSIGNED NOT NULL COMMENT '评论用户ID',
-    target_type VARCHAR(20) NOT NULL COMMENT '评论目标：question/bank',
+    target_type VARCHAR(20) NOT NULL COMMENT '评论目标：question/bank/note',
     target_id BIGINT UNSIGNED NOT NULL COMMENT '目标ID',
     parent_id BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '父评论ID，0表示一级评论',
     reply_to_user_id BIGINT UNSIGNED DEFAULT NULL COMMENT '回复目标用户ID',
@@ -1069,7 +1074,29 @@ CREATE TABLE IF NOT EXISTS kyzz_leaderboard (
     PRIMARY KEY (id),
     UNIQUE KEY uk_kyzz_leaderboard_type_date_user (leaderboard_type, stat_date, user_id),
     KEY idx_kyzz_leaderboard_type_date_rank (leaderboard_type, stat_date, rank_no),
+    KEY fk_kyzz_leaderboard_user_id (user_id),
     CONSTRAINT fk_kyzz_leaderboard_user_id FOREIGN KEY (user_id) REFERENCES app_user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='排行榜快照表';
+
+CREATE TABLE IF NOT EXISTS app_security_risk_event (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '风险事件ID',
+    user_id BIGINT UNSIGNED DEFAULT NULL COMMENT '用户ID',
+    device_id VARCHAR(128) DEFAULT NULL COMMENT '设备标识',
+    ip VARCHAR(64) DEFAULT NULL COMMENT '客户端IP',
+    path VARCHAR(255) NOT NULL COMMENT '请求路径',
+    method VARCHAR(16) NOT NULL COMMENT '请求方法',
+    rule_code VARCHAR(80) NOT NULL COMMENT '命中规则编码',
+    action VARCHAR(20) NOT NULL COMMENT '处置动作：observe/cooldown/blocked',
+    risk_score INT NOT NULL DEFAULT 0 COMMENT '风险分',
+    request_id VARCHAR(64) DEFAULT NULL COMMENT '请求ID',
+    token_hash VARCHAR(128) DEFAULT NULL COMMENT 'token摘要',
+    payload_json JSON DEFAULT NULL COMMENT '附加事件数据',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_app_security_risk_event_user_created_at (user_id, created_at),
+    KEY idx_app_security_risk_event_rule_created_at (rule_code, created_at),
+    KEY idx_app_security_risk_event_ip_created_at (ip, created_at),
+    KEY idx_app_security_risk_event_request_id (request_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='反扒风险事件表';
 
 SET FOREIGN_KEY_CHECKS = 1;
