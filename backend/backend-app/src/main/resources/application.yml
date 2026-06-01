@@ -23,6 +23,7 @@ mybatis-plus:
       table-underline: true
 
 storage:
+  type: local
   local:
     temp-dir: .tmp
     hash-algorithm: SHA-256
@@ -32,6 +33,12 @@ storage:
     allowed-biz-types:
       - avatar
       - kyzz-question-bank-cover
+  image-compression:
+    enabled: true
+    max-width: 1600
+    max-height: 1600
+    jpeg-quality: 0.82
+    min-saving-ratio: 0.05
 
 sa-token:
   token-name: Authorization

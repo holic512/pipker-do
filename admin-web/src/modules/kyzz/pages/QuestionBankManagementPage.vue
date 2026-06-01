@@ -291,7 +291,7 @@
             <div class="kyzz-question-bank-page__cover-title">{{ coverTarget.bankName }}</div>
             <div class="kyzz-question-bank-page__bank-sub code">{{ coverTarget.bankCode }}</div>
             <div class="kyzz-question-bank-page__cover-tip">
-              封面将存入本项目本地文件服务，数据库只保存 storageKey，对外展示时再解析为访问 URL。
+              封面将存入系统文件服务，数据库只保存 storageKey，对外展示时再解析为访问 URL。
             </div>
           </div>
         </div>

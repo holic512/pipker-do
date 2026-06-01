@@ -1,12 +1,25 @@
+/**
+ * @file LocalFileStorageTest
+ * @project pipker-do
+ * @module 共享存储 / 本地文件存储测试
+ * @description 验证本地文件存储的系统 key、去重、URL 解析、删除和旧 key 兼容行为。
+ * @logic 1. 上传返回 pipker# key；2. 相同内容复用同一文件；3. legacy key 可解析到本地路径。
+ * @dependencies JUnit 5, LocalFileStorage, FileUploadProcessor
+ * @index_tags 本地存储测试, pipker#, 文件去重, legacy key
+ * @author holic512
+ */
 package org.example.backend.util.file;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.example.backend.shared.storage.service.LegacyStorageKeyResolver;
-import org.example.backend.shared.storage.service.LocalFileStorage;
-import org.example.backend.shared.storage.service.LocalStorageProperties;
-import org.example.backend.shared.storage.service.StorageUrlResolver;
-import org.example.backend.shared.storage.service.StoredFileInfo;
+import org.example.backend.shared.storage.config.ImageCompressionProperties;
+import org.example.backend.shared.storage.core.LegacyStorageKeyResolver;
+import org.example.backend.shared.storage.driver.local.LocalFileStorage;
+import org.example.backend.shared.storage.config.LocalStorageProperties;
+import org.example.backend.shared.storage.core.FileUploadProcessor;
+import org.example.backend.shared.storage.image.ImageCompressionService;
+import org.example.backend.shared.storage.driver.local.LocalStorageUrlResolver;
+import org.example.backend.shared.storage.core.StoredFileInfo;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.IOException;
@@ -46,7 +59,7 @@ class LocalFileStorageTest {
         String key2 = storage.save(file2, "avatar");
 
         assertEquals(key1, key2);
-        assertTrue(key1.startsWith("local:v1:avatar:"));
+        assertTrue(key1.startsWith("pipker#avatar/"));
         Path storedPath = storage.resolvePath(key1);
         assertNotNull(storedPath);
         assertTrue(Files.exists(storedPath));
@@ -156,8 +169,14 @@ class LocalFileStorageTest {
         properties.setAllowedBizTypes(allowedBizTypes);
 
         LegacyStorageKeyResolver legacyStorageKeyResolver = new LegacyStorageKeyResolver();
-        StorageUrlResolver storageUrlResolver = new StorageUrlResolver(properties, legacyStorageKeyResolver);
-        return new LocalFileStorage(properties, legacyStorageKeyResolver, storageUrlResolver);
+        LocalStorageUrlResolver storageUrlResolver = new LocalStorageUrlResolver(properties, legacyStorageKeyResolver);
+        ImageCompressionProperties imageCompressionProperties = new ImageCompressionProperties();
+        imageCompressionProperties.setEnabled(false);
+        FileUploadProcessor fileUploadProcessor = new FileUploadProcessor(
+                properties,
+                new ImageCompressionService(imageCompressionProperties)
+        );
+        return new LocalFileStorage(properties, legacyStorageKeyResolver, storageUrlResolver, fileUploadProcessor);
     }
 
     private MockMultipartFile textFile(String filename, String content) {

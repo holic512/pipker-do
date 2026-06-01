@@ -1,3 +1,13 @@
+/**
+ * @file KyzzQuestionCommentUserService
+ * @project pipker-do
+ * @module 考研政治 / 题目评论
+ * @description 处理政治题目评论分页、发布、点赞与评论作者头像 URL 解析。
+ * @logic 1. 校验题目与评论内容；2. 维护评论点赞状态和分页数据；3. 通过 FileStorage 解析用户头像受管 URL。
+ * @dependencies Mapper: KyzzCommentMapper, AppUserMapper; Service: FileStorage, KyzzCacheService
+ * @index_tags 考研政治, 评论, 点赞, 头像URL, FileStorage
+ * @author holic512
+ */
 package org.example.backend.biz.kyzz.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -19,7 +29,7 @@ import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.shared.account.entity.AppUser;
 import org.example.backend.shared.account.mapper.AppUserMapper;
-import org.example.backend.shared.storage.service.LocalFileStorage;
+import org.example.backend.shared.storage.core.FileStorage;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,20 +62,20 @@ public class KyzzQuestionCommentUserService {
     private final KyzzCommentLikeMapper kyzzCommentLikeMapper;
     private final KyzzQuestionMapper kyzzQuestionMapper;
     private final AppUserMapper appUserMapper;
-    private final LocalFileStorage localFileStorage;
+    private final FileStorage fileStorage;
     private final KyzzCacheService kyzzCacheService;
 
     public KyzzQuestionCommentUserService(KyzzCommentMapper kyzzCommentMapper,
                                           KyzzCommentLikeMapper kyzzCommentLikeMapper,
                                           KyzzQuestionMapper kyzzQuestionMapper,
                                           AppUserMapper appUserMapper,
-                                          LocalFileStorage localFileStorage,
+                                          FileStorage fileStorage,
                                           KyzzCacheService kyzzCacheService) {
         this.kyzzCommentMapper = kyzzCommentMapper;
         this.kyzzCommentLikeMapper = kyzzCommentLikeMapper;
         this.kyzzQuestionMapper = kyzzQuestionMapper;
         this.appUserMapper = appUserMapper;
-        this.localFileStorage = localFileStorage;
+        this.fileStorage = fileStorage;
         this.kyzzCacheService = kyzzCacheService;
     }
 
@@ -344,8 +354,8 @@ public class KyzzQuestionCommentUserService {
         if (!StringUtils.hasText(avatarValue)) {
             return null;
         }
-        if (localFileStorage.isManagedKey(avatarValue)) {
-            return localFileStorage.resolveUrl(avatarValue);
+        if (fileStorage.isManagedKey(avatarValue)) {
+            return fileStorage.resolveUrl(avatarValue);
         }
         return avatarValue;
     }

@@ -1,4 +1,14 @@
-package org.example.backend.shared.storage.service;
+/**
+ * @file LegacyStorageKeyResolver
+ * @project pipker-do
+ * @module 共享存储 / 历史 key 兼容
+ * @description 解析旧版 #relativePath 文件 key，兼容历史数据库值。
+ * @logic 1. 识别 # 前缀；2. 去除多余斜杠并规范化路径；3. 拒绝绝对路径和目录穿越。
+ * @dependencies JDK Path
+ * @index_tags legacy key, #文件路径, 文件兼容, 路径校验
+ * @author holic512
+ */
+package org.example.backend.shared.storage.core;
 
 import org.springframework.stereotype.Component;
 

@@ -4,7 +4,7 @@
  * @module 考研英语 / 排行榜
  * @description 负责英语用户侧综合排行榜的实时聚合、缓存与个人名次查询。
  * @logic 1. 合并背词完成会话与阅读交卷数据生成综合榜；2. 按日榜、周榜、总榜输出榜单摘要与个人记录；3. 通过 Redis 缓存公共榜和个人榜降低重复聚合成本。
- * @dependencies Mapper: KyyyLeaderboardMapper, Storage: LocalFileStorage, Cache: StringRedisTemplate
+ * @dependencies Mapper: KyyyLeaderboardMapper, Storage: FileStorage, Cache: StringRedisTemplate
  * @index_tags 考研英语, 排行榜服务, Redis缓存, 综合学习榜
  * @author holic512
  */
@@ -20,7 +20,7 @@ import org.example.backend.biz.kyyy.dto.KyyyLeaderboardSummaryResponse;
 import org.example.backend.biz.kyyy.mapper.KyyyLeaderboardMapper;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
-import org.example.backend.shared.storage.service.LocalFileStorage;
+import org.example.backend.shared.storage.core.FileStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -68,14 +68,14 @@ public class KyyyLeaderboardUserService {
     private static final String RULE_DESCRIPTION = "排序规则：综合学习量优先，若相同则比综合正确率，再比最近活跃时间，最后按用户ID升序；学习量=完成背词卡片数+已作答阅读题数，正确数=认识单词数+答对阅读题数。";
 
     private final KyyyLeaderboardMapper kyyyLeaderboardMapper;
-    private final LocalFileStorage localFileStorage;
+    private final FileStorage fileStorage;
     private final StringRedisTemplate stringRedisTemplate;
 
     public KyyyLeaderboardUserService(KyyyLeaderboardMapper kyyyLeaderboardMapper,
-                                      LocalFileStorage localFileStorage,
+                                      FileStorage fileStorage,
                                       StringRedisTemplate stringRedisTemplate) {
         this.kyyyLeaderboardMapper = kyyyLeaderboardMapper;
-        this.localFileStorage = localFileStorage;
+        this.fileStorage = fileStorage;
         this.stringRedisTemplate = stringRedisTemplate;
     }
 
@@ -448,8 +448,8 @@ public class KyyyLeaderboardUserService {
         if (!StringUtils.hasText(avatarValue)) {
             return null;
         }
-        if (localFileStorage.isManagedKey(avatarValue)) {
-            return localFileStorage.resolveUrl(avatarValue);
+        if (fileStorage.isManagedKey(avatarValue)) {
+            return fileStorage.resolveUrl(avatarValue);
         }
         return avatarValue;
     }

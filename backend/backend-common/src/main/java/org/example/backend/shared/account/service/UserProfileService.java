@@ -4,7 +4,7 @@
  * @module 用户中心 / 微信自动注册
  * @description 维护小程序用户资料、自动注册、登录时间与会员资料聚合。
  * @logic 1. 按微信 openid 查询用户；2. 自动注册时生成带时间戳的默认用户名；3. openid 唯一冲突后回查已有用户并更新登录信息。
- * @dependencies Mapper: AppUserMapper, AppUserVipMapper; Service: LocalFileStorage
+ * @dependencies Mapper: AppUserMapper, AppUserVipMapper; Service: FileStorage
  * @index_tags 微信登录, 自动注册, openid唯一索引, 用户资料, 默认用户名
  * @author holic512
  */
@@ -21,7 +21,7 @@ import org.example.backend.shared.account.mapper.AppUserVipMapper;
 import org.example.backend.shared.account.dto.CurrentUserResponse;
 import org.example.backend.shared.account.dto.UpdateProfileRequest;
 import org.example.backend.shared.account.dto.VipInfoResponse;
-import org.example.backend.shared.storage.service.LocalFileStorage;
+import org.example.backend.shared.storage.core.FileStorage;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,12 +43,12 @@ public class UserProfileService {
 
     private final AppUserMapper appUserMapper;
     private final AppUserVipMapper appUserVipMapper;
-    private final LocalFileStorage localFileStorage;
+    private final FileStorage fileStorage;
 
-    public UserProfileService(AppUserMapper appUserMapper, AppUserVipMapper appUserVipMapper, LocalFileStorage localFileStorage) {
+    public UserProfileService(AppUserMapper appUserMapper, AppUserVipMapper appUserVipMapper, FileStorage fileStorage) {
         this.appUserMapper = appUserMapper;
         this.appUserVipMapper = appUserVipMapper;
-        this.localFileStorage = localFileStorage;
+        this.fileStorage = fileStorage;
     }
 
     @Transactional
@@ -145,8 +145,8 @@ public class UserProfileService {
 
         if (StringUtils.hasText(oldAvatarUrl)
                 && !oldAvatarUrl.equals(avatarUrl)
-                && localFileStorage.isManagedKey(oldAvatarUrl)) {
-            localFileStorage.deleteByKey(oldAvatarUrl);
+                && fileStorage.isManagedKey(oldAvatarUrl)) {
+            fileStorage.deleteByKey(oldAvatarUrl);
         }
         return buildCurrentUser(userId);
     }
@@ -236,8 +236,8 @@ public class UserProfileService {
         if (!StringUtils.hasText(avatarValue)) {
             return null;
         }
-        if (localFileStorage.isManagedKey(avatarValue)) {
-            return localFileStorage.resolveUrl(avatarValue);
+        if (fileStorage.isManagedKey(avatarValue)) {
+            return fileStorage.resolveUrl(avatarValue);
         }
         return avatarValue;
     }

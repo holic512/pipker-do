@@ -57,9 +57,26 @@ logging:
     org.example.backend.mapper: info
 
 storage:
+  type: local
   local:
     base-path: /data/pipkerdo/file
     public-base-url: https://your-domain.example.com/static/files
+  image-compression:
+    enabled: true
+    max-width: 1600
+    max-height: 1600
+    jpeg-quality: 0.82
+    min-saving-ratio: 0.05
+  cos:
+    secret-id: ${TENCENT_COS_SECRET_ID}
+    secret-key: ${TENCENT_COS_SECRET_KEY}
+    region: ap-guangzhou
+    bucket: your-bucket-1250000000
+    public-base-url:
+    signed-url-expire-seconds: 1800
+    connection-timeout-ms: 30000
+    socket-timeout-ms: 30000
+    max-connections: 1024
 
 wechat:
   miniapp:

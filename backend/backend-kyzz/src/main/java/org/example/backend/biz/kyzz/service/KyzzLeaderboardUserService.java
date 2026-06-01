@@ -1,3 +1,13 @@
+/**
+ * @file KyzzLeaderboardUserService
+ * @project pipker-do
+ * @module 考研政治 / 排行榜
+ * @description 负责政治用户侧综合排行榜的聚合、缓存与头像 URL 解析。
+ * @logic 1. 聚合政治练习数据生成排行榜；2. 缓存榜单和个人名次结果；3. 通过 FileStorage 解析头像受管 URL。
+ * @dependencies Mapper: KyzzLeaderboardMapper, Storage: FileStorage, Cache: StringRedisTemplate
+ * @index_tags 考研政治, 排行榜服务, Redis缓存, 头像URL, FileStorage
+ * @author holic512
+ */
 package org.example.backend.biz.kyzz.service;
 
 import lombok.AllArgsConstructor;
@@ -10,7 +20,7 @@ import org.example.backend.biz.kyzz.dto.KyzzLeaderboardSummaryResponse;
 import org.example.backend.biz.kyzz.mapper.KyzzLeaderboardMapper;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
-import org.example.backend.shared.storage.service.LocalFileStorage;
+import org.example.backend.shared.storage.core.FileStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -61,14 +71,14 @@ public class KyzzLeaderboardUserService {
     private static final String RULE_DESCRIPTION = "排序规则：做题量优先，若相同则比正确率，再比最近活跃时间，最后按用户ID升序；做题数=有效作答次数。";
 
     private final KyzzLeaderboardMapper kyzzLeaderboardMapper;
-    private final LocalFileStorage localFileStorage;
+    private final FileStorage fileStorage;
     private final StringRedisTemplate stringRedisTemplate;
 
     public KyzzLeaderboardUserService(KyzzLeaderboardMapper kyzzLeaderboardMapper,
-                                      LocalFileStorage localFileStorage,
+                                      FileStorage fileStorage,
                                       StringRedisTemplate stringRedisTemplate) {
         this.kyzzLeaderboardMapper = kyzzLeaderboardMapper;
-        this.localFileStorage = localFileStorage;
+        this.fileStorage = fileStorage;
         this.stringRedisTemplate = stringRedisTemplate;
     }
 
@@ -441,8 +451,8 @@ public class KyzzLeaderboardUserService {
         if (!StringUtils.hasText(avatarValue)) {
             return null;
         }
-        if (localFileStorage.isManagedKey(avatarValue)) {
-            return localFileStorage.resolveUrl(avatarValue);
+        if (fileStorage.isManagedKey(avatarValue)) {
+            return fileStorage.resolveUrl(avatarValue);
         }
         return avatarValue;
     }

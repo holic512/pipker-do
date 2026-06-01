@@ -1,3 +1,13 @@
+/**
+ * @file KyzzQuestionBankAdminService
+ * @project pipker-do
+ * @module 考研政治 / 管理端题库
+ * @description 维护政治题库后台列表、详情、封面、状态、统计与删除校验。
+ * @logic 1. 管理题库基础信息和封面 storageKey；2. 聚合题目、学习、评分统计；3. 通过 FileStorage 删除和解析题库封面。
+ * @dependencies Mapper: KyzzQuestionBankMapper, KyzzQuestionMapper; Service: FileStorage, KyzzAdminAccessSupport
+ * @index_tags 考研政治, 题库管理, 题库封面, FileStorage, 管理端
+ * @author holic512
+ */
 package org.example.backend.biz.kyzz.admin.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -28,7 +38,7 @@ import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.shared.admin.entity.AdminUser;
 import org.example.backend.shared.admin.mapper.AdminUserMapper;
-import org.example.backend.shared.storage.service.LocalFileStorage;
+import org.example.backend.shared.storage.core.FileStorage;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -57,7 +67,7 @@ public class KyzzQuestionBankAdminService {
     private final KyzzQuestionBankRatingMapper kyzzQuestionBankRatingMapper;
     private final KyzzUserAnswerMapper kyzzUserAnswerMapper;
     private final AdminUserMapper adminUserMapper;
-    private final LocalFileStorage localFileStorage;
+    private final FileStorage fileStorage;
     private final KyzzAdminAccessSupport kyzzAdminAccessSupport;
     private final KyzzCacheService kyzzCacheService;
 
@@ -68,7 +78,7 @@ public class KyzzQuestionBankAdminService {
                                         KyzzQuestionBankRatingMapper kyzzQuestionBankRatingMapper,
                                         KyzzUserAnswerMapper kyzzUserAnswerMapper,
                                         AdminUserMapper adminUserMapper,
-                                        LocalFileStorage localFileStorage,
+                                        FileStorage fileStorage,
                                         KyzzAdminAccessSupport kyzzAdminAccessSupport,
                                         KyzzCacheService kyzzCacheService) {
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
@@ -78,7 +88,7 @@ public class KyzzQuestionBankAdminService {
         this.kyzzQuestionBankRatingMapper = kyzzQuestionBankRatingMapper;
         this.kyzzUserAnswerMapper = kyzzUserAnswerMapper;
         this.adminUserMapper = adminUserMapper;
-        this.localFileStorage = localFileStorage;
+        this.fileStorage = fileStorage;
         this.kyzzAdminAccessSupport = kyzzAdminAccessSupport;
         this.kyzzCacheService = kyzzCacheService;
     }
@@ -234,8 +244,8 @@ public class KyzzQuestionBankAdminService {
 
         if (StringUtils.hasText(oldCoverValue)
                 && !Objects.equals(oldCoverValue, nextCoverStorageKey)
-                && localFileStorage.isManagedKey(oldCoverValue)) {
-            localFileStorage.deleteByKey(oldCoverValue);
+                && fileStorage.isManagedKey(oldCoverValue)) {
+            fileStorage.deleteByKey(oldCoverValue);
         }
         return requireItem(bankId);
     }
@@ -261,8 +271,8 @@ public class KyzzQuestionBankAdminService {
             throw new BusinessException(ApiResponseCode.BAD_REQUEST, "题库已产生答题记录，不能直接删除");
         }
 
-        if (StringUtils.hasText(bank.getCoverUrl()) && localFileStorage.isManagedKey(bank.getCoverUrl())) {
-            localFileStorage.deleteByKey(bank.getCoverUrl());
+        if (StringUtils.hasText(bank.getCoverUrl()) && fileStorage.isManagedKey(bank.getCoverUrl())) {
+            fileStorage.deleteByKey(bank.getCoverUrl());
         }
         kyzzQuestionBankMapper.deleteById(bankId);
         kyzzCacheService.evictPublicBaseCaches();
@@ -443,14 +453,14 @@ public class KyzzQuestionBankAdminService {
         if (!StringUtils.hasText(coverValue)) {
             return null;
         }
-        if (localFileStorage.isManagedKey(coverValue)) {
-            return localFileStorage.resolveUrl(coverValue);
+        if (fileStorage.isManagedKey(coverValue)) {
+            return fileStorage.resolveUrl(coverValue);
         }
         return coverValue;
     }
 
     private String resolveCoverStorageKey(String coverValue) {
-        if (!StringUtils.hasText(coverValue) || !localFileStorage.isManagedKey(coverValue)) {
+        if (!StringUtils.hasText(coverValue) || !fileStorage.isManagedKey(coverValue)) {
             return null;
         }
         return coverValue;
@@ -519,8 +529,8 @@ public class KyzzQuestionBankAdminService {
         if (!StringUtils.hasText(trimmed)) {
             return null;
         }
-        if (!localFileStorage.isManagedKey(trimmed)) {
-            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "题库封面必须使用本地文件服务返回的存储键");
+        if (!fileStorage.isManagedKey(trimmed)) {
+            throw new BusinessException(ApiResponseCode.BAD_REQUEST, "题库封面必须使用系统文件服务返回的存储键");
         }
         return trimmed;
     }

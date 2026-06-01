@@ -1,11 +1,27 @@
-package org.example.backend.shared.storage.service;
+/**
+ * @file LocalFileStorage
+ * @project pipker-do
+ * @module 共享存储 / 本地文件存储
+ * @description 基于服务器本地目录保存上传文件，并将系统文件 key 解析为本地代理 URL。
+ * @logic 1. 通过 FileUploadProcessor 完成压缩与 hash；2. 生成 pipker# 系统 key；3. 复用同内容文件并支持旧 key 解析删除。
+ * @dependencies LocalStorageProperties, LocalStorageUrlResolver, LegacyStorageKeyResolver, FileUploadProcessor
+ * @index_tags 本地文件存储, pipker#, 文件上传, 哈希分片, 图片压缩
+ * @author holic512
+ */
+package org.example.backend.shared.storage.driver.local;
 
+import org.example.backend.shared.storage.config.LocalStorageProperties;
+import org.example.backend.shared.storage.core.FileStorage;
+import org.example.backend.shared.storage.core.FileUploadProcessor;
+import org.example.backend.shared.storage.core.LegacyStorageKeyResolver;
+import org.example.backend.shared.storage.core.ProcessedUpload;
+import org.example.backend.shared.storage.core.StorageKey;
+import org.example.backend.shared.storage.core.StoredFileInfo;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -13,69 +29,67 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 @Component
-public class LocalFileStorage {
-
-    private static final Pattern SAFE_EXTENSION_PATTERN = Pattern.compile("[A-Za-z0-9]{1,16}");
+@ConditionalOnProperty(prefix = "storage", name = "type", havingValue = "local", matchIfMissing = true)
+public class LocalFileStorage implements FileStorage {
 
     private final LocalStorageProperties props;
     private final LegacyStorageKeyResolver legacyStorageKeyResolver;
-    private final StorageUrlResolver storageUrlResolver;
+    private final LocalStorageUrlResolver storageUrlResolver;
+    private final FileUploadProcessor fileUploadProcessor;
 
     public LocalFileStorage(
             LocalStorageProperties props,
             LegacyStorageKeyResolver legacyStorageKeyResolver,
-            StorageUrlResolver storageUrlResolver
+            LocalStorageUrlResolver storageUrlResolver,
+            FileUploadProcessor fileUploadProcessor
     ) {
         this.props = props;
         this.legacyStorageKeyResolver = legacyStorageKeyResolver;
         this.storageUrlResolver = storageUrlResolver;
+        this.fileUploadProcessor = fileUploadProcessor;
     }
 
+    @Override
     public String save(MultipartFile file, String bizType) {
         return saveAndGetInfo(file, bizType).storageKey();
     }
 
+    @Override
     public StoredFileInfo saveAndGetInfo(MultipartFile file, String bizType) {
         Objects.requireNonNull(file, "file 不能为空");
 
         Path basePath = resolveBasePath();
         String normalizedBizType = normalizeBizType(bizType);
-        String extension = props.getKeepExtension() == null || props.getKeepExtension()
-                ? extractSafeExtension(file.getOriginalFilename())
-                : "";
 
-        TempFileDigestResult tempFile = writeToTempFile(file, basePath);
-        StorageKey storageKey = buildStorageKey(normalizedBizType, tempFile.hash(), extension);
+        ProcessedUpload processedUpload = fileUploadProcessor.process(file, basePath);
+        StorageKey storageKey = buildStorageKey(normalizedBizType, processedUpload.hash(), processedUpload.extension());
         Path targetPath = resolveManagedPath(storageKey, basePath);
 
         try {
-            storeIfAbsent(tempFile.path(), targetPath, tempFile.size());
+            storeIfAbsent(processedUpload.path(), targetPath, processedUpload.size());
             return new StoredFileInfo(
                     storageKey.asString(),
                     storageUrlResolver.resolveUrl(storageKey.asString()),
-                    tempFile.size(),
-                    file.getContentType(),
-                    file.getOriginalFilename(),
-                    tempFile.hash()
+                    processedUpload.size(),
+                    processedUpload.contentType(),
+                    processedUpload.originalFilename(),
+                    processedUpload.hash()
             );
         } finally {
-            deleteQuietly(tempFile.path());
+            fileUploadProcessor.deleteQuietly(processedUpload.path());
         }
     }
 
+    @Override
     public String resolveUrl(String stored) {
         return storageUrlResolver.resolveUrl(stored);
     }
 
+    @Override
     public Path resolvePath(String stored) {
         if (stored == null || stored.isBlank()) {
             return null;
@@ -87,6 +101,7 @@ public class LocalFileStorage {
         return resolveRelativePath(relativePath, resolveBasePath());
     }
 
+    @Override
     public boolean deleteByKey(String stored) {
         Path path = resolvePath(stored);
         if (path == null) {
@@ -107,6 +122,7 @@ public class LocalFileStorage {
         return deleteByKey(stored);
     }
 
+    @Override
     public boolean isManagedKey(String value) {
         return StorageKey.isManaged(value) || legacyStorageKeyResolver.isLegacyKey(value);
     }
@@ -117,34 +133,6 @@ public class LocalFileStorage {
     @Deprecated
     public boolean isManagedTag(String value) {
         return isManagedKey(value);
-    }
-
-    private TempFileDigestResult writeToTempFile(MultipartFile file, Path basePath) {
-        Path tempDir = resolveTempDir(basePath);
-        try {
-            Files.createDirectories(tempDir);
-            Path tempFile = Files.createTempFile(tempDir, "upload-", ".tmp");
-            MessageDigest digest = createDigest();
-            long size = 0L;
-
-            try (InputStream inputStream = file.getInputStream();
-                 OutputStream outputStream = Files.newOutputStream(tempFile)) {
-                byte[] buffer = new byte[8192];
-                int read;
-                while ((read = inputStream.read(buffer)) != -1) {
-                    digest.update(buffer, 0, read);
-                    size += read;
-                    outputStream.write(buffer, 0, read);
-                }
-            } catch (IOException ex) {
-                deleteQuietly(tempFile);
-                throw ex;
-            }
-
-            return new TempFileDigestResult(tempFile, HexFormat.of().formatHex(digest.digest()), size);
-        } catch (IOException e) {
-            throw new RuntimeException("写入临时文件失败：" + e.getMessage(), e);
-        }
     }
 
     private void storeIfAbsent(Path tempPath, Path targetPath, long expectedSize) {
@@ -219,31 +207,6 @@ public class LocalFileStorage {
         return Paths.get(basePath).toAbsolutePath().normalize();
     }
 
-    private Path resolveTempDir(Path basePath) {
-        String configured = props.getTempDir();
-        if (configured == null || configured.isBlank()) {
-            return basePath.resolve(".tmp").normalize();
-        }
-        Path configuredPath = Paths.get(configured);
-        Path resolved = configuredPath.isAbsolute() ? configuredPath.normalize() : basePath.resolve(configuredPath).normalize();
-        if (!resolved.startsWith(basePath) && !configuredPath.isAbsolute()) {
-            throw new IllegalArgumentException("tempDir 非法，超出存储根目录");
-        }
-        return resolved;
-    }
-
-    private MessageDigest createDigest() {
-        String algorithm = props.getHashAlgorithm();
-        if (algorithm == null || algorithm.isBlank()) {
-            algorithm = "SHA-256";
-        }
-        try {
-            return MessageDigest.getInstance(algorithm);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("不支持的哈希算法：" + algorithm, e);
-        }
-    }
-
     private String normalizeBizType(String bizType) {
         StorageKey.validateBizType(bizType);
         List<String> allowedBizTypes = props.getAllowedBizTypes();
@@ -251,18 +214,6 @@ public class LocalFileStorage {
             throw new IllegalArgumentException("bizType 不在允许列表内：" + bizType);
         }
         return bizType;
-    }
-
-    private String extractSafeExtension(String originalFilename) {
-        if (originalFilename == null || originalFilename.isBlank()) {
-            return "";
-        }
-        int dotIndex = originalFilename.lastIndexOf('.');
-        if (dotIndex < 0 || dotIndex == originalFilename.length() - 1) {
-            return "";
-        }
-        String ext = originalFilename.substring(dotIndex + 1).toLowerCase(Locale.ROOT);
-        return SAFE_EXTENSION_PATTERN.matcher(ext).matches() ? ext : "";
     }
 
     private int defaultIfInvalid(Integer value, int defaultValue) {
@@ -276,16 +227,4 @@ public class LocalFileStorage {
         return value;
     }
 
-    private void deleteQuietly(Path path) {
-        if (path == null) {
-            return;
-        }
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException ignored) {
-        }
-    }
-
-    private record TempFileDigestResult(Path path, String hash, long size) {
-    }
 }

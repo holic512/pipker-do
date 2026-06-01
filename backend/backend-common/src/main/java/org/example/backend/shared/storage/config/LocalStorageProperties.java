@@ -1,4 +1,14 @@
-package org.example.backend.shared.storage.service;
+/**
+ * @file LocalStorageProperties
+ * @project pipker-do
+ * @module 共享存储 / 本地存储配置
+ * @description 绑定本地文件根目录、代理 URL、临时目录、hash 分片和业务目录白名单。
+ * @logic 1. 读取 storage.local 配置；2. 兼容 root-dir 旧配置；3. 为本地和 COS 上传预处理提供公共路径参数。
+ * @dependencies Spring Boot ConfigurationProperties
+ * @index_tags 本地文件配置, public-base-url, base-path, allowed-biz-types
+ * @author holic512
+ */
+package org.example.backend.shared.storage.config;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -8,9 +18,6 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 本地文件存储配置
- */
 @Setter
 @Getter
 @Component
@@ -76,4 +83,3 @@ public class LocalStorageProperties {
         return basePath != null && !basePath.isBlank() ? basePath : rootDir;
     }
 }
-

@@ -1,3 +1,13 @@
+/**
+ * @file KyzzPracticeSupport
+ * @project pipker-do
+ * @module 考研政治 / 练习支撑
+ * @description 聚合政治题库、题目、选项、答题记录与题库封面 URL 解析等练习公共能力。
+ * @logic 1. 缓存并加载题库与题目数据；2. 统计用户练习进度与续练状态；3. 通过 FileStorage 解析题库封面受管 URL。
+ * @dependencies Mapper: KyzzQuestionBankMapper, KyzzQuestionMapper; Service: FileStorage, KyzzCacheService
+ * @index_tags 考研政治, 练习支撑, 题库封面, FileStorage, 缓存
+ * @author holic512
+ */
 package org.example.backend.biz.kyzz.support;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -16,7 +26,7 @@ import org.example.backend.biz.kyzz.mapper.KyzzUserAnswerMapper;
 import org.example.backend.biz.kyzz.mapper.KyzzUserQuestionBankMapper;
 import org.example.backend.common.api.ApiResponseCode;
 import org.example.backend.common.exception.BusinessException;
-import org.example.backend.shared.storage.service.LocalFileStorage;
+import org.example.backend.shared.storage.core.FileStorage;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -53,7 +63,7 @@ public class KyzzPracticeSupport {
     private final KyzzQuestionOptionMapper kyzzQuestionOptionMapper;
     private final KyzzUserAnswerMapper kyzzUserAnswerMapper;
     private final KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper;
-    private final LocalFileStorage localFileStorage;
+    private final FileStorage fileStorage;
     private final KyzzCacheService kyzzCacheService;
 
     public KyzzPracticeSupport(KyzzCategoryMapper kyzzCategoryMapper,
@@ -62,7 +72,7 @@ public class KyzzPracticeSupport {
                                KyzzQuestionOptionMapper kyzzQuestionOptionMapper,
                                KyzzUserAnswerMapper kyzzUserAnswerMapper,
                                KyzzUserQuestionBankMapper kyzzUserQuestionBankMapper,
-                               LocalFileStorage localFileStorage,
+                               FileStorage fileStorage,
                                KyzzCacheService kyzzCacheService) {
         this.kyzzCategoryMapper = kyzzCategoryMapper;
         this.kyzzQuestionBankMapper = kyzzQuestionBankMapper;
@@ -70,7 +80,7 @@ public class KyzzPracticeSupport {
         this.kyzzQuestionOptionMapper = kyzzQuestionOptionMapper;
         this.kyzzUserAnswerMapper = kyzzUserAnswerMapper;
         this.kyzzUserQuestionBankMapper = kyzzUserQuestionBankMapper;
-        this.localFileStorage = localFileStorage;
+        this.fileStorage = fileStorage;
         this.kyzzCacheService = kyzzCacheService;
     }
 
@@ -352,8 +362,8 @@ public class KyzzPracticeSupport {
         if (!StringUtils.hasText(coverValue)) {
             return null;
         }
-        if (localFileStorage.isManagedKey(coverValue)) {
-            return localFileStorage.resolveUrl(coverValue);
+        if (fileStorage.isManagedKey(coverValue)) {
+            return fileStorage.resolveUrl(coverValue);
         }
         return coverValue;
     }

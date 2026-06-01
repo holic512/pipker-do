@@ -46,7 +46,7 @@ export function syncKyzzQuestionBankQuestionCount(bankId: number): Promise<KyzzQ
 export function uploadKyzzQuestionBankCover(file: File): Promise<UploadFileResponse> {
   const formData = new FormData()
   formData.append('file', file)
-  return http.post('/admin/files/kyzz-question-bank-cover', formData, {
+  return http.post('/admin/kyzz/question-banks/covers/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
