@@ -10,8 +10,12 @@
  */
 package org.example.backend.shared.account.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.MybatisMapperBuilderAssistant;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import org.example.backend.shared.account.entity.AppUser;
 import org.example.backend.shared.account.mapper.AppUserMapper;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DuplicateKeyException;
 
@@ -19,10 +23,8 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.time.LocalDateTime;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -30,6 +32,16 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UserProfileServiceTest {
+
+    @BeforeAll
+    static void initMybatisPlusTableInfo() {
+        if (TableInfoHelper.getTableInfo(AppUser.class) == null) {
+            TableInfoHelper.initTableInfo(
+                    new MybatisMapperBuilderAssistant(new MybatisConfiguration(), "UserProfileServiceTest"),
+                    AppUser.class
+            );
+        }
+    }
 
     @Test
     void shouldBuildTimestampedUsernameForDifferentOpenidsWithSameSuffix() {
@@ -129,9 +141,10 @@ class UserProfileServiceTest {
     }
 
     private static final class RecordingAppUserMapper implements InvocationHandler {
-        private final Queue<AppUser> selectOneResponses = new ArrayDeque<>();
+        private final List<AppUser> selectOneResponses = new ArrayList<>();
         private final List<AppUser> insertedUsers = new ArrayList<>();
         private RuntimeException insertException;
+        private int selectOneIndex;
         private int updateCount;
 
         private AppUserMapper proxy() {
@@ -145,7 +158,9 @@ class UserProfileServiceTest {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) {
             return switch (method.getName()) {
-                case "selectOne" -> selectOneResponses.poll();
+                case "selectOne" -> selectOneIndex < selectOneResponses.size()
+                        ? selectOneResponses.get(selectOneIndex++)
+                        : null;
                 case "insert" -> {
                     if (insertException != null) {
                         throw insertException;
