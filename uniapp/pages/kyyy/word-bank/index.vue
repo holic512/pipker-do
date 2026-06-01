@@ -2,8 +2,8 @@
 @file KyyyWordBankPage
 @project pipker-do
 @module 考研英语 / 小程序词库页
-@description 展示英语词库列表、默认词库状态，并在学习/复习入口下承接返回练习页的动作。
-@logic 1. 加载词库与默认词库信息；2. 管理选择、取消和设默认；3. 在学习/复习模式下提供固定 CTA 返回练习页。
+@description 展示英语词库列表、默认词库状态，并在有可用词库时承接学习/复习入口返回练习页的动作。
+@logic 1. 加载词库与默认词库信息；2. 管理选择、取消和设默认；3. 在学习/复习模式且存在词库时提供底部 CTA 返回练习页。
 @dependencies API: @/pages/kyyy/api/word-bank, API: @/pages/kyyy/practice/settings, Component: PageShell, Component: KyyyTabbar
 @index_tags 考研英语, 词库页, 默认词库, 学习入口
 @author holic512
@@ -259,7 +259,8 @@ export default defineComponent({
 			return this.listState.records.find((item) => item.id === defaultWordBankId) || null
 		},
 		footerAction(): KyyyWordBankFooterActionState {
-			if (this.entryMode === 'default') {
+			const hasWordBanks = this.listState.records.length > 0
+			if (this.entryMode === 'default' || !hasWordBanks) {
 				return {
 					visible: false,
 					text: '',
