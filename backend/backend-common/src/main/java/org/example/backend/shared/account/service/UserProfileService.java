@@ -1,3 +1,13 @@
+/**
+ * @file UserProfileService
+ * @project pipker-do
+ * @module 用户中心 / 微信自动注册
+ * @description 维护小程序用户资料、自动注册、登录时间与会员资料聚合。
+ * @logic 1. 按微信 openid 查询用户；2. 自动注册时生成带时间戳的默认用户名；3. openid 唯一冲突后回查已有用户并更新登录信息。
+ * @dependencies Mapper: AppUserMapper, AppUserVipMapper; Service: LocalFileStorage
+ * @index_tags 微信登录, 自动注册, openid唯一索引, 用户资料, 默认用户名
+ * @author holic512
+ */
 package org.example.backend.shared.account.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -12,6 +22,7 @@ import org.example.backend.shared.account.dto.CurrentUserResponse;
 import org.example.backend.shared.account.dto.UpdateProfileRequest;
 import org.example.backend.shared.account.dto.VipInfoResponse;
 import org.example.backend.shared.storage.service.LocalFileStorage;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -25,6 +36,8 @@ public class UserProfileService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private static final DateTimeFormatter DEFAULT_USERNAME_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
     private static final String CURRENT_AGREEMENT_VERSION = "2026-04-25";
 
@@ -40,22 +53,32 @@ public class UserProfileService {
 
     @Transactional
     public UpsertUserResult createOrUpdateWechatUser(String openId, String unionId, LocalDateTime now) {
-        AppUser existing = appUserMapper.selectOne(new LambdaQueryWrapper<AppUser>()
-                .eq(AppUser::getWechatOpenid, openId)
-                .last("limit 1"));
+        AppUser existing = findByWechatOpenid(openId);
         if (existing == null) {
             AppUser user = new AppUser();
             user.setWechatOpenid(openId);
             user.setWechatUnionid(unionId);
-            user.setUsername(buildDefaultUsername(openId));
+            user.setUsername(buildDefaultUsername(openId, now));
             user.setNickname(buildDefaultNickname(openId));
             user.setGender(0);
             user.setStatus(1);
             user.setLastLoginAt(now);
-            appUserMapper.insert(user);
+            try {
+                appUserMapper.insert(user);
+            } catch (DuplicateKeyException ex) {
+                AppUser duplicatedOpenidUser = findByWechatOpenid(openId);
+                if (duplicatedOpenidUser == null) {
+                    throw ex;
+                }
+                return updateExistingWechatUser(duplicatedOpenidUser, unionId, now);
+            }
             return new UpsertUserResult(user, true);
         }
 
+        return updateExistingWechatUser(existing, unionId, now);
+    }
+
+    private UpsertUserResult updateExistingWechatUser(AppUser existing, String unionId, LocalDateTime now) {
         if (existing.getStatus() == null || existing.getStatus() != 1) {
             throw new BusinessException(ApiResponseCode.FORBIDDEN, "当前账号已被禁用");
         }
@@ -67,6 +90,12 @@ public class UserProfileService {
         existing.setWechatUnionid(StringUtils.hasText(unionId) ? unionId : existing.getWechatUnionid());
         existing.setLastLoginAt(now);
         return new UpsertUserResult(existing, false);
+    }
+
+    private AppUser findByWechatOpenid(String openId) {
+        return appUserMapper.selectOne(new LambdaQueryWrapper<AppUser>()
+                .eq(AppUser::getWechatOpenid, openId)
+                .last("limit 1"));
     }
 
     public CurrentUserResponse buildCurrentUser(Long userId) {
@@ -152,8 +181,9 @@ public class UserProfileService {
         return value == null ? null : value.format(DATE_TIME_FORMATTER);
     }
 
-    private String buildDefaultUsername(String openId) {
-        return "wx_" + openId.substring(Math.max(0, openId.length() - 12));
+    private String buildDefaultUsername(String openId, LocalDateTime now) {
+        return "wx_" + now.format(DEFAULT_USERNAME_TIME_FORMATTER)
+                + "_" + openId.substring(Math.max(0, openId.length() - 12));
     }
 
     private String buildDefaultNickname(String openId) {
