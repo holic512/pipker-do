@@ -11,6 +11,11 @@ backend/target/
 backend/*/target/
 backend/.m2repo/
 *.class
+
+# Private literal backend configuration; only the example belongs in Git.
+/backend/backend-app/src/main/resources/application.yml
+/backend/.local-config-backup/
+/backend/config/
 backend/backend-app/src/main/resources/application-dev.yml
 backend/backend-app/src/main/resources/application-prod.yml
 backend/backend-app/src/main/resources/application-local.yml

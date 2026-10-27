@@ -84,9 +84,9 @@ These images come from the current `image/` folder in the repository.
 | Item | Value | Notes |
 | --- | --- | --- |
 | Backend port | `8080` | Default Spring Boot port in the repo |
-| Spring profile | `dev` | Default runtime profile |
+| Spring configuration | `application.yml` | One private local file with literal values; no profiles |
 | Admin API base path | `/api` | Proxied to `http://localhost:8080` in development |
-| Backend config template | `backend/backend-app/src/main/resources/application-dev.example.yml` | Local example config |
+| Backend config template | `backend/backend-app/src/main/resources/application.example.yml` | Local example config |
 | Image compression config | `storage.image-compression` | Present in backend application config |
 
 ## Getting Started
@@ -97,13 +97,15 @@ Verified from the repository:
 
 - Main class: `org.example.backend.BackendApplication`
 - Default port: `8080`
-- Default Spring profile: `dev`
-- Example local config: `backend/backend-app/src/main/resources/application-dev.example.yml`
+- Local configuration: `backend/backend-app/src/main/resources/application.yml`, ignored by Git; no profile selection
+- Example local config: `backend/backend-app/src/main/resources/application.example.yml`
 
 Run locally:
 
 ```bash
 cd backend
+# First clone only: copy the template, then fill in application.yml.
+cp -n backend-app/src/main/resources/application.example.yml backend-app/src/main/resources/application.yml
 mvn spring-boot:run -pl backend-app
 ```
 
@@ -114,6 +116,8 @@ Before starting, review these local settings:
 - Local file storage path
 - WeChat Mini Program credentials
 - LLM config secret
+
+Write all settings directly in `application.yml`; environment variables and `backend/config` overrides are not required. Docker can select one complete mounted file using the Java argument `--spring.config.location`. Restart after editing the file. See [backend configuration](backend/CONFIGURATION.md).
 
 ### Admin Web
 

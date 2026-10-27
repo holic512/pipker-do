@@ -84,9 +84,9 @@
 | 项目 | 值 | 说明 |
 | --- | --- | --- |
 | 后端端口 | `8080` | 仓库里默认的 Spring Boot 端口 |
-| Spring Profile | `dev` | 默认运行环境 |
+| Spring 配置 | `application.yml` | 唯一本地私有配置，直接填写值，不区分环境 |
 | 管理后台 API 基础路径 | `/api` | 开发环境代理到 `http://localhost:8080` |
-| 后端配置模板 | `backend/backend-app/src/main/resources/application-dev.example.yml` | 本地示例配置 |
+| 后端配置模板 | `backend/backend-app/src/main/resources/application.example.yml` | 本地示例配置 |
 | 图片压缩配置 | `storage.image-compression` | 出现在后端应用配置中 |
 
 ## 快速开始
@@ -97,13 +97,15 @@
 
 - 启动类：`org.example.backend.BackendApplication`
 - 默认端口：`8080`
-- 默认 Spring Profile：`dev`
-- 示例本地配置：`backend/backend-app/src/main/resources/application-dev.example.yml`
+- 本地配置：`backend/backend-app/src/main/resources/application.yml`，被 Git 忽略，无需选择 Profile
+- 示例本地配置：`backend/backend-app/src/main/resources/application.example.yml`
 
 本地运行：
 
 ```bash
 cd backend
+# 仅首次克隆时复制，随后编辑真实配置；已有文件不覆盖。
+cp -n backend-app/src/main/resources/application.example.yml backend-app/src/main/resources/application.yml
 mvn spring-boot:run -pl backend-app
 ```
 
@@ -114,6 +116,8 @@ mvn spring-boot:run -pl backend-app
 - 本地文件存储路径
 - 微信小程序凭据
 - LLM 配置密钥
+
+所有参数直接填写在 `application.yml` 中，不再使用环境变量或 `backend/config` 覆盖目录。Docker 通过 Java 参数 `--spring.config.location` 指定一份完整的挂载配置；修改后重启应用。详见 [后端配置](backend/CONFIGURATION.md)。
 
 ### 管理后台
 

@@ -1,17 +1,44 @@
-# ai-index: spring boot common configuration shared by dev and prod profiles
+# @file application.example.yml
+# @project pipker-do
+# @module backend local configuration
+# @description Sanitized local configuration template; copy to application.yml before running.
+# @logic Copy once, then edit literal values; Spring does not load this template automatically.
+# @dependencies MySQL, Redis, local file storage
+# @index_tags spring, local-storage, configuration-template
+# @author holic512
+# 复制为同目录的 application.yml 后填写真实值；所有参数均为直接值，无需环境变量。
+# MySQL 密码及 llm.config-secret 必须替换；微信和 COS 凭据按需填写。
+# Redis 无密码时保留空字符串；修改 server.port 时同步修改 storage.local.public-base-url。
 server:
   port: 8080
-
 spring:
   application:
     name: pipkerdo
-  profiles:
-    default: dev
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/pipkerdo?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: pipkerdo
+    password: CHANGE-ME-MYSQL-PASSWORD
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 5000
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      database: 1
+      password: ''
+      timeout: 10s
   servlet:
     multipart:
       max-file-size: 5MB
       max-request-size: 5MB
-
+  liquibase:
+    change-log: classpath:db/changelog/master.xml
+  sql:
+    init:
+      mode: never
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   type-aliases-package: org.example.backend
@@ -21,25 +48,35 @@ mybatis-plus:
     db-config:
       id-type: auto
       table-underline: true
-
 storage:
   type: local
   local:
+    base-path: ../file
+    public-base-url: http://localhost:8080/static/files
     temp-dir: .tmp
     hash-algorithm: SHA-256
     shard-depth: 2
     shard-width: 2
     keep-extension: true
     allowed-biz-types:
-      - avatar
-      - kyzz-question-bank-cover
+    - avatar
+    - kyzz-question-bank-cover
   image-compression:
     enabled: true
     max-width: 1600
     max-height: 1600
     jpeg-quality: 0.82
     min-saving-ratio: 0.05
-
+  cos:
+    secret-id: ''
+    secret-key: ''
+    region: ap-beijing
+    bucket: CHANGE-ME-BUCKET
+    public-base-url: https://files.example.com
+    signed-url-expire-seconds: 1800
+    connection-timeout-ms: 30000
+    socket-timeout-ms: 30000
+    max-connections: 1024
 sa-token:
   token-name: Authorization
   token-prefix: Bearer
@@ -47,15 +84,17 @@ sa-token:
   is-read-cookie: false
   is-read-body: false
   is-share: false
-
 wechat:
   miniapp:
+    app-id: ''
+    app-secret: ''
     connect-timeout: 3s
     read-timeout: 5s
-
 llm:
-  config-secret: ${LLM_CONFIG_SECRET:ashdkjadjkabkjhsdhkjansdjkasbjk}
-
+  config-secret: CHANGE-ME-TO-A-PRIVATE-CONFIG-KEY
+logging:
+  level:
+    org.example.backend: INFO
 anti-crawler:
   enabled: true
   whitelist-ips: []

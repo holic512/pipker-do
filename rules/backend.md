@@ -11,9 +11,8 @@
 - `backend/pom.xml`：Maven 父工程，统一依赖版本并聚合各模块。
 - `backend/backend-app`：Spring Boot 启动模块和资源目录。
 - `backend/backend-app/src/main/java/org/example/backend/BackendApplication.java`：启动入口。
-- `backend/backend-app/src/main/resources/application.yml`：公共配置。
-- `backend/backend-app/src/main/resources/application-*.yml`：本地/生产环境配置。
-- `backend/backend-app/src/main/resources/application-*.example.yml`：环境配置模板。
+- `backend/backend-app/src/main/resources/application.yml`：唯一的本地私有配置，全部直接填写值，不使用环境 Profile 或 `backend/config` 覆盖目录，忽略 Git 跟踪。
+- `backend/backend-app/src/main/resources/application.example.yml`：脱敏示例，提交 Git；初次克隆后复制为同目录的 `application.yml`。
 - `backend/backend-app/src/main/resources/db/schema.sql`：数据库结构基准。
 - `backend/backend-common/src/main/java/org/example/backend/common`：统一返回、全局异常、全局配置、filter、web 基础能力。
 - `backend/backend-common/src/main/java/org/example/backend/health`：健康检查接口。
